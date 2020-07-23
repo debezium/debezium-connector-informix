@@ -1,4 +1,4 @@
-package laoflch.debezium.connector.informix.integrtest
+package laoflch.debezium.connector.informix
 
 object TxLogPosition {
   val NULL = new TxLogPosition(-1l, -1l,-1l,-1l)

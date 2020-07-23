@@ -1,4 +1,4 @@
-package laoflch.debezium.connector.informix.integrtest
+package laoflch.debezium.connector.informix
 
 import io.debezium.connector.db2.{Db2Connection, Db2ConnectorConfig, Db2DatabaseSchema, Db2OffsetContext, Db2SnapshotChangeEventSource, Db2StreamingChangeEventSource}
 import io.debezium.pipeline.{ErrorHandler, EventDispatcher}

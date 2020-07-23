@@ -1,4 +1,4 @@
-package laoflch.debezium.connector.informix.integrtest
+package laoflch.debezium.connector.informix
 
 import java.sql.{Connection, ResultSet, SQLException, Savepoint, Statement}
 import java.util
@@ -191,7 +191,7 @@ class InformixSnapshotChangeEventSource(connectorConfig: InformixConnectorConfig
   }
 
   /**
-   * Generate a valid db2 query string for the specified table
+   * Generate a valid Informix query string for the specified table
    *
    * @param tableId the table to generate a query for
    * @return a valid query string

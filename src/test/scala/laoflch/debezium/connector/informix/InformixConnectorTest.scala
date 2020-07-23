@@ -1,7 +1,8 @@
-package laoflch.debezium.connector.informix.integrtest
+package laoflch.debezium.connector.informix
 
-import java.sql.{DriverManager, SQLException}
-import java.util.Properties
+import java.nio.charset.Charset
+import java.sql.{Connection, DriverManager, SQLException}
+import java.util.{Date, Properties}
 
 import io.debezium.embedded
 import io.debezium.engine.DebeziumEngine
@@ -17,6 +18,7 @@ import io.debezium.engine.DebeziumEngine.ChangeConsumer
 import io.debezium.config.Configuration
 import io.debezium.connector.mysql.MySqlConnector
 import io.debezium.embedded.Connect
+import io.netty.buffer.ByteBuf
 //import org.bson.assertions.Assertions
 
 import scala.jdk.CollectionConverters
@@ -29,15 +31,44 @@ import org.testng.Assert._
 import org.testng.annotations.Test
 
 
+import java.io.PipedInputStream
+import java.io.PipedOutputStream
+
+import java.util.Base64
+import io.netty.buffer.Unpooled
+import com.alibaba.fastjson.JSON
+
+
+
 
 object InformixConnectorTest {
 
+/*  val  RECORD_KEY_SCHEMA:String =  "{"+
+    "\"type\":\"record\","+
+    "\"name\":\"Iteblog\","+
+    "\"fields\":["+
+    "  { \"name\":\"str1\", \"type\":\"string\" },"+
+    "  { \"name\":\"str2\", \"type\":\"string\" },"+
+    "  { \"name\":\"int1\", \"type\":\"int\" }"+
+    "]}"
+
+  val  RECORD_VALUE_SCHEMA:String = "{"+
+    "\"type\":\"record\","+
+    "\"name\":\"Iteblog\","+
+    "\"fields\":["+
+    "  { \"name\":\"str1\", \"type\":\"string\" },"+
+    "  { \"name\":\"str2\", \"type\":\"string\" },"+
+    "  { \"name\":\"int1\", \"type\":\"int\" }"+
+    "]}"*/
+
   def main(args: Array[String]): Unit ={
      //testInfromixNative()
-    testInformixdz()
+    //testInformixdz()
     //testInformixJdbc()
 
   }
+
+
 
 
   def testMysql(): Unit ={
@@ -108,8 +139,8 @@ object InformixConnectorTest {
 
 }
 
-  def testInformixdz(): Unit ={
-    val props:Properties = new Properties()
+  def testInformixdz(props:Properties,strBuf: ByteBuf): Unit ={
+   /* val props:Properties = new Properties()
     props.setProperty("name", "engine")
     props.setProperty("offset.storage", "org.apache.kafka.connect.storage.FileOffsetBackingStore")
     props.setProperty("connector.class","laoflch.debezium.connector.informix.InformixConnector")
@@ -128,7 +159,7 @@ object InformixConnectorTest {
     props.setProperty("database.history", "io.debezium.relational.history.FileDatabaseHistory")
     props.setProperty("database.history.file.filename", "/tmp/dbhistory.dat")
 
-    props.setProperty("message.key.columns","test.informix.customer:customer_num")
+    props.setProperty("message.key.columns","test.informix.customer:customer_num")*/
     //Contoh konfigurasi
     //
     /*    val config = Configuration.create()
@@ -157,7 +188,14 @@ object InformixConnectorTest {
       //println("1234")
       var r=null
       for ( r <- CollectionConverters.ListHasAsScala(records).asScala ) {
-        println( String.format("record[key:%s,value:%s:string:%s]",r.key(),r.value(),r.toString))
+
+       // println(JSON.toJSON(r.value()).toString)
+
+        val str=String.format("record[key:%s,value:%s];",r.key(),r.value())
+        strBuf.writeBytes(str.getBytes)
+
+        //println(String.format("record[key:%s,value:%s:string:%s]",r.key(),r.value(),r.toString))
+        //println(strBuf.capacity())
       }
 
       //println(record)
@@ -262,16 +300,233 @@ object InformixConnectorTest {
 
   }
 
-  class InformixConnectorTest extends Assertions {
 
-    @Test
-    def testInformixdz(): Unit = {
-      println("test Informix by debezium")
 
-      InformixConnectorTest.testInformixdz()
-      Assert.assertTrue(true)
-    }
+
+
+}
+
+class InformixConnectorTest extends Assertions {
+
+
+
+  @Test(groups = Array("integrationtest" ))
+  def testInformixdz(): Unit = {
+    println("test Informix by debezium")
+
+   // val pis = new PipedInputStream
+    //val pos = new PipedOutputStream
+
+    val props:Properties = new Properties()
+    props.setProperty("name", "engine")
+    props.setProperty("offset.storage", "org.apache.kafka.connect.storage.FileOffsetBackingStore")
+    props.setProperty("connector.class","laoflch.debezium.connector.informix.InformixConnector")
+    props.setProperty("offset.storage.file.filename", "/tmp/offsets.dat")
+    props.setProperty("offset.flush.interval.ms", "60000")
+    /* begin connector properties */
+    props.setProperty("database.server.name", "informix-test")
+    //props.setProperty("database.hostname","192.168.0.213")
+    props.setProperty("database.hostname","172.17.0.2")
+    props.setProperty("database.port", "9998")
+    props.setProperty("database.user", "informix")
+    props.setProperty("database.password", "informix")
+    props.setProperty("database.dbname","test")
+    //props.setProperty("database.server.id", "89")
+    //props.setProperty("database.server.name", "my-app-connector")
+    props.setProperty("database.history", "io.debezium.relational.history.FileDatabaseHistory")
+    props.setProperty("database.history.file.filename", "/tmp/dbhistory.dat")
+
+    props.setProperty("message.key.columns","test.informix.customer:customer_num")
+
+    val strBuffer = Unpooled.buffer()
+
+    //val decoder = Base64.getDecoder
+   // val encoder = Base64.getEncoder
+
+    //strBuffer.writeBytes(encoder.encode("testsssssssss".getBytes))
+
+    //println(strBuffer)
+
+   // pos.connect(pis)
+
+    val jdbcCon=initInformixTestData(props)
+
+    InformixConnectorTest.testInformixdz(props,strBuffer)
+
+    //Thread.sleep(20000)
+
+
+
+    assertInformixSnapshot(strBuffer)
+
+
+    assertInformixInsert(jdbcCon,props,strBuffer)
+
+    // Assert.assertTrue(true)
   }
+
+
+  def  assertInformixSnapshot(strBuffer:ByteBuf):Unit ={
+
+   // val bs:Array[Byte] = new Array[Byte](1024)
+
+    //strBuffer.readBytes(bs)
+
+    val str=fetchStr(strBuffer,20000,(new Date).getTime,0,100)
+
+    if(str != null && str.length>0){
+
+      println(str)
+
+
+    }
+
+  }
+
+  def  assertInformixInsert(jdbcCon:Connection,props:Properties,strBuffer:ByteBuf):Boolean ={
+
+
+    if(jdbcCon ==null){
+      return false
+
+    }
+
+
+    try {
+      //val conn= DriverManager.getConnection(url,dbUser,dbPass)
+
+
+      val sqlStr="insert into customer (fname) values ('laoflch_test') "
+
+      if(jdbcCon.createStatement().executeUpdate(sqlStr)>0){
+        println("insert success");
+
+
+      }else{
+        println("insert failed")
+
+        return false
+      }
+
+
+
+
+
+
+      // println(rs)
+      //println(empCount)
+    }catch {
+      case e:SQLException=>e.printStackTrace();return false
+    }
+
+    val str=fetchStr(strBuffer,20000,(new Date).getTime,0,100)
+
+    if(str != null && str.length>0){
+
+      println(str)
+
+
+    }
+
+    true
+
+  }
+
+
+  def fetchStr(strBuffer:ByteBuf,timeOut:Long,lastTime :Long,lastIndex :Int,timeInterval: Long): String ={
+    //val bs:Array[Byte] = new Array[Byte](120)
+
+    //var lastTime = -1l
+    //for(){
+
+    val currentIndex=strBuffer.readerIndex()
+    val currentTime=(new Date).getTime
+    Thread.sleep(timeInterval)
+     if(currentIndex>lastIndex){
+
+       return fetchStr(strBuffer,timeOut,currentTime,currentIndex,timeInterval)
+
+     }else{
+       if((currentTime-lastTime)<timeOut) {
+
+         return fetchStr(strBuffer, timeOut, lastTime, currentIndex,timeInterval)
+       }//else{
+
+
+       //}
+     }
+    val str =strBuffer.toString(0,strBuffer.readableBytes(),Charset.forName("UTF-8"))
+    strBuffer.clear()
+
+   // println(str)
+    //Base64.getEncoder.encodeToString(bs)
+    str
+
+  }
+
+  def initInformixTestData(props:Properties): Connection ={
+
+    //val hostIp = "192.168.0.213"
+    val hostIp = props.getProperty("database.hostname")
+    //val dbPort = "9998"
+    val dbPort = props.getProperty("database.port")
+    //val instanceName = "/syscdcv1"
+    val instanceName = ""
+    val server = "IFM_NET"
+    //val dbUser = "informix"
+    //val dbPass = "informix"
+
+    val dbUser = props.getProperty("database.user")
+    val dbPass = props.getProperty("database.password")
+    val dbDB = props.getProperty("database.dbname")
+    val url = "jdbc:informix-sqli://"+hostIp+":"+dbPort+instanceName+":user="+dbUser+";password="+dbPass
+    println(url)
+
+    try {
+      Class.forName("com.informix.jdbc.IfxDriver")
+    }catch{
+      case e:ClassNotFoundException=>e.printStackTrace()
+      case e:IllegalAccessException=>e.printStackTrace()
+      case e:InstantiationException=>e.printStackTrace()
+    }
+    try {
+      //val conn= DriverManager.getConnection(url,dbUser,dbPass)
+      val conn=DriverManager.getConnection(url)
+
+
+      conn.createStatement().executeUpdate("database "+dbDB)
+
+      val sqlStr="insert into customer (fname) values ('laoflch_test') "
+
+      if(conn.createStatement().executeUpdate(sqlStr)>0){
+        println("insert success");
+
+        return conn
+      }else{
+        println("insert failed")
+
+        return null
+      }
+
+
+
+
+
+
+      // println(rs)
+      //println(empCount)
+    }catch {
+      case e:SQLException=>e.printStackTrace();return null
+    }
+
+
+    //println("success");
+
+
+  }
+
+
+
 
 
 
