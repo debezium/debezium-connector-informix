@@ -1,5 +1,4 @@
-package laoflch.debezium.connector.informix
-
+package laoflch.debezium.connector.informix.integrtest
 
 import io.debezium.relational.TableId
 import io.debezium.schema.TopicSelector

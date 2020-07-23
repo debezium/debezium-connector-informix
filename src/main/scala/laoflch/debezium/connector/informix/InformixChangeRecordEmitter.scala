@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package laoflch.debezium.connector.informix
+package laoflch.debezium.connector.informix.integrtest
 
 import com.informix.jdbc.IfmxReadableType
 import io.debezium.data.Envelope
@@ -23,8 +23,8 @@ import scala.jdk.CollectionConverters
 object InformixChangeRecordEmitter {
   val OP_DELETE = 0x01
   val OP_INSERT = 0x02
-  val OP_UPDATE_BEFORE = 0x03
-  val OP_UPDATE_AFTER = 0x04
+  val OP_UPDATE = 0x03
+  //val OP_UPDATE_AFTER = 0x04
   val OP_TRUNCATE = 0x05
 
   /**
@@ -46,7 +46,7 @@ class InformixChangeRecordEmitter(val offset: OffsetContext, val operation: Int,
   override protected def getOperation: Envelope.Operation = {
     if (operation == InformixChangeRecordEmitter.OP_DELETE) return Operation.DELETE
     else if (operation == InformixChangeRecordEmitter.OP_INSERT) return Operation.CREATE
-    else if (operation == InformixChangeRecordEmitter.OP_UPDATE_BEFORE) return Operation.UPDATE
+    else if (operation == InformixChangeRecordEmitter.OP_UPDATE) return Operation.UPDATE
     throw new IllegalArgumentException("Received event of unexpected command type: " + operation)
   }
 

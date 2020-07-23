@@ -1,4 +1,4 @@
-package laoflch.debezium.connector.informix
+package laoflch.debezium.connector.informix.integrtest
 
 import java.sql.{DriverManager, SQLException}
 import java.util.Properties
@@ -17,8 +17,18 @@ import io.debezium.engine.DebeziumEngine.ChangeConsumer
 import io.debezium.config.Configuration
 import io.debezium.connector.mysql.MySqlConnector
 import io.debezium.embedded.Connect
+//import org.bson.assertions.Assertions
 
 import scala.jdk.CollectionConverters
+import org.testng.Assert
+import org.testng.annotations.Test
+import org.scalatest.Assertions
+
+import scala.collection.mutable.ListBuffer
+import org.testng.Assert._
+import org.testng.annotations.Test
+
+
 
 object InformixConnectorTest {
 
@@ -107,7 +117,8 @@ object InformixConnectorTest {
     props.setProperty("offset.flush.interval.ms", "60000")
     /* begin connector properties */
     props.setProperty("database.server.name", "informix-test")
-    props.setProperty("database.hostname","192.168.0.213")
+    //props.setProperty("database.hostname","192.168.0.213")
+    props.setProperty("database.hostname","172.17.0.2")
     props.setProperty("database.port", "9998")
     props.setProperty("database.user", "informix")
     props.setProperty("database.password", "informix")
@@ -251,7 +262,16 @@ object InformixConnectorTest {
 
   }
 
+  class InformixConnectorTest extends Assertions {
 
+    @Test
+    def testInformixdz(): Unit = {
+      println("test Informix by debezium")
+
+      InformixConnectorTest.testInformixdz()
+      Assert.assertTrue(true)
+    }
+  }
 
 
 

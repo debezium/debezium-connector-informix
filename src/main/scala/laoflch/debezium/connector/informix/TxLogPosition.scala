@@ -1,9 +1,7 @@
-package laoflch.debezium.connector.informix
-
-
+package laoflch.debezium.connector.informix.integrtest
 
 object TxLogPosition {
-  val NULL = new TxLogPosition(0x00l, 0x00l,0x00l,0x00l)
+  val NULL = new TxLogPosition(-1l, -1l,-1l,-1l)
   val LSN_NULL:Long = -1l
 
   def valueOf(commitLsn: Long, changeLsn: Long): TxLogPosition = if (commitLsn == null && changeLsn == null) NULL

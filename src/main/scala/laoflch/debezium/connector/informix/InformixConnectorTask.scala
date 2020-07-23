@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package laoflch.debezium.connector.informix
+package laoflch.debezium.connector.informix.integrtest
 
 import java.sql.SQLException
 import java.util.{Collections, List, Map}
@@ -118,7 +118,7 @@ class InformixConnectorTask extends BaseSourceTask {
       schema,
       this.queue,
       connectorConfig.getTableFilters.dataCollectionFilter,
-      new informix.InformixConnectorTask.changeEventCreator(),
+      new InformixConnectorTask.changeEventCreator(),
       metadataProvider)
 
     val coordinator = new ChangeEventSourceCoordinator(previousOffset,

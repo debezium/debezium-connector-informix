@@ -1,4 +1,4 @@
-package laoflch.debezium.connector.informix
+package laoflch.debezium.connector.informix.integrtest
 
 import java.sql.Types
 import java.time.ZoneOffset

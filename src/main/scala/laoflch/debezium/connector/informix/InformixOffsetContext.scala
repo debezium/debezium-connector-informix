@@ -1,14 +1,13 @@
-package laoflch.debezium.connector.informix
+package laoflch.debezium.connector.informix.integrtest
 
 import java.time.Instant
 import java.util
-import java.util.{Collections, Map}
+import java.util.Collections
 
 import com.informix.jdbc.IfmxReadableType
 import com.informix.stream.api.IfmxStreamRecordType
 import com.informix.stream.cdc.records.{IfxCDCMetaDataRecord, IfxCDCRecord}
 import io.debezium.connector.SnapshotRecord
-
 import io.debezium.pipeline.spi.OffsetContext
 import io.debezium.pipeline.txmetadata.TransactionContext
 import io.debezium.relational.TableId
@@ -16,7 +15,9 @@ import io.debezium.schema.DataCollectionId
 import io.debezium.util.Collect
 import org.apache.kafka.connect.data.{Schema, Struct}
 
+import scala.collection.mutable
 import scala.jdk.CollectionConverters
+import scala.runtime.Nothing$
 
 class InformixOffsetContext(connectorConfig: InformixConnectorConfig,
                             position: TxLogPosition,
@@ -31,7 +32,10 @@ class InformixOffsetContext(connectorConfig: InformixConnectorConfig,
 
 
   private val partition: util.Map[String, String] = Collections.singletonMap(InformixOffsetContext.SERVER_PARTITION_KEY, connectorConfig.getLogicalName)
+
   private var cdcEngine: InformixCDCEngine =null
+
+  private val informixTransactionContext: InformixTransactionContext = new InformixTransactionContext()
 
   setChangePosition(position)
 
@@ -73,6 +77,9 @@ class InformixOffsetContext(connectorConfig: InformixConnectorConfig,
   def getCDCEngine():InformixCDCEngine=this.cdcEngine
 
 
+
+
+
   override def isSnapshotRunning: Boolean = sourceInfo.isSnapshot && !snapshotCompleted
 
   def isSnapshotCompleted: Boolean = snapshotCompleted
@@ -80,8 +87,12 @@ class InformixOffsetContext(connectorConfig: InformixConnectorConfig,
   override def preSnapshotStart(): Unit = {
     sourceInfo.setSnapshot(SnapshotRecord.TRUE)
 
-    if(!this.cdcEngine.hasInit) this.cdcEngine.init()
-
+    if(!this.cdcEngine.hasInit) {
+      if(sourceInfo.getChangeLsn>=0x00l){
+        this.cdcEngine.setStartLsn(sourceInfo.getChangeLsn)
+      }
+      this.cdcEngine.init()
+    }
     this.cdcEngine.stream((record)=>{
 
       print(record)
@@ -151,7 +162,9 @@ class InformixOffsetContext(connectorConfig: InformixConnectorConfig,
     sourceInfo.setTableId(tableId.asInstanceOf[TableId])
   }
 
-  override def getTransactionContext: TransactionContext = null
+  override def getTransactionContext: TransactionContext = transactionContext
+
+  def getInformixTransactionContext: InformixTransactionContext = informixTransactionContext
 
   def getChangePosition: TxLogPosition = TxLogPosition.valueOf(sourceInfo.getCommitLsn, sourceInfo.getChangeLsn,sourceInfo.getTxId,sourceInfo.getBeginLsn)
 
