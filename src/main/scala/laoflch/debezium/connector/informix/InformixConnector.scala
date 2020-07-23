@@ -1,4 +1,4 @@
-package laoflch.debezium.connector.informix.integrtest
+package laoflch.debezium.connector.informix
 
 import java.sql.{DriverManager, PreparedStatement, SQLException}
 import java.util

@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package laoflch.debezium.connector.informix.integrtest
+package laoflch.debezium.connector.informix
 
 import com.informix.jdbc.IfmxReadableType
 import io.debezium.data.Envelope

@@ -1,4 +1,4 @@
-package laoflch.debezium.connector.informix.integrtest
+package laoflch.debezium.connector.informix
 
 import org.apache.kafka.connect.data.Schema
 import org.apache.kafka.connect.data.Struct
