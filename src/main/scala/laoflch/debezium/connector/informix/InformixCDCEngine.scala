@@ -1,6 +1,4 @@
-package laoflch.debezium.connector.informix
-
-
+package laoflch.debezium.connector.informix.integrtest
 
 import java.sql.SQLException
 
@@ -10,7 +8,7 @@ import com.informix.stream.cdc.IfxCDCEngine
 import com.informix.stream.cdc.records.IfxCDCRecord
 import com.informix.stream.impl.IfxStreamException
 import io.debezium.relational.TableId
-import laoflch.debezium.connector.informix.InformixCDCEngine.CDCTabeEntry
+import InformixCDCEngine.CDCTabeEntry
 import org.apache.kafka.connect.errors.ConnectException
 
 import scala.collection.mutable
@@ -147,7 +145,12 @@ class InformixCDCEngine(host: String
 
   }
 
-  def converLabel2Table(): Map[Int,TableId] ={
+  def setStartLsn(startLsn:Long):Long ={
+    lsn=startLsn
+    lsn
+  }
+
+  def converLabel2TableId(): Map[Int,TableId] ={
 
    // val tableLabel=Map[Int,TableId]()
 

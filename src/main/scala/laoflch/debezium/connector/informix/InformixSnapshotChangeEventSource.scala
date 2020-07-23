@@ -1,20 +1,20 @@
-package laoflch.debezium.connector.informix
-
+package laoflch.debezium.connector.informix.integrtest
 
 import java.sql.{Connection, ResultSet, SQLException, Savepoint, Statement}
+import java.util
 import java.util.{Optional, Set}
 
-import io.debezium.connector.db2.TxLogPosition
 import io.debezium.pipeline.EventDispatcher
 import io.debezium.pipeline.source.AbstractSnapshotChangeEventSource
 import io.debezium.pipeline.source.spi.{ChangeEventSource, SnapshotProgressListener}
 import io.debezium.pipeline.spi.OffsetContext
+import io.debezium.pipeline.txmetadata.TransactionContext
 import io.debezium.relational.{Column, RelationalSnapshotChangeEventSource, Table, TableId}
 import io.debezium.schema.SchemaChangeEvent
 import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType
 import io.debezium.util.Clock
-import laoflch.debezium.connector.informix.InformixCDCEngine.CDCTabeEntry
-import laoflch.debezium.connector.informix.InformixConnectorConfig.SnapshotIsolationMode
+import InformixCDCEngine.CDCTabeEntry
+import InformixConnectorConfig.SnapshotIsolationMode
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.mutable
@@ -128,7 +128,7 @@ class InformixSnapshotChangeEventSource(connectorConfig: InformixConnectorConfig
   override protected def determineSnapshotOffset(ctx: RelationalSnapshotChangeEventSource.RelationalSnapshotContext): Unit = {
     //jdbcConnection
 
-    val offset=new InformixOffsetContext(connectorConfig, 0l, false, false)
+    val offset=new InformixOffsetContext(connectorConfig, TxLogPosition.NULL, false, false, TransactionContext.load(new util.HashMap[String,Any]()))
     offset.setCDCEngine(jdbcConnection.getCDCEngine())
     ctx.offset = offset
 

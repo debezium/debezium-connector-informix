@@ -1,4 +1,4 @@
-package laoflch.debezium.connector.informix
+package laoflch.debezium.connector.informix.integrtest
 
 import io.debezium.connector.db2.{Db2Connection, Db2ConnectorConfig, Db2DatabaseSchema, Db2ValueConverters}
 import io.debezium.relational.{HistorizedRelationalDatabaseSchema, Table, TableId, TableSchemaBuilder}

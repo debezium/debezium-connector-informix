@@ -1,5 +1,4 @@
-package laoflch.debezium.connector.informix
-
+package laoflch.debezium.connector.informix.integrtest
 
 import java.sql.ResultSet
 import java.time.Duration
@@ -12,10 +11,13 @@ import io.debezium.pipeline.source.spi.{ChangeEventSource, StreamingChangeEventS
 import io.debezium.relational.TableId
 import io.debezium.util.Clock
 import org.slf4j.{Logger, LoggerFactory}
-import laoflch.debezium.connector.informix.InformixCDCEngine
 import com.informix.stream.api.{IfmxStreamRecord, IfmxStreamRecordType}
 import com.informix.stream.cdc.records.IfxCDCOperationRecord
+import io.debezium.pipeline.spi.ChangeRecordEmitter
 import io.debezium.time.Timestamp
+
+import scala.collection.mutable
+import scala.jdk.CollectionConverters
 
 object InformixStreamingChangeEventSource {
 
@@ -57,6 +59,8 @@ class InformixStreamingChangeEventSource(connectorConfig: InformixConnectorConfi
 
   private val LOGGER: Logger = LoggerFactory.getLogger (classOf[InformixStreamingChangeEventSource] )
 
+
+
   /**
    * Connection used for reading CDC tables.
    */
@@ -82,7 +86,9 @@ class InformixStreamingChangeEventSource(connectorConfig: InformixConnectorConfi
   override def execute (context: ChangeEventSource.ChangeEventSourceContext): Unit = {
     val cdcEngine = offsetContext.getCDCEngine()
 
-    val label2Table = cdcEngine.converLabel2Table()
+    val transactionContext = offsetContext.getInformixTransactionContext
+
+    val label2TableId = cdcEngine.converLabel2TableId()
 
    // val middleValue = Map[Int,Any]()
 
@@ -95,29 +101,182 @@ class InformixStreamingChangeEventSource(connectorConfig: InformixConnectorConfi
           case IfmxStreamRecordType.TIMEOUT => {
             handleTimeOutEvent(record)
           }
+
+
+
+          /**
+           *
+           *
+           *
+           *
+           * */
+
+
           case IfmxStreamRecordType.BEFORE_UPDATE => {
-            if (record.hasOperationData) {
+
+            println("before_update:",record)
+           // if (record.hasOperationData) {
               val data = record.asInstanceOf[IfxCDCOperationRecord].getData
-            }
+            //}
+
+            offsetContext.setChangePosition(TxLogPosition.cloneAndSet(offsetContext.getChangePosition,
+              TxLogPosition.LSN_NULL,//commit
+              record.getSequenceId,//change
+              record.getTransactionId,//txnid
+              TxLogPosition.LSN_NULL)) //begin
+
+            // handleEvent(tableId,offsetContext,InformixChangeRecordEmitter.OP_INSERT,data,null,null,null)
+            // dispatcher.dispatchDataChangeEvent(tableId, new InformixChangeRecordEmitter(offsetContext, InformixChangeRecordEmitter.OP_INSERT, data, null, clock))
+            //val tableId=label2Table(record.getLabel.toInt)
+            //handleEvent(tableId,offsetContext,InformixChangeRecordEmitter.OP_UPDATE_BEFORE,null,data,clock,null)
+
+            transactionContext.beforeUpdate(record.getTransactionId,data)
           }
 
-          case IfmxStreamRecordType.BEGIN => {
-            println("begin:",record)
+
+          /**
+           *
+           *
+           *
+           *
+           * */
+
+          case IfmxStreamRecordType.AFTER_UPDATE => {
+            // if (record.hasOperationData) {a
+
+            println("after_update:",record)
+            val newData = record.asInstanceOf[IfxCDCOperationRecord].getData
+
+            val oldData = transactionContext.afterUpdate(record.getTransactionId).get
+            //}
+
             offsetContext.setChangePosition(TxLogPosition.cloneAndSet(offsetContext.getChangePosition,
               TxLogPosition.LSN_NULL,
               record.getSequenceId,
               record.getTransactionId,
-              record.getSequenceId))
-          }
-          case IfmxStreamRecordType.COMMIT => {
-            println("commit:",record)
-
-            offsetContext.setChangePosition(TxLogPosition.cloneAndSet(offsetContext.getChangePosition,
-              record.getSequenceId,
-              record.getSequenceId,
-              record.getTransactionId,
               TxLogPosition.LSN_NULL))
+
+            // handleEvent(tableId,offsetContext,InformixChangeRecordEmitter.OP_INSERT,data,null,null,null)
+            // dispatcher.dispatchDataChangeEvent(tableId, new InformixChangeRecordEmitter(offsetContext, InformixChangeRecordEmitter.OP_INSERT, data, null, clock))
+            val tableId=label2TableId(record.getLabel.toInt)
+            handleEvent(tableId,offsetContext,InformixChangeRecordEmitter.OP_UPDATE,oldData,newData ,clock,null)
           }
+
+
+          /**
+           *
+           *
+           *
+           *
+           * */
+
+          case IfmxStreamRecordType.BEGIN => {
+            println("begin:",record)
+            // begin txn
+           // val option=transactionContext.beginTxn(record.getTransactionId)
+            transactionContext.beginTxn(record.getTransactionId) match {
+              case Some(value)=> {
+                println(value)
+              }
+              case None=>{
+
+
+                offsetContext.setChangePosition(TxLogPosition.cloneAndSet(offsetContext.getChangePosition,
+                  TxLogPosition.LSN_NULL,
+                  record.getSequenceId,
+                  record.getTransactionId,
+                  record.getSequenceId))
+                offsetContext.getTransactionContext.beginTransaction(record.getTransactionId.toString)
+              }
+            }
+          }
+
+
+          /**
+           *
+           *
+           *
+           *
+           * */
+
+
+
+          case IfmxStreamRecordType.COMMIT => {
+            println("commit:", record)
+
+            // commit txn
+            transactionContext.commitTxn(record.getTransactionId) match {
+              case None=>{
+
+
+              //val tableId=label2TableId(record.getLabel.toInt)
+
+            }
+              case Some(value)=> {
+                println(value)
+
+                offsetContext.setChangePosition (TxLogPosition.cloneAndSet (offsetContext.getChangePosition,
+                  record.getSequenceId,
+                  record.getSequenceId,
+                  record.getTransactionId,
+                  TxLogPosition.LSN_NULL) )
+
+
+                handleCommitEvent(offsetContext,value)
+
+
+              }
+            }
+            offsetContext.getTransactionContext.endTransaction()
+          }
+
+          /**
+           *
+           *
+           *
+           *
+           * */
+
+          case IfmxStreamRecordType.ROLLBACK => {
+
+            println("rollback:",record)
+            // offsetContext.event(tableId, null)
+            //val data = record.asInstanceOf[IfxCDCOperationRecord].getData
+
+
+            transactionContext.rollbackTxn(record.getTransactionId) match {
+              case None => {
+
+
+                //val tableId=label2TableId(record.getLabel.toInt)
+
+              }
+              case Some(value) => {
+
+                offsetContext.setChangePosition(TxLogPosition.cloneAndSet(offsetContext.getChangePosition,
+                  TxLogPosition.LSN_NULL,
+                  record.getSequenceId,
+                  record.getTransactionId,
+                  TxLogPosition.LSN_NULL))
+
+                // handleEvent(tableId,offsetContext,InformixChangeRecordEmitter.OP_INSERT,data,null,null,null)
+                // dispatcher.dispatchDataChangeEvent(tableId, new InformixChangeRecordEmitter(offsetContext, InformixChangeRecordEmitter.OP_INSERT, data, null, clock))
+                // val tableId=label2TableId(record.getLabel.toInt)
+                //handleEvent(tableId,offsetContext,InformixChangeRecordEmitter.OP_DELETE,data,null,clock,null)
+                handleRollbackEvent(offsetContext,value)
+              }
+            }
+            offsetContext.getTransactionContext.endTransaction()
+
+          }
+
+          /**
+           *
+           *
+           *
+           *
+           * */
+
           case IfmxStreamRecordType.INSERT => {
 
             println("insert:",record)
@@ -132,15 +291,45 @@ class InformixStreamingChangeEventSource(connectorConfig: InformixConnectorConfi
 
            // handleEvent(tableId,offsetContext,InformixChangeRecordEmitter.OP_INSERT,data,null,null,null)
            // dispatcher.dispatchDataChangeEvent(tableId, new InformixChangeRecordEmitter(offsetContext, InformixChangeRecordEmitter.OP_INSERT, data, null, clock))
-            val tableId=label2Table(record.getLabel.toInt)
+            val tableId=label2TableId(record.getLabel.toInt)
             handleEvent(tableId,offsetContext,InformixChangeRecordEmitter.OP_INSERT,null,data,clock,null)
           }
+
+          /**
+           *
+           *
+           *
+           *
+           * */
+
+
+          case IfmxStreamRecordType.DELETE => {
+
+            println("delete:",record)
+            // offsetContext.event(tableId, null)
+            val data = record.asInstanceOf[IfxCDCOperationRecord].getData
+
+            offsetContext.setChangePosition(TxLogPosition.cloneAndSet(offsetContext.getChangePosition,
+              TxLogPosition.LSN_NULL,
+              record.getSequenceId,
+              record.getTransactionId,
+              TxLogPosition.LSN_NULL))
+
+            // handleEvent(tableId,offsetContext,InformixChangeRecordEmitter.OP_INSERT,data,null,null,null)
+            // dispatcher.dispatchDataChangeEvent(tableId, new InformixChangeRecordEmitter(offsetContext, InformixChangeRecordEmitter.OP_INSERT, data, null, clock))
+            val tableId=label2TableId(record.getLabel.toInt)
+            handleEvent(tableId,offsetContext,InformixChangeRecordEmitter.OP_DELETE,data,null,clock,null)
+          }
+
+
+
           case _ =>{}
         }
 
         def handleEvent(
                         tableId:TableId,
                         offsetContext: InformixOffsetContext,
+                        //txn:Long,
                         operation: Int,
                         data:java.util.Map[String, IfmxReadableType],
                         dataNext:java.util.Map[String, IfmxReadableType],
@@ -151,9 +340,15 @@ class InformixStreamingChangeEventSource(connectorConfig: InformixConnectorConfi
 
           offsetContext.event(tableId, clock.currentTime())
 
-          dispatcher.dispatchDataChangeEvent(tableId, new InformixChangeRecordEmitter(offsetContext, operation,
+         /* dispatcher.dispatchDataChangeEvent(tableId, new InformixChangeRecordEmitter(offsetContext, operation,
             InformixChangeRecordEmitter.convertIfxData2Array(data),
-            InformixChangeRecordEmitter.convertIfxData2Array(dataNext), clock))
+            InformixChangeRecordEmitter.convertIfxData2Array(dataNext), clock))*/
+          val cre=new InformixChangeRecordEmitter(offsetContext, operation,
+            InformixChangeRecordEmitter.convertIfxData2Array(data),
+            InformixChangeRecordEmitter.convertIfxData2Array(dataNext), clock)
+
+          //add event in transcation
+          offsetContext.getInformixTransactionContext.addEvent2Tx(tableId,cre,offsetContext.getChangePosition.getTxId)
       }
 
         def handleTimeOutEvent(record: IfmxStreamRecord): Unit ={
@@ -166,10 +361,46 @@ class InformixStreamingChangeEventSource(connectorConfig: InformixConnectorConfi
 
         }
 
+        def handleCommitEvent(offsetContext: InformixOffsetContext, cre: mutable.Buffer[(TableId,InformixChangeRecordEmitter)]): Unit ={
+          try{
 
-        def handleEventInTx(): Unit ={
+            //offsetContext.getTransactionContext
+
+            //val transactionCRE=offsetContext.getInformixTransactionContext.getTransactionCRE().get(offsetContext.getChangePosition.getTxId).get
+
+            cre.foreach(tuple=> dispatcher.dispatchDataChangeEvent(tuple._1,tuple._2) )
+
+
+            //dispatcher.dispatchDataChangeEvent(tableId,cre)
+          }catch{
+            case e: Exception => e.printStackTrace()
+            //case _ => println("handleCommitEvent failed!")
+          }
+
 
         }
+
+        def handleRollbackEvent(offsetContext: InformixOffsetContext, cre: mutable.Buffer[(TableId,InformixChangeRecordEmitter)]): Unit ={
+          try{
+
+            //offsetContext.getTransactionContext
+
+            //val transactionCRE=offsetContext.getInformixTransactionContext.getTransactionCRE().get(offsetContext.getChangePosition.getTxId).get
+
+            //cre.foreach(tuple=> dispatcher.dispatchDataChangeEvent(tuple._1,tuple._2) )
+
+
+            //dispatcher.dispatchDataChangeEvent(tableId,cre)
+          }catch{
+            case e: Exception => e.printStackTrace()
+            //case _ => println("handleCommitEvent failed!")
+          }
+
+
+        }
+
+
+
 
         println(offsetContext.getChangePosition)
 

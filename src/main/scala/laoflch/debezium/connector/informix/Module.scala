@@ -1,6 +1,4 @@
-package laoflch.debezium.connector.informix
-
-
+package laoflch.debezium.connector.informix.integrtest
 
 import java.util.Properties
 import io.debezium.util.IoUtil

@@ -1,5 +1,5 @@
 
-package laoflch.debezium.connector.informix
+package laoflch.debezium.connector.informix.integrtest
 
 import java.math.BigInteger
 import java.util
