@@ -1,3 +1,3 @@
 #!/bin/bash
 
-docker container start informix
+sudo docker container start informix

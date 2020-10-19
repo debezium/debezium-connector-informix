@@ -213,7 +213,7 @@ class InformixStreamingChangeEventSource(connectorConfig: InformixConnectorConfi
 
             }
               case Some(value)=> {
-                println(value)
+                //println(value)
 
                 offsetContext.setChangePosition (TxLogPosition.cloneAndSet (offsetContext.getChangePosition,
                   record.getSequenceId,
@@ -263,6 +263,11 @@ class InformixStreamingChangeEventSource(connectorConfig: InformixConnectorConfi
                 // dispatcher.dispatchDataChangeEvent(tableId, new InformixChangeRecordEmitter(offsetContext, InformixChangeRecordEmitter.OP_INSERT, data, null, clock))
                 // val tableId=label2TableId(record.getLabel.toInt)
                 //handleEvent(tableId,offsetContext,InformixChangeRecordEmitter.OP_DELETE,data,null,clock,null)
+
+                /**
+                 * when rollbackTxn do noting handle but log the discarded records
+                 * */
+                LOGGER.info("Rollback Txn:"+record.getTransactionId)
                 handleRollbackEvent(offsetContext,value)
               }
             }
@@ -389,7 +394,7 @@ class InformixStreamingChangeEventSource(connectorConfig: InformixConnectorConfi
 
             //cre.foreach(tuple=> dispatcher.dispatchDataChangeEvent(tuple._1,tuple._2) )
 
-
+            cre.foreach(tuple=> LOGGER.info("id:"+tuple._1+":"+"ChangeRecord:"+tuple._2.toString))
             //dispatcher.dispatchDataChangeEvent(tableId,cre)
           }catch{
             case e: Exception => e.printStackTrace()
@@ -402,7 +407,7 @@ class InformixStreamingChangeEventSource(connectorConfig: InformixConnectorConfi
 
 
 
-        println(offsetContext.getChangePosition)
+        println("ISCES:"+offsetContext.getChangePosition)
 
         false
       })
