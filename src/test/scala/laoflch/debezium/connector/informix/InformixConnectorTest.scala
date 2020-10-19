@@ -38,7 +38,7 @@ import java.util.Base64
 import io.netty.buffer.Unpooled
 import com.alibaba.fastjson.JSON
 
-
+import scala.util.matching.Regex
 
 
 object InformixConnectorTest {
@@ -139,75 +139,80 @@ object InformixConnectorTest {
 
 }
 
+  //def testInformixdz(): Unit ={
   def testInformixdz(props:Properties,strBuf: ByteBuf): Unit ={
-   /* val props:Properties = new Properties()
-    props.setProperty("name", "engine")
-    props.setProperty("offset.storage", "org.apache.kafka.connect.storage.FileOffsetBackingStore")
-    props.setProperty("connector.class","laoflch.debezium.connector.informix.InformixConnector")
-    props.setProperty("offset.storage.file.filename", "/tmp/offsets.dat")
-    props.setProperty("offset.flush.interval.ms", "60000")
-    /* begin connector properties */
-    props.setProperty("database.server.name", "informix-test")
-    //props.setProperty("database.hostname","192.168.0.213")
-    props.setProperty("database.hostname","172.17.0.2")
-    props.setProperty("database.port", "9998")
-    props.setProperty("database.user", "informix")
-    props.setProperty("database.password", "informix")
-    props.setProperty("database.dbname","test")
-    //props.setProperty("database.server.id", "89")
-    //props.setProperty("database.server.name", "my-app-connector")
-    props.setProperty("database.history", "io.debezium.relational.history.FileDatabaseHistory")
-    props.setProperty("database.history.file.filename", "/tmp/dbhistory.dat")
+      val props:Properties = new Properties()
+      props.setProperty("name", "engine")
+      props.setProperty("offset.storage", "org.apache.kafka.connect.storage.FileOffsetBackingStore")
+      props.setProperty("connector.class","laoflch.debezium.connector.informix.InformixConnector")
+      props.setProperty("offset.storage.file.filename", "/tmp/offsets.dat")
+      props.setProperty("offset.flush.interval.ms", "60000")
+      /* begin connector properties */
+      props.setProperty("database.server.name", "informix-test")
+      //props.setProperty("database.hostname","192.168.0.213")
+      props.setProperty("database.hostname","172.17.0.2")
+      props.setProperty("database.port", "9998")
+      props.setProperty("database.user", "informix")
+      props.setProperty("database.password", "informix")
+      props.setProperty("database.dbname","test")
+      //props.setProperty("database.server.id", "89")
+      //props.setProperty("database.server.name", "my-app-connector")
+      props.setProperty("database.history", "io.debezium.relational.history.FileDatabaseHistory")
+      props.setProperty("database.history.file.filename", "/tmp/dbhistory.dat")
 
-    props.setProperty("message.key.columns","test.informix.customer:customer_num")*/
-    //Contoh konfigurasi
-    //
-    /*    val config = Configuration.create()
-    //            /* begin engine properties */
-                .`with`("connector.class","io.debezium.connector.mysql.PostgresConnector")
-                .`with`("offset.storage",
-                        "org.apache.kafka.connect.storage.FileOffsetBackingStore")
-                .`with`("offset.storage.file.filename",
-                        "/tmp/offsets.dat")
-                .`with`("offset.flush.interval.ms", 60000)
-                /* begin connector properties */
-                .`with`("name", "mysql-connector")
-                .`with`("database.hostname", "192.168.0.213")
-                .`with`("database.port", 3306)
-                .`with`("database.user", "laoflch")
-                .`with`("database.password", "arsenal")
-                .`with`("database.server.id", "89")
-                .with("database.server.name", "my-app-connector")
-    .with"database.history", "io.debezium.relational.history.FileDatabaseHistory")
-    props.setProperty("database.history.file.filename", "/tmp/dbhistory.dat")
-                .build();*/
+      props.setProperty("message.key.columns","test.informix.customer:customer_num")
+      //Contoh konfigurasi
+      //
+      /*    val config = Configuration.create()
+      //            /* begin engine properties */
+                  .`with`("connector.class","io.debezium.connector.mysql.PostgresConnector")
+                  .`with`("offset.storage",
+                          "org.apache.kafka.connect.storage.FileOffsetBackingStore")
+                  .`with`("offset.storage.file.filename",
+                          "/tmp/offsets.dat")
+                  .`with`("offset.flush.interval.ms", 60000)
+                  /* begin connector properties */
+                  .`with`("name", "mysql-connector")
+                  .`with`("database.hostname", "192.168.0.213")
+                  .`with`("database.port", 3306)
+                  .`with`("database.user", "laoflch")
+                  .`with`("database.password", "arsenal")
+                  .`with`("database.server.id", "89")
+                  .with("database.server.name", "my-app-connector")
+      .with"database.history", "io.debezium.relational.history.FileDatabaseHistory")
+      props.setProperty("database.history.file.filename", "/tmp/dbhistory.dat")
+                  .build();*/
 
-    // Create the engine with this configuration ...
+      // Create the engine with this configuration ...
 
-    val engine = DebeziumEngine.create(classOf[Connect]).using(props).notifying((records: java.util.List[SourceRecord],committer) => {
-      //println("1234")
-      var r=null
-      for ( r <- CollectionConverters.ListHasAsScala(records).asScala ) {
+      val engine = DebeziumEngine.create(classOf[Connect]).using(props).notifying((records: java.util.List[SourceRecord],committer) => {
+        //println("1234")
+        var r=null
+        for ( r <- CollectionConverters.ListHasAsScala(records).asScala ) {
 
-       // println(JSON.toJSON(r.value()).toString)
+          // println(JSON.toJSON(r.value()).toString)
 
-        val str=String.format("record[key:%s,value:%s];",r.key(),r.value())
-        strBuf.writeBytes(str.getBytes)
+          val str=String.format("record[key:%s,value:%s];",r.key(),r.value())
+          //println(str)
+          strBuf.writeBytes(str.getBytes)
 
-        //println(String.format("record[key:%s,value:%s:string:%s]",r.key(),r.value(),r.toString))
-        //println(strBuf.capacity())
-      }
 
-      //println(record)
-    }).build
 
-    //Executors.newSingleThreadExecutor.execute(engine)
-    // Run the engine asynchronously ...
-    val executor = Executors.newSingleThreadExecutor
-    executor.execute(engine)
+          //println(String.format("record[key:%s,value:%s:string:%s]",r.key(),r.value(),r.toString))
+          //println(strBuf.capacity())
+        }
 
-    // executor.shutdown()
-    println("testInformixdz")
+        //println(record)
+      }).build
+
+      //Executors.newSingleThreadExecutor.execute(engine)
+      // Run the engine asynchronously ...
+      val executor = Executors.newSingleThreadExecutor
+      executor.execute(engine)
+
+      // executor.shutdown()
+      //println("testInformixdz")
+
 
 
   }
@@ -362,6 +367,10 @@ class InformixConnectorTest extends Assertions {
 
     assertInformixInsert(jdbcCon,props,strBuffer)
 
+    assertInformixUpdate(jdbcCon,props,strBuffer)
+
+    assertInformixDelete(jdbcCon,props,strBuffer)
+
     // Assert.assertTrue(true)
   }
 
@@ -377,13 +386,23 @@ class InformixConnectorTest extends Assertions {
     if(str != null && str.length>0){
 
       println(str)
+      Assert.assertEquals(matchTestResult(str),true,"InformixSnapshot test failed")
 
+    }
+
+    def matchTestResult(str: String): Boolean ={
+      val pattern= "^record\\[key\\:.*\\,value\\:Struct\\{after.*(fname\\=laoflch_test).*\\,source.*\\,op\\=r\\,ts_ms.*\\]\\;$".r
+
+      val out=pattern.matches(str)
+
+      println("InformixSnapshot match result:"+out)
+      out
 
     }
 
   }
 
-  def  assertInformixInsert(jdbcCon:Connection,props:Properties,strBuffer:ByteBuf):Boolean ={
+  def  assertInformixInsert(jdbcCon:Connection,props:Properties,strBuffer:ByteBuf):Unit ={
 
 
     if(jdbcCon ==null){
@@ -396,7 +415,7 @@ class InformixConnectorTest extends Assertions {
       //val conn= DriverManager.getConnection(url,dbUser,dbPass)
 
 
-      val sqlStr="insert into customer (fname) values ('laoflch_test') "
+      val sqlStr="insert into customer (fname) values ('laoflch_test_insert') "
 
       if(jdbcCon.createStatement().executeUpdate(sqlStr)>0){
         println("insert success");
@@ -408,10 +427,58 @@ class InformixConnectorTest extends Assertions {
         return false
       }
 
+    }catch {
+      case e:SQLException=>e.printStackTrace();return false
+    }
+
+    val str=fetchStr(strBuffer,20000,(new Date).getTime,0,100)
+
+    if(str != null && str.length>0){
+
+      println(str)
+      Assert.assertEquals(matchTestResult(str),true,"InformixSnapshot test failed")
+
+    }
+
+    def matchTestResult(str: String): Boolean ={
+      val pattern= "^record\\[key\\:.*\\,value\\:Struct\\{after.*(fname\\=laoflch_test_insert).*\\,source.*\\,op\\=c\\,ts_ms.*\\]\\;$".r
+
+      val out=pattern.matches(str)
+
+      println("InformixInsert match result:"+out)
+      out
+
+    }
+
+
+  }
 
 
 
+  def  assertInformixUpdate(jdbcCon:Connection,props:Properties,strBuffer:ByteBuf):Unit ={
 
+
+    if(jdbcCon ==null){
+      return false
+
+    }
+
+
+    try {
+      //val conn= DriverManager.getConnection(url,dbUser,dbPass)
+
+
+      val sqlStr="update customer set fname='laoflch_test_update' where fname='laoflch_test_insert'"
+
+      if(jdbcCon.createStatement().executeUpdate(sqlStr)>0){
+        println("insert success");
+
+
+      }else{
+        println("insert failed")
+
+        return false
+      }
 
       // println(rs)
       //println(empCount)
@@ -424,14 +491,75 @@ class InformixConnectorTest extends Assertions {
     if(str != null && str.length>0){
 
       println(str)
-
+      Assert.assertEquals(matchTestResult(str),true,"InformixSnapshot test failed")
 
     }
 
-    true
+    def matchTestResult(str: String): Boolean ={
+      val pattern= "^record\\[key\\:.*\\,value\\:Struct\\{before.*(fname\\=laoflch_test_insert).*after.*(fname\\=laoflch_test_update).*\\,source.*\\,op\\=u\\,ts_ms.*\\]\\;$".r
+
+      val out=pattern.matches(str)
+
+      println("InformixInsert update match result:"+out)
+      out
+
+    }
+
 
   }
 
+  def  assertInformixDelete(jdbcCon:Connection,props:Properties,strBuffer:ByteBuf):Unit ={
+
+
+    if(jdbcCon ==null){
+      return false
+
+    }
+
+
+    try {
+      //val conn= DriverManager.getConnection(url,dbUser,dbPass)
+
+
+      val sqlStr="delete from  customer where fname='laoflch_test_update'"
+
+      if(jdbcCon.createStatement().executeUpdate(sqlStr)>0){
+        println("delete success");
+
+
+      }else{
+        println("delete failed")
+
+        return false
+      }
+
+      // println(rs)
+      //println(empCount)
+    }catch {
+      case e:SQLException=>e.printStackTrace();return false
+    }
+
+    val str=fetchStr(strBuffer,20000,(new Date).getTime,0,100)
+
+    if(str != null && str.length>0){
+
+      println(str)
+      Assert.assertEquals(matchTestResult(str),true,"InformixSnapshot test failed")
+
+    }
+
+    def matchTestResult(str: String): Boolean ={
+      val pattern= "^record\\[key\\:.*\\,value\\:Struct\\{before.*(fname\\=laoflch_test_update).*\\,source.*\\,op\\=d\\,ts_ms.*\\]\\;$".r
+
+      val out=pattern.matches(str)
+
+      println("InformixInsert delete match result:"+out)
+      out
+
+    }
+
+
+  }
 
   def fetchStr(strBuffer:ByteBuf,timeOut:Long,lastTime :Long,lastIndex :Int,timeInterval: Long): String ={
     //val bs:Array[Byte] = new Array[Byte](120)
@@ -495,6 +623,13 @@ class InformixConnectorTest extends Assertions {
 
 
       conn.createStatement().executeUpdate("database "+dbDB)
+
+      val delStr="delete from customer "
+
+      conn.createStatement().executeUpdate(delStr)
+        println("before test delete success");
+
+
 
       val sqlStr="insert into customer (fname) values ('laoflch_test') "
 

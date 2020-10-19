@@ -95,7 +95,7 @@ class InformixOffsetContext(connectorConfig: InformixConnectorConfig,
     }
     this.cdcEngine.stream((record)=>{
 
-      print(record)
+      //print(record)
 
       record.getType match {
         case IfmxStreamRecordType.METADATA=>{
