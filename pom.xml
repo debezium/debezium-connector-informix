@@ -1,21 +1,31 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<?xml version="1.0"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
     <modelVersion>4.0.0</modelVersion>
     <groupId>laoflch.debezium</groupId>
-    <artifactId>debezium-cnnector-informix</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <artifactId>debezium-connector-informix</artifactId>
+    <version>1.1.0-SNAPSHOT</version>
     <inceptionYear>2008</inceptionYear>
+
     <properties>
+        <version.debezium>1.1.1.Final</version.debezium>
         <scala.version>2.13.1</scala.version>
+
+        <!-- Assembly configuration -->
+        <assembly.descriptor>connector-distribution</assembly.descriptor>
     </properties>
 
+    <!--
     <pluginRepositories>
         <pluginRepository>
             <id>scala-tools.org</id>
             <name>Scala-Tools Maven2 Repository</name>
-            <!--url>http://scala-tools.org/repo-releases</url-->
             <url>http://localhost:8082/repository/maven-scala-proxy/</url>
         </pluginRepository>
     </pluginRepositories>
+    -->
+
 
     <dependencies>
         <dependency>
@@ -23,49 +33,56 @@
             <artifactId>scala-library</artifactId>
             <version>${scala.version}</version>
         </dependency>
-        <dependency>
-            <groupId>org.antlr</groupId>
-            <artifactId>antlr4-runtime</artifactId>
-            <version>4.7.2</version>
-        </dependency>
+
+        <!--
+                <dependency>
+                    <groupId>org.antlr</groupId>
+                    <artifactId>antlr4-runtime</artifactId>
+                    <version>4.7.2</version>
+                </dependency>
+        -->
+
         <dependency>
             <groupId>io.debezium</groupId>
             <artifactId>debezium-api</artifactId>
-            <version>1.1.1.Final</version>
+            <version>${version.debezium}</version>
         </dependency>
         <dependency>
             <groupId>io.debezium</groupId>
             <artifactId>debezium-core</artifactId>
-            <version>1.1.1.Final</version>
+            <version>${version.debezium}</version>
         </dependency>
         <dependency>
             <groupId>io.debezium</groupId>
             <artifactId>debezium-connector-oracle</artifactId>
-            <version>1.1.1.Final</version>
+            <version>${version.debezium}</version>
         </dependency>
         <!-- https://mvnrepository.com/artifact/io.debezium/debezium-connector-mysql -->
-        <dependency>
-            <groupId>io.debezium</groupId>
-            <artifactId>debezium-connector-mysql</artifactId>
-            <version>1.1.1.Final</version>
-        </dependency>
+        <!--
+                <dependency>
+                    <groupId>io.debezium</groupId>
+                    <artifactId>debezium-connector-mysql</artifactId>
+                    <version>${version.debezium}</version>
+                </dependency>
+        -->
 
         <!-- https://mvnrepository.com/artifact/io.debezium/debezium-connector-db2 -->
-        <dependency>
-            <groupId>io.debezium</groupId>
-            <artifactId>debezium-connector-db2</artifactId>
-            <version>1.1.1.Final</version>
-        </dependency>
+
+        <!--
+                <dependency>
+                    <groupId>io.debezium</groupId>
+                    <artifactId>debezium-connector-db2</artifactId>
+                    <version>${version.debezium}</version>
+                </dependency>
+        -->
 
         <!-- https://mvnrepository.com/artifact/io.debezium/debezium-embedded -->
         <dependency>
             <groupId>io.debezium</groupId>
             <artifactId>debezium-embedded</artifactId>
-            <version>1.1.1.Final</version>
+            <version>${version.debezium}</version>
             <scope>test</scope>
         </dependency>
-
-
 
         <!-- https://mvnrepository.com/artifact/org.apache.kafka/connect-api -->
         <dependency>
@@ -78,21 +95,25 @@
         <dependency>
             <groupId>com.ibm.informix</groupId>
             <artifactId>jdbc</artifactId>
-            <version>4.50.2</version>
+            <version>4.50.8</version>
         </dependency>
 
         <!-- https://mvnrepository.com/artifact/com.ibm.informix/ifx-changestream-client -->
         <dependency>
             <groupId>com.ibm.informix</groupId>
             <artifactId>ifx-changestream-client</artifactId>
-            <version>1.0.1</version>
+            <version>1.1.1</version>
         </dependency>
+
         <!-- https://mvnrepository.com/artifact/org.mongodb/bson -->
-        <dependency>
-            <groupId>org.mongodb</groupId>
-            <artifactId>bson</artifactId>
-            <version>4.0.1</version>
-        </dependency>
+
+        <!--
+                <dependency>
+                    <groupId>org.mongodb</groupId>
+                    <artifactId>bson</artifactId>
+                    <version>4.0.1</version>
+                </dependency>
+        -->
 
         <!-- https://mvnrepository.com/artifact/org.testng/testng -->
         <dependency>
@@ -104,10 +125,10 @@
 
         <!-- https://mvnrepository.com/artifact/org.scalatest/scalatest -->
         <dependency>
-        <groupId>org.scalatest</groupId>
-        <artifactId>scalatest_2.13</artifactId>
-        <version>3.2.0-M4</version>
-        <scope>test</scope>
+            <groupId>org.scalatest</groupId>
+            <artifactId>scalatest_2.13</artifactId>
+            <version>3.2.0-M4</version>
+            <scope>test</scope>
         </dependency>
 
         <!-- https://mvnrepository.com/artifact/org.apache.maven.plugins/maven-failsafe-plugin -->
@@ -147,11 +168,8 @@
             <artifactId>fastjson</artifactId>
             <version>1.2.70</version>
         </dependency>
-
     </dependencies>
-
     <build>
-
         <plugins>
             <plugin>
                 <groupId>org.scala-tools</groupId>
@@ -176,14 +194,12 @@
                         </configuration>
                     </execution>
                 </executions>
-
             </plugin>
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>build-helper-maven-plugin</artifactId>
                 <version>3.1.0</version>
             </plugin>
-
             <plugin>
                 <groupId>org.antlr</groupId>
                 <artifactId>antlr4-maven-plugin</artifactId>
@@ -252,7 +268,6 @@
                         <goals>
                             <goal>integration-test</goal>
                         </goals>
-
                         <configuration>
                             <groups>integrationtest</groups>
                         </configuration>
@@ -268,7 +283,70 @@
             </plugin>
 
         </plugins>
+        <resources>
+            <!-- Apply the properties set in the POM to the resource files -->
+            <resource>
+                <filtering>true</filtering>
+                <directory>src/main/resources</directory>
+                <includes>
+                    <include>*</include>
+                    <include>**/*</include>
+                </includes>
+            </resource>
+        </resources>
+        <testResources>
+            <testResource>
+                <directory>src/test/resources</directory>
+                <filtering>true</filtering>
+                <includes>
+                    <include>*</include>
+                    <include>**/*</include>
+                </includes>
+            </testResource>
+        </testResources>
     </build>
+    <profiles>
+        <profile>
+            <id>assembly</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-assembly-plugin</artifactId>
+                        <dependencies>
+                            <dependency>
+                                <groupId>io.debezium</groupId>
+                                <artifactId>debezium-assembly-descriptors</artifactId>
+                                <version>${version.debezium}</version>
+                            </dependency>
+                        </dependencies>
+                        <executions>
+                            <execution>
+                                <id>default</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>single</goal>
+                                </goals>
+                                <configuration>
+                                    <finalName>${project.artifactId}-${project.version}</finalName>
+                                    <attach>true</attach>  <!-- we want attach & deploy these to Maven -->
+                                    <descriptorRefs>
+                                        <descriptorRef>${assembly.descriptor}</descriptorRef>
+                                    </descriptorRefs>
+                                    <!--
+                                    <tarLongFileMode>posix</tarLongFileMode>
+                                    -->
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
     <reporting>
         <plugins>
             <plugin>

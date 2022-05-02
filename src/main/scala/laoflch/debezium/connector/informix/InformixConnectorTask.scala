@@ -5,46 +5,38 @@
  */
 package laoflch.debezium.connector.informix
 
-import java.sql.SQLException
-import java.util.{Collections, List, Map}
-import java.util
-
-import org.apache.kafka.connect.errors.ConnectException
-import org.apache.kafka.connect.source.SourceRecord
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
-import io.debezium.config.Configuration
-import io.debezium.config.Field
+import io.debezium.config.{Configuration, Field}
 import io.debezium.connector.base.ChangeEventQueue
 import io.debezium.connector.common.BaseSourceTask
-import io.debezium.pipeline.ChangeEventSourceCoordinator
-import io.debezium.pipeline.DataChangeEvent
-import io.debezium.pipeline.ErrorHandler
-import io.debezium.pipeline.EventDispatcher
+import io.debezium.pipeline.{ChangeEventSourceCoordinator, DataChangeEvent, ErrorHandler, EventDispatcher}
 import io.debezium.pipeline.spi.{ChangeEventCreator, OffsetContext}
-import io.debezium.relational.{HistorizedRelationalDatabaseConnectorConfig, TableId}
 import io.debezium.relational.history.DatabaseHistory
-import io.debezium.util.Clock
-import io.debezium.util.SchemaNameAdjuster
-import laoflch.debezium.connector.informix
+import io.debezium.relational.{HistorizedRelationalDatabaseConnectorConfig, TableId}
+import io.debezium.util.{Clock, SchemaNameAdjuster}
+import org.apache.kafka.connect.errors.ConnectException
+import org.apache.kafka.connect.source.SourceRecord
+import org.slf4j.{Logger, LoggerFactory}
 
+import java.sql.SQLException
+import java.util
+import java.util.Collections
 import scala.jdk.CollectionConverters
-import scala.collection.mutable
 
 
 /**
  * The main task executing streaming from Informix.
  * Responsible for lifecycle management the streaming code.
  *
- * @author  laoflch Luo
+ * @author laoflch Luo
  *
  */
 object InformixConnectorTask {
   private val LOGGER = LoggerFactory.getLogger(classOf[InformixConnectorTask])
   private val CONTEXT_NAME = "informix-server-connector-task"
-  class changeEventCreator() extends ChangeEventCreator{
 
-    override def createDataChangeEvent(x:SourceRecord): DataChangeEvent = {
+  class changeEventCreator() extends ChangeEventCreator {
+
+    override def createDataChangeEvent(x: SourceRecord): DataChangeEvent = {
       new DataChangeEvent(x)
     }
   }
@@ -52,70 +44,66 @@ object InformixConnectorTask {
 
 class InformixConnectorTask extends BaseSourceTask {
 
-
-  override def version: String = Module.version
-
+  private val LOGGER: Logger = LoggerFactory.getLogger(classOf[InformixConnectorTask])
   private var queue: ChangeEventQueue[DataChangeEvent] = null
   private var dataConnection: InformixConnection = null
   private var metadataConnection: InformixConnection = null
   private var schema: InformixDatabaseSchema = null
 
+  override def version: String = Module.version
 
-  override def start( config: Configuration): ChangeEventSourceCoordinator = {
-
+  override def start(config: Configuration): ChangeEventSourceCoordinator = {
 
     val connectorConfig = new InformixConnectorConfig(config)
     val topicSelector = InformixTopicSelector.defaultSelector(connectorConfig)
     val schemaNameAdjuster = SchemaNameAdjuster.create(InformixConnectorTask.LOGGER)
-    // By default do not load whole result sets into memory
 
     val jdbcConfig = config.edit
-                              .withDefault("database.responseBuffering", "adaptive")
-                              .withDefault("database.fetchSize", 10000)
-                              .build
-                              .filter((x: String) => !((x.startsWith(DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING) || x == HistorizedRelationalDatabaseConnectorConfig.DATABASE_HISTORY.name)))
-                              .subset("database.", true);
-    val dataConnection = new InformixConnection(jdbcConfig)
+      .withDefault("database.responseBuffering", "adaptive")
+      .withDefault("database.fetchSize", 10000)
+      .withDefault("informix.debug.file", "/tmp/debezium_informix_trace.out")
+      .build
+      .filter((x: String) => !(
+        (x.startsWith(DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING) ||
+          x == HistorizedRelationalDatabaseConnectorConfig.DATABASE_HISTORY.name)))
+      .subset("database.", true);
 
-    val metadataConnection = new InformixConnection(jdbcConfig)
-    try{
-      dataConnection.setAutoCommit(false)
+    this.dataConnection = new InformixConnection(jdbcConfig)
+    this.metadataConnection = new InformixConnection(jdbcConfig)
 
-    }catch{
+    try {
+      this.dataConnection.setAutoCommit(false)
+    } catch {
       case e: SQLException =>
         e.printStackTrace()
         throw new ConnectException(e)
     }
-    val schema = new InformixDatabaseSchema(connectorConfig, schemaNameAdjuster, topicSelector, dataConnection)
 
-    schema.initializeStorage()
+    this.schema = new InformixDatabaseSchema(connectorConfig, schemaNameAdjuster, topicSelector, this.dataConnection)
+    this.schema.initializeStorage()
 
     val previousOffset = getPreviousOffset(new (InformixOffsetContext.Loader)(connectorConfig))
-    if (previousOffset != null) schema.recover(previousOffset)
+    if (previousOffset != null)
+      this.schema.recover(previousOffset)
 
-
-
-    val taskContext = new InformixTaskContext(connectorConfig, schema)
+    val taskContext = new InformixTaskContext(connectorConfig, this.schema)
     val clock = Clock.system
     // Set up the task record queue ...
-    this.queue =
-    new ChangeEventQueue
-    .Builder[DataChangeEvent]()
-      .pollInterval(connectorConfig.getPollInterval)
-      .maxBatchSize(connectorConfig.getMaxBatchSize)
-      .maxQueueSize(connectorConfig.getMaxQueueSize)
+    this.queue = new ChangeEventQueue.Builder[DataChangeEvent]()
+      .pollInterval(connectorConfig.getPollInterval) // DEFAULT_POLL_INTERVAL_MILLIS = 500;
+      .maxBatchSize(connectorConfig.getMaxBatchSize) // DEFAULT_MAX_BATCH_SIZE = 2048;
+      .maxQueueSize(connectorConfig.getMaxQueueSize) // DEFAULT_MAX_QUEUE_SIZE = 8192;
       .loggingContextSupplier(() => taskContext.configureLoggingContext(InformixConnectorTask.CONTEXT_NAME))
       .build
 
     //createChangeEventQueueBuilder(connectorConfig,taskContext,InformixConnectorTask.CONTEXT_NAME)
 
     val errorHandler = new ErrorHandler(classOf[InformixConnector], connectorConfig.getLogicalName, this.queue)
-
     val metadataProvider = new InformixEventMetadataProvider
 
     val dispatcher = new EventDispatcher[TableId](connectorConfig,
       topicSelector,
-      schema,
+      this.schema,
       this.queue,
       connectorConfig.getTableFilters.dataCollectionFilter,
       new InformixConnectorTask.changeEventCreator(),
@@ -125,9 +113,10 @@ class InformixConnectorTask extends BaseSourceTask {
       errorHandler,
       classOf[InformixConnector],
       connectorConfig,
-      new InformixChangeEventSourceFactory(connectorConfig, dataConnection, metadataConnection, errorHandler, dispatcher, clock, schema),
+      new InformixChangeEventSourceFactory(connectorConfig, this.dataConnection, this.metadataConnection,
+        errorHandler, dispatcher, clock, this.schema),
       dispatcher,
-      schema)
+      this.schema)
 
     coordinator.start(taskContext, this.queue, metadataProvider)
     coordinator
@@ -152,27 +141,30 @@ class InformixConnectorTask extends BaseSourceTask {
   @throws[InterruptedException]
   override def doPoll: util.List[SourceRecord] = {
     //import scala.collection.JavaConversions._
-
-    CollectionConverters.BufferHasAsJava(CollectionConverters.ListHasAsScala(this.queue.poll).asScala.map[SourceRecord]((x:DataChangeEvent)=>x.getRecord)).asJava
-
+    CollectionConverters.BufferHasAsJava(CollectionConverters.ListHasAsScala(this.queue.poll).asScala.map[SourceRecord]((x: DataChangeEvent) => x.getRecord)).asJava
   }
 
   override def doStop(): Unit = {
-    try if (dataConnection != null) dataConnection.close()
+    try if (dataConnection != null) {
+      dataConnection.close()
+    }
     catch {
       case e: SQLException =>
         InformixConnectorTask.LOGGER.error("Exception while closing JDBC connection", e)
     }
-    try if (metadataConnection != null) metadataConnection.close()
+    try if (metadataConnection != null) {
+      metadataConnection.close()
+    }
     catch {
       case e: SQLException =>
         InformixConnectorTask.LOGGER.error("Exception while closing JDBC metadata connection", e)
     }
-    if (schema != null) schema.close()
+    if (schema != null) {
+      schema.close()
+    }
   }
 
   override protected def getAllConfigurationFields: java.lang.Iterable[Field] = {
-
     InformixConnectorConfig.ALL_FIELDS.asInstanceOf[java.lang.Iterable[Field]]
   }
 }

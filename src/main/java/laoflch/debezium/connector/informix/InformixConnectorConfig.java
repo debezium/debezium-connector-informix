@@ -10,8 +10,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Predicate;
 
-import io.debezium.connector.db2.Lsn;
-import io.debezium.connector.db2.SourceInfo;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
@@ -35,6 +33,8 @@ import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.history.HistoryRecordComparator;
 import io.debezium.relational.history.KafkaDatabaseHistory;
+
+import laoflch.debezium.connector.informix.Module;
 
 /**
  * The list of configuration options for Informix connector
@@ -328,9 +328,21 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
 
     @Override
     public SourceInfoStructMaker<? extends AbstractSourceInfo> getSourceInfoStructMaker(Version version) {
-        return new InformixSourceInfoStructMaker(Module$.MODULE$.name(), Module$.MODULE$.version(), this);
 
-        //return null;
+        try {
+            InformixSourceInfoStructMaker informixSourceInfoStructMaker;
+
+            // TODO:
+            String moduleName = Module.name();
+            String moduleVersion = Module.version();
+
+            informixSourceInfoStructMaker = new InformixSourceInfoStructMaker(moduleName, moduleVersion, this);
+            return informixSourceInfoStructMaker;
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+
+        return null;
     }
 
     private static class SystemTablesPredicate implements TableFilter {

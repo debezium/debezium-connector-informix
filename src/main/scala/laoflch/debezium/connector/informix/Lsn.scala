@@ -17,13 +17,14 @@ import io.debezium.util.Strings
  */
 object Lsn {
   private val NULL_STRING = "NULL"
+  private val NEGATIVE_ONE_STRING = "-1";
   val NULL = new Lsn(null)
 
   /**
    * @param lsnString - textual representation of Lsn
    * @return LSN converted from its textual representation
    */
-  def valueOf(lsnString: String): Lsn = if (lsnString == null || NULL_STRING == lsnString) NULL
+  def valueOf(lsnString: String): Lsn = if (lsnString == null || NULL_STRING == lsnString || NEGATIVE_ONE_STRING == lsnString) NULL
   else new Lsn(Strings.hexStringToByteArray(lsnString.replace(":", "")))
 
   /**

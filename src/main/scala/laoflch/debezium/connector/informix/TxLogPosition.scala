@@ -1,30 +1,28 @@
 package laoflch.debezium.connector.informix
 
 object TxLogPosition {
-  val NULL = new TxLogPosition(-1l, -1l,-1l,-1l)
-  val LSN_NULL:Long = -1l
-
-  def valueOf(commitLsn: Long, changeLsn: Long): TxLogPosition = if (commitLsn == null && changeLsn == null) NULL
-  else new TxLogPosition(commitLsn,changeLsn,0x00l,0x00l)
+  val NULL = new TxLogPosition(-1l, -1l, -1l, -1l)
+  val LSN_NULL: Long = -1l
 
   def valueOf(commitLsn: Long): TxLogPosition = valueOf(commitLsn, 0x00l)
 
-  def valueOf(commitLsn: Long, changeLsn: Long,txId: Long,beginLsn: Long): TxLogPosition = new TxLogPosition(commitLsn, changeLsn,txId,beginLsn)
+  def valueOf(commitLsn: Long, changeLsn: Long): TxLogPosition = if (commitLsn == null && changeLsn == null) NULL
+  else new TxLogPosition(commitLsn, changeLsn, 0x00l, 0x00l)
 
-  def valueOf(commitLsn: Long, changeLsn: Long,beginLsn: Long):TxLogPosition = valueOf(commitLsn, changeLsn,0x00l,beginLsn)
+  def valueOf(commitLsn: Long, changeLsn: Long, beginLsn: Long): TxLogPosition = valueOf(commitLsn, changeLsn, 0x00l, beginLsn)
 
-  def cloneAndSet(position: TxLogPosition,commitLsn: Long, changeLsn: Long,txId: Long,beginLsn: Long): TxLogPosition = {
+  def valueOf(commitLsn: Long, changeLsn: Long, txId: Long, beginLsn: Long): TxLogPosition = new TxLogPosition(commitLsn, changeLsn, txId, beginLsn)
+
+  def cloneAndSet(position: TxLogPosition, commitLsn: Long, changeLsn: Long, txId: Long, beginLsn: Long): TxLogPosition = {
     valueOf(
-      if(commitLsn>LSN_NULL)commitLsn else position.getCommitLsn,
-      if(changeLsn>LSN_NULL)changeLsn else position.getChangeLsn,
-      if(txId>LSN_NULL)txId else position.getTxId,
-      if(beginLsn>LSN_NULL)beginLsn else position.getBeginLsn)
+      if (commitLsn > LSN_NULL) commitLsn else position.getCommitLsn,
+      if (changeLsn > LSN_NULL) changeLsn else position.getChangeLsn,
+      if (txId > LSN_NULL) txId else position.getTxId,
+      if (beginLsn > LSN_NULL) beginLsn else position.getBeginLsn)
   }
 }
 
-class TxLogPosition private(val commitLsn: Long, val changeLsn: Long,val txId: Long,val beginLsn: Long) extends Nullable with Comparable[TxLogPosition] {
-  def getCommitLsn: Long = commitLsn
-
+class TxLogPosition private(val commitLsn: Long, val changeLsn: Long, val txId: Long, val beginLsn: Long) extends Nullable with Comparable[TxLogPosition] {
   def getChangeLsn: Long = changeLsn
 
   def getTxId: Long = txId
@@ -37,14 +35,10 @@ class TxLogPosition private(val commitLsn: Long, val changeLsn: Long,val txId: L
   override def hashCode: Int = {
     val prime = 31
     var result = 1
-    result = prime * result + (if (commitLsn == null) 0
-    else commitLsn.hashCode)
-    result = prime * result + (if (changeLsn == null) 0
-    else changeLsn.hashCode)
-    result = prime * result + (if (beginLsn == null) 0
-    else beginLsn.hashCode)
-    result = prime * result + (if (txId == null) 0
-    else txId.hashCode)
+    result = prime * result + (if (commitLsn == null) 0 else commitLsn.hashCode)
+    result = prime * result + (if (changeLsn == null) 0 else changeLsn.hashCode)
+    result = prime * result + (if (beginLsn == null) 0 else beginLsn.hashCode)
+    result = prime * result + (if (txId == null) 0 else txId.hashCode)
     result
   }
 
@@ -70,6 +64,8 @@ class TxLogPosition private(val commitLsn: Long, val changeLsn: Long,val txId: L
     else comparison
   }
 
-  override def isAvailable: Boolean = changeLsn != null && commitLsn != null && beginLsn != null && txId !=null
+  def getCommitLsn: Long = commitLsn
+
+  override def isAvailable: Boolean = changeLsn != null && commitLsn != null && beginLsn != null && txId != null
 }
 
