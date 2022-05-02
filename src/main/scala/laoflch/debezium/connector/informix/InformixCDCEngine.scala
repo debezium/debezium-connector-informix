@@ -1,32 +1,27 @@
 package laoflch.debezium.connector.informix
 
-import java.sql.SQLException
-
 import com.informix.jdbcx.IfxDataSource
 import com.informix.stream.api.IfmxStreamRecord
 import com.informix.stream.cdc.IfxCDCEngine
-import com.informix.stream.cdc.records.IfxCDCRecord
 import com.informix.stream.impl.IfxStreamException
 import io.debezium.relational.TableId
-import InformixCDCEngine.CDCTabeEntry
-import org.apache.kafka.connect.errors.ConnectException
+import laoflch.debezium.connector.informix.InformixCDCEngine.{CDCTabeEntry, watchAllTableAndCols}
+
+import java.sql.SQLException
+import scala.jdk.CollectionConverters
+import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.mutable
-import scala.jdk.CollectionConverters
-
-
-
-
-
 
 object InformixCDCEngine {
 
-  private val URL_PATTERN: String = "jdbc:informix-sqli://%s:%s/syscdcv1:user=%s;password=%s"
+  private val URL_PATTERN: String = "jdbc:informix-sqli://%s:%s/syscdcv1:user=%s;password=%s;"
+  // private val URL_PATTERN: String = "jdbc:informix-sqli://%s:%s/syscdcv1:user=%s;password=%s;PROTOCOLTRACE=2;PROTOCOLTRACEFILE=/tmp/dbz_proto_trace.out;TRACE=3;TRACEFILE=/tmp/dbz_trace.out"
 
-  case class CDCTabeEntry(tableId:TableId,tableCols:Seq[String])
+  private val LOGGER: Logger = LoggerFactory.getLogger(classOf[InformixCDCEngine])
 
-  def genURLStr(host:String,port:String,dataBase:String,user:String,password:String): String ={
-    URL_PATTERN.format(host,port.toString,user,password)
+  def genURLStr(host: String, port: String, dataBase: String, user: String, password: String): String = {
+    URL_PATTERN.format(host, port.toString, user, password)
   }
 
   /*def initDataSource(url :String) : IfxDataSource = {
@@ -40,132 +35,115 @@ object InformixCDCEngine {
 
   }*/
 
-  def watchTableAndCols(watchTables: Map[String,CDCTabeEntry],builder:IfxCDCEngine.Builder): Unit={
-    watchTables.foreach(tuple=>builder.watchTable(tuple._1,tuple._2.tableCols:_*))
+  def watchAllTableAndCols(watchTables: Map[String, CDCTabeEntry], builder: IfxCDCEngine.Builder): Unit = {
+    watchTables.foreach(tuple => builder.watchTable(tuple._1, tuple._2.tableCols: _*))
     //foreach  says argument is tuple -> unit, so We can easily do below
     //https://stackoverflow.com/questions/8610776/scala-map-foreach for more info
   }
 
-
-
-  def setTimeout(timeOut: Int,builder:IfxCDCEngine.Builder): Unit ={
-    builder.timeout(timeOut)
+  def build(host: String, port: String, user: String, dataBase: String, password: String): InformixCDCEngine = {
+    new InformixCDCEngine(host, port, user, dataBase, password)
   }
 
-  def buildCDCEngine(url:String,tableAndCols: Map[String,InformixCDCEngine.CDCTabeEntry], lsn :Long,timeOut:Int): (IfxCDCEngine,List[IfxCDCEngine.IfmxWatchedTable]) = {
-
-    //val ds = new IfxDataSource(url)
-    val builder = new IfxCDCEngine.Builder(new IfxDataSource(url))
-
-    watchTableAndCols(tableAndCols,builder)
-
-    builder.sequenceId(lsn)
-
-    setTimeout(timeOut,builder)
-
-
-
-    (builder.build,CollectionConverters.ListHasAsScala(builder.getWatchedTables).asScala.toList)
-
-  }
-
-  def build(host: String
-            ,port: String
-            ,user: String
-            ,dataBase: String
-            ,password: String): InformixCDCEngine ={
-
-
-
-
-    new InformixCDCEngine(host,port,user,dataBase,password)
-  }
-
-
-
-
+  case class CDCTabeEntry(tableId: TableId, tableCols: Seq[String])
 }
 
-class InformixCDCEngine(host: String
-                        ,port: String
-                        ,user: String
-                        ,dataBase: String
-                        ,password: String) {
+class InformixCDCEngine(host: String, port: String, user: String, dataBase: String, password: String) {
+
+  private val LOGGER: Logger = LoggerFactory.getLogger(classOf[InformixCDCEngine])
 
   var cdcEngine: IfxCDCEngine = null
-
-  var watchTableAndCols: Map[String, CDCTabeEntry] = null
-
   var lsn: Long = 0x00
-
   var timeOut: Int = 0x05
-
   var hasInit: Boolean = false
+  var labelId_tableId_map: Map[Int, TableId] = null
 
-  var tables: List[IfxCDCEngine.IfmxWatchedTable] =null
+  def init(schema: InformixDatabaseSchema): Unit = {
 
-  def init(): Unit ={
+    val url = InformixCDCEngine.genURLStr(host, port, dataBase, user, password)
+    val url_masked = InformixCDCEngine.genURLStr(host, port, dataBase, user, password.replace(".", "*"))
+    this.cdcEngine = this.buildCDCEngine(url, this.lsn, timeOut, schema)
 
-    if(watchTableAndCols!=null){
+    LOGGER.info("Connecting to Informix URL: {}", url_masked)
 
-      val url = InformixCDCEngine.genURLStr(host,port,dataBase,user,password)
-
-      val ent = InformixCDCEngine.buildCDCEngine(url,this.watchTableAndCols,this.lsn,timeOut)
-
-      this.cdcEngine=ent._1
-      this.tables=ent._2
-
-      try {
-        this.cdcEngine.init()
-        hasInit=true
-      }catch{
-        case e: SQLException =>
-          e.printStackTrace()
-        case e: IfxStreamException =>
-          e.printStackTrace()
-
-      }
-
-
-
+    try {
+      this.cdcEngine.init()
+      hasInit = true
+    } catch {
+      case e: SQLException =>
+        e.printStackTrace()
+      case e: IfxStreamException =>
+        e.printStackTrace()
     }
-
   }
 
-  def record(func:(IfmxStreamRecord)=>Boolean): Unit ={
+  def buildCDCEngine(url: String, lsn: Long, timeOut: Int,
+                     schema: InformixDatabaseSchema): IfxCDCEngine = {
+
+    val builder = new IfxCDCEngine.Builder(new IfxDataSource(url))
+
+    LOGGER.info("CDCEngine set LSN = {}", lsn)
+
+    // TODO: Make an parameter 'buffer size' for better performance. Default value is 10240
+    builder.buffer(819200)
+
+    /*
+     * Watch all tables and build a Map for looking up "label_id"
+     */
+    val tableIds = CollectionConverters.SetHasAsScala(schema.tableIds()).asScala.toList
+    tableIds.foreach(tid => {
+      val cols = CollectionConverters.ListHasAsScala(schema.tableFor(tid).columns()).asScala.map(col => col.name()).toList
+      val tname = tid.catalog() + ":" + tid.schema() + "." + tid.table()
+      builder.watchTable(tname, cols: _*)
+    })
+
+    if (lsn > 0) {
+      builder.sequenceId(lsn)
+    }
+    builder.timeout(timeOut)
+
+    for (tbl <- CollectionConverters.ListHasAsScala(builder.getWatchedTables).asScala.toList) {
+      LOGGER.info("Watched Tables :: {} ==> {}", tbl, tbl.getColumns)
+    }
+    this.labelId_tableId_map = tableIds.zipWithIndex.map { case (tid, idx) =>
+      // TODO: label_id start from 1?
+      (idx + 1, tid)
+    }.toMap
+
+    builder.build()
+  }
+
+  def record(func: (IfmxStreamRecord) => Boolean): Unit = {
     func(cdcEngine.getRecord)
-
   }
 
-  def stream(func:(IfmxStreamRecord)=>Boolean): Unit ={
-
-    while(func(cdcEngine.getRecord)){
+  def stream(func: (IfmxStreamRecord) => Boolean): Unit = {
+    while (func(cdcEngine.getRecord)) {
       //Thread.sleep(1000)
     }
-
   }
 
-  def setStartLsn(startLsn:Long):Long ={
-    lsn=startLsn
+  def setStartLsn(startLsn: Long): Long = {
+    lsn = startLsn
     lsn
   }
 
-  def converLabel2TableId(): Map[Int,TableId] ={
+  def convertLabel2TableId(): Map[Int, TableId] = {
 
-   // val tableLabel=Map[Int,TableId]()
+    // LOGGER.info("converLabel2TableId(), tables={}", this.tables)
+    LOGGER.info("convertLabel2TableId, LabelId => TableId :: {}", this.labelId_tableId_map)
 
-    this.tables.map[(Int,TableId)](x=>{
-      val id=x.getDatabaseName+":"+x.getNamespace+":"+x.getTableName
-      x.getLabel->this.watchTableAndCols(id).tableId
+    /*
+    this.tables.map[(Int, TableId)](x => {
+      val id = x.getDatabaseName + ":" + x.getNamespace + ":" + x.getTableName
+      x.getLabel -> this.tableColsMap(id).tableId
     }).toMap
 
+    */
 
-    //tableLabel
-
+    this.labelId_tableId_map
   }
 
-  def setWatchTableAndCols(wtac:Map[String,CDCTabeEntry]): Unit =this.watchTableAndCols=wtac
-
-
+  // def setTableColsMap(tableColsMap: Map[String, CDCTabeEntry]): Unit = this.tableColsMap = tableColsMap
 
 }

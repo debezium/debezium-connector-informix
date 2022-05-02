@@ -35,13 +35,16 @@ object InformixChangeRecordEmitter {
    * @author laoflch luo
    */
   def convertIfxData2Array(data: java.util.Map[String, IfmxReadableType]): Array[AnyRef] = {
-    if (data == null) {return Array.emptyObjectArray}
+    if (data == null) {
+      return Array.emptyObjectArray
+    }
 
     CollectionConverters.CollectionHasAsScala(data.values()).asScala.map[AnyRef](x=>x.toObject).toArray
     //extract value from IfmxReadableType and pass it to ValueConverter for kafka value
 
   }
 }
+
 class InformixChangeRecordEmitter(val offset: OffsetContext, val operation: Int, val data: Array[AnyRef], val dataNext: Array[AnyRef], val clock: Clock) extends RelationalChangeRecordEmitter(offset, clock) {
   override protected def getOperation: Envelope.Operation = {
     if (operation == InformixChangeRecordEmitter.OP_DELETE) return Operation.DELETE

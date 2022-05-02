@@ -1,16 +1,11 @@
 package laoflch.debezium.connector.informix
 
-import java.sql.{DriverManager, PreparedStatement, SQLException}
-import java.util
-import java.util.Collections
-
-import com.informix.stream.api.IfmxStreamRecord
-import io.debezium.connector.db2.{Db2ConnectorConfig, Db2ConnectorTask}
 import org.apache.kafka.common.config.ConfigDef
 import org.apache.kafka.connect.connector.Task
 import org.apache.kafka.connect.source.SourceConnector
 
-import scala.collection.JavaConverters
+import java.util
+import java.util.Collections
 
 object InformixConnector {
 
@@ -122,14 +117,14 @@ object InformixConnector {
 
         }) println()
 
-        def handleRecord(record:IfmxStreamRecord): Boolean ={
+        def handleRecord(record: IfmxStreamRecord): Boolean = {
 
-          if(record != null) {
+          if (record != null) {
             println(record)
-          }else {
+          } else {
             return false
           }
-          if(record.hasOperationData) println(record.asInstanceOf[IfxCDCOperationRecord].getData)
+          if (record.hasOperationData) println(record.asInstanceOf[IfxCDCOperationRecord].getData)
 
           true
         }
@@ -144,29 +139,28 @@ class InformixConnector extends SourceConnector {
   private var properties: util.Map[String, String] = null
 
   override def version: String = {
-  return Module.version
-}
+    return Module.version
+  }
 
-  override def start (props: util.Map[String, String] ): Unit = {
-  this.properties = props
-}
+  override def start(props: util.Map[String, String]): Unit = {
+    this.properties = props
+  }
 
   override def taskClass: Class[_ <: Task] = {
-  return classOf[InformixConnectorTask]
-}
-
-  override def taskConfigs (maxTasks: Int): util.List[util.Map[String, String]] = {
-  if (maxTasks > 1) {
-  throw new IllegalArgumentException ("Only a single connector task may be started")
+    return classOf[InformixConnectorTask]
   }
-  return Collections.singletonList(properties)
-}
 
-  override def stop (): Unit = {
-}
+  override def taskConfigs(maxTasks: Int): util.List[util.Map[String, String]] = {
+    if (maxTasks > 1) {
+      throw new IllegalArgumentException("Only a single connector task may be started")
+    }
+    return Collections.singletonList(properties)
+  }
+
+  override def stop(): Unit = {
+  }
 
   override def config: ConfigDef = {
-  return InformixConnectorConfig.configDef
+    return InformixConnectorConfig.configDef
+  }
 }
-}
-
