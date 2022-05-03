@@ -301,7 +301,6 @@ class InformixStreamingChangeEventSource(connectorConfig: InformixConnectorConfi
         def handleCommitEvent(offsetContext: InformixOffsetContext, cre: mutable.Buffer[(TableId, InformixChangeRecordEmitter)]): Unit = {
           try {
             cre.foreach(tuple => {
-              LOGGER.info("handleCommit:: {}", tuple)
               dispatcher.dispatchDataChangeEvent(tuple._1, tuple._2)
             })
 
