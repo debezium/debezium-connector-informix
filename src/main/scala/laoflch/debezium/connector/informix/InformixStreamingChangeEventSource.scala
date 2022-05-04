@@ -148,7 +148,7 @@ class InformixStreamingChangeEventSource(connectorConfig: InformixConnectorConfi
            *
            * */
           case IfmxStreamRecordType.BEGIN => {
-            LOGGER.info("Received BEGIN Record")
+            LOGGER.info("Received BEGIN :: transId={} seqId={}", record.getTransactionId(),  record.getSequenceId)
 
             transactionContext.beginTxn(record.getTransactionId) match {
               case Some(value) => {
@@ -171,11 +171,10 @@ class InformixStreamingChangeEventSource(connectorConfig: InformixConnectorConfi
            *
            * */
           case IfmxStreamRecordType.COMMIT => {
-            LOGGER.info("Received COMMIT Record")
+            LOGGER.info("Received COMMIT :: transId={} seqId={}", record.getTransactionId(),  record.getSequenceId)
+
             transactionContext.commitTxn(record.getTransactionId) match {
               case Some(value) => {
-                //println(value)
-
                 offsetContext.setChangePosition(TxLogPosition.cloneAndSet(offsetContext.getChangePosition,
                   record.getSequenceId,
                   record.getSequenceId,
@@ -197,7 +196,7 @@ class InformixStreamingChangeEventSource(connectorConfig: InformixConnectorConfi
            *
            * */
           case IfmxStreamRecordType.ROLLBACK => {
-            LOGGER.info("Received ROLLBACK Record")
+            LOGGER.info("Received ROLLBACK :: transId={} seqId={}", record.getTransactionId(),  record.getSequenceId)
 
             transactionContext.rollbackTxn(record.getTransactionId) match {
               case Some(value) => {
@@ -227,11 +226,10 @@ class InformixStreamingChangeEventSource(connectorConfig: InformixConnectorConfi
            *
            * */
           case IfmxStreamRecordType.INSERT => {
-            if (LOGGER.isTraceEnabled()) {
-              LOGGER.trace("Received INSERT Record")
-            }
 
             val data = record.asInstanceOf[IfxCDCOperationRecord].getData
+
+            LOGGER.info("Received INSERT :: transId={} seqId={}", record.getTransactionId(), record.getSequenceId())
 
             offsetContext.setChangePosition(TxLogPosition.cloneAndSet(offsetContext.getChangePosition,
               TxLogPosition.LSN_NULL,
@@ -252,9 +250,7 @@ class InformixStreamingChangeEventSource(connectorConfig: InformixConnectorConfi
            *
            * */
           case IfmxStreamRecordType.DELETE => {
-            if (LOGGER.isTraceEnabled()) {
-              LOGGER.trace("Received DELETE Record")
-            }
+            LOGGER.info("Received DELETE :: transId={} seqId={}", record.getTransactionId(), record.getSequenceId())
 
             val data = record.asInstanceOf[IfxCDCOperationRecord].getData
 
@@ -268,7 +264,9 @@ class InformixStreamingChangeEventSource(connectorConfig: InformixConnectorConfi
             handleEvent(tableId, offsetContext, InformixChangeRecordEmitter.OP_DELETE, data, null, clock, null)
           }
 
-          case _ => {}
+          case _ => {
+            LOGGER.info("Handle unknown record-type = {}", record)
+          }
         }
 
         def handleEvent(tableId: TableId,
@@ -300,6 +298,7 @@ class InformixStreamingChangeEventSource(connectorConfig: InformixConnectorConfi
 
         def handleCommitEvent(offsetContext: InformixOffsetContext, cre: mutable.Buffer[(TableId, InformixChangeRecordEmitter)]): Unit = {
           try {
+            LOGGER.info("Handle Commit {} Events", cre.size)
             cre.foreach(tuple => {
               dispatcher.dispatchDataChangeEvent(tuple._1, tuple._2)
             })
@@ -312,7 +311,8 @@ class InformixStreamingChangeEventSource(connectorConfig: InformixConnectorConfi
 
         def handleRollbackEvent(offsetContext: InformixOffsetContext, cre: mutable.Buffer[(TableId, InformixChangeRecordEmitter)]): Unit = {
           try {
-            cre.foreach(tuple => LOGGER.info("id:" + tuple._1 + ":" + "ChangeRecord:" + tuple._2.toString))
+            // cre.foreach(tuple => LOGGER.info("id:" + tuple._1 + ":" + "ChangeRecord:" + tuple._2.toString))
+            LOGGER.info("Handle Rollback {} Events", cre.size)
             //dispatcher.dispatchDataChangeEvent(tableId,cre)
           } catch {
             case e: Exception => e.printStackTrace()

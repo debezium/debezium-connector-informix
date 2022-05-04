@@ -61,7 +61,7 @@ class InformixCDCEngine(host: String, port: String, user: String, dataBase: Stri
   def init(schema: InformixDatabaseSchema): Unit = {
 
     val url = InformixCDCEngine.genURLStr(host, port, dataBase, user, password)
-    val url_masked = InformixCDCEngine.genURLStr(host, port, dataBase, user, password.replace(".", "*"))
+    val url_masked = InformixCDCEngine.genURLStr(host, port, dataBase, user, "****")
     this.cdcEngine = this.buildCDCEngine(url, this.lsn, timeOut, schema)
 
     LOGGER.info("Connecting to Informix URL: {}", url_masked)

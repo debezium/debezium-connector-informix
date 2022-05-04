@@ -8,7 +8,7 @@ import io.debezium.relational.TableId
 
 import scala.collection.mutable
 
-class InformixTransactionContext extends TransactionContext {
+class InformixTransactionCache {
   //private val beginAndUnCommit: mutable.Map[(Long,Long),mutable.Buffer[(TableId,InformixChangeRecordEmitter)]] = new mutable.HashMap[(Long,Long),mutable.Buffer[(TableId,InformixChangeRecordEmitter)]]
   private val transactionCRE: mutable.Map[Long, mutable.Buffer[(TableId, InformixChangeRecordEmitter)]] = new mutable.HashMap[Long, mutable.Buffer[(TableId, InformixChangeRecordEmitter)]]
   private val beforeAndAfter: mutable.Map[Long, util.Map[String, IfmxReadableType]] = new mutable.HashMap[Long, util.Map[String, IfmxReadableType]]

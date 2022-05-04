@@ -1,9 +1,9 @@
 package laoflch.debezium.connector.informix
 
-import java.util
-
 import io.debezium.connector.common.CdcSourceTaskContext
 import io.debezium.schema.DataCollectionId
+
+import java.util
 
 
 /**
@@ -16,6 +16,6 @@ class InformixTaskContext(val config: InformixConnectorConfig,
                           val schema: InformixDatabaseSchema)
   extends CdcSourceTaskContext(config.getContextName,
     config.getLogicalName,
-    ()=>schema.tableIds.asInstanceOf[util.Collection[DataCollectionId]]) {
+    () => schema.tableIds.asInstanceOf[util.Collection[DataCollectionId]]) {
   // replace java schema::tableIds
 }
