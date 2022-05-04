@@ -1,7 +1,7 @@
 package laoflch.debezium.connector.informix;
 
 public class TxLogPosition implements Nullable, Comparable<TxLogPosition> {
-    public static TxLogPosition NULL = new TxLogPosition(null, null, null, null);
+    public static TxLogPosition NULL = new TxLogPosition(-1L, -1L, -1L, -1L);
     public static Long LSN_NULL = -1L;
 
     private final Long commitLsn;

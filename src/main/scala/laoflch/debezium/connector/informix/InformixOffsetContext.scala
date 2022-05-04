@@ -23,7 +23,7 @@ class InformixOffsetContext(connectorConfig: InformixConnectorConfig,
   private val sourceInfo: SourceInfo = new SourceInfo(connectorConfig)
   private val sourceInfoSchema: Schema = sourceInfo.schema()
   private val partition: util.Map[String, String] = Collections.singletonMap(InformixOffsetContext.SERVER_PARTITION_KEY, connectorConfig.getLogicalName)
-  private val informixTransactionContext: InformixTransactionContext = new InformixTransactionContext()
+  private val informixTransactionContext: InformixTransactionCache = new InformixTransactionCache()
 
   setChangePosition(position)
 
@@ -104,7 +104,7 @@ class InformixOffsetContext(connectorConfig: InformixConnectorConfig,
 
   override def getTransactionContext: TransactionContext = transactionContext
 
-  def getInformixTransactionContext: InformixTransactionContext = informixTransactionContext
+  def getInformixTransactionContext: InformixTransactionCache = informixTransactionContext
 
   def getChangePosition: TxLogPosition = TxLogPosition.valueOf(sourceInfo.getCommitLsn, sourceInfo.getChangeLsn, sourceInfo.getTxId, sourceInfo.getBeginLsn)
 

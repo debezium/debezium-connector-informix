@@ -24,6 +24,7 @@ object InformixValueConverters extends JdbcValueConverters{
     foo(r)
   })*/
 }
+
 /**
  * Conversion of Informix specific datatypes.
  *
