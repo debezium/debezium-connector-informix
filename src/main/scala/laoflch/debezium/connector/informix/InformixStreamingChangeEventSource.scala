@@ -265,7 +265,7 @@ class InformixStreamingChangeEventSource(connectorConfig: InformixConnectorConfi
           }
 
           case _ => {
-            LOGGER.info("Handle unknown record-type = {}", record)
+            LOGGER.info("Handle unknown record-type = {}", record.getType.toString)
           }
         }
 
