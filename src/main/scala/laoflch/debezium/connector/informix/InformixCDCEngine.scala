@@ -5,7 +5,6 @@ import com.informix.stream.api.IfmxStreamRecord
 import com.informix.stream.cdc.IfxCDCEngine
 import com.informix.stream.impl.IfxStreamException
 import io.debezium.relational.TableId
-import laoflch.debezium.connector.informix.InformixCDCEngine.{CDCTabeEntry, watchAllTableAndCols}
 
 import java.sql.SQLException
 import scala.jdk.CollectionConverters
@@ -35,17 +34,11 @@ object InformixCDCEngine {
 
   }*/
 
-  def watchAllTableAndCols(watchTables: Map[String, CDCTabeEntry], builder: IfxCDCEngine.Builder): Unit = {
-    watchTables.foreach(tuple => builder.watchTable(tuple._1, tuple._2.tableCols: _*))
-    //foreach  says argument is tuple -> unit, so We can easily do below
-    //https://stackoverflow.com/questions/8610776/scala-map-foreach for more info
-  }
-
   def build(host: String, port: String, user: String, dataBase: String, password: String): InformixCDCEngine = {
     new InformixCDCEngine(host, port, user, dataBase, password)
   }
 
-  case class CDCTabeEntry(tableId: TableId, tableCols: Seq[String])
+  // case class CDCTabeEntry(tableId: TableId, tableCols: Seq[String])
 }
 
 class InformixCDCEngine(host: String, port: String, user: String, dataBase: String, password: String) {
@@ -92,7 +85,9 @@ class InformixCDCEngine(host: String, port: String, user: String, dataBase: Stri
      */
     val tableIds = CollectionConverters.SetHasAsScala(schema.tableIds()).asScala.toList
     tableIds.foreach(tid => {
-      val cols = CollectionConverters.ListHasAsScala(schema.tableFor(tid).columns()).asScala.map(col => col.name()).toList
+      val cols = CollectionConverters.ListHasAsScala(schema.tableFor(tid).columns()).asScala
+        // .filter(col => col.typeName() in Set("lvarchar", "BLOB", "xxx") )
+        .map(col => col.name()).toList
       val tname = tid.catalog() + ":" + tid.schema() + "." + tid.table()
       builder.watchTable(tname, cols: _*)
     })
