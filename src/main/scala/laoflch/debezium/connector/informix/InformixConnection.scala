@@ -77,17 +77,6 @@ class InformixConnection(config: Configuration) extends JdbcConnection(config, I
   def getLsn: Long = lsn
 
   /**
-   * init the tables and columns for cdc capture.
-   *
-   * @param map - the requested table changes
-   * @throws SQLException
-   */
-  def initCDCTableAndCols(map: Map[String, InformixCDCEngine.CDCTabeEntry]): Unit = {
-    // TODO: Remove this function
-    // this.cdcEngine.tableColsMap = map
-  }
-
-  /**
    * init the lsn for the first time connect
    *
    * @throws SQLException

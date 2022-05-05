@@ -68,7 +68,7 @@ class InformixStreamingChangeEventSource(connectorConfig: InformixConnectorConfi
   @throws[InterruptedException]
   override def execute(context: ChangeEventSource.ChangeEventSourceContext): Unit = {
     val cdcEngine = dataConnection.getCDCEngine()
-    val transactionContext = offsetContext.getInformixTransactionContext
+    val transactionCache = offsetContext.getInformixTransactionContext
     val schema = this.schema
 
     /*
@@ -118,7 +118,7 @@ class InformixStreamingChangeEventSource(connectorConfig: InformixConnectorConfi
               record.getTransactionId,  // txnid
               TxLogPosition.LSN_NULL))  // begin
 
-            transactionContext.beforeUpdate(record.getTransactionId, data)
+            transactionCache.beforeUpdate(record.getTransactionId, data)
           }
 
           /**
@@ -129,7 +129,7 @@ class InformixStreamingChangeEventSource(connectorConfig: InformixConnectorConfi
           case IfmxStreamRecordType.AFTER_UPDATE => {
 
             val newData = record.asInstanceOf[IfxCDCOperationRecord].getData
-            val oldData = transactionContext.afterUpdate(record.getTransactionId).get
+            val oldData = transactionCache.afterUpdate(record.getTransactionId).get
 
             offsetContext.setChangePosition(TxLogPosition.cloneAndSet(offsetContext.getChangePosition,
               TxLogPosition.LSN_NULL,
@@ -150,7 +150,7 @@ class InformixStreamingChangeEventSource(connectorConfig: InformixConnectorConfi
           case IfmxStreamRecordType.BEGIN => {
             LOGGER.info("Received BEGIN :: transId={} seqId={}", record.getTransactionId(),  record.getSequenceId)
 
-            transactionContext.beginTxn(record.getTransactionId) match {
+            transactionCache.beginTxn(record.getTransactionId) match {
               case Some(value) => {
                 println(value)
               }
@@ -173,7 +173,7 @@ class InformixStreamingChangeEventSource(connectorConfig: InformixConnectorConfi
           case IfmxStreamRecordType.COMMIT => {
             LOGGER.info("Received COMMIT :: transId={} seqId={}", record.getTransactionId(),  record.getSequenceId)
 
-            transactionContext.commitTxn(record.getTransactionId) match {
+            transactionCache.commitTxn(record.getTransactionId) match {
               case Some(value) => {
                 offsetContext.setChangePosition(TxLogPosition.cloneAndSet(offsetContext.getChangePosition,
                   record.getSequenceId,
@@ -198,7 +198,7 @@ class InformixStreamingChangeEventSource(connectorConfig: InformixConnectorConfi
           case IfmxStreamRecordType.ROLLBACK => {
             LOGGER.info("Received ROLLBACK :: transId={} seqId={}", record.getTransactionId(),  record.getSequenceId)
 
-            transactionContext.rollbackTxn(record.getTransactionId) match {
+            transactionCache.rollbackTxn(record.getTransactionId) match {
               case Some(value) => {
 
                 offsetContext.setChangePosition(TxLogPosition.cloneAndSet(offsetContext.getChangePosition,
