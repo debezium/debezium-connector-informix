@@ -60,10 +60,10 @@ public class InformixChangeRecordEmitter extends RelationalChangeRecordEmitter {
     protected Object[] getNewColumnValues() {
         switch (getOperation()) {
             case CREATE:
-            case READ:
-                return data;
             case UPDATE:
                 return dataNext;
+            case READ:
+                return data;
             default:
                 return null;
         }
