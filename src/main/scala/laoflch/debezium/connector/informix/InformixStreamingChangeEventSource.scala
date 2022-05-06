@@ -68,7 +68,7 @@ class InformixStreamingChangeEventSource(connectorConfig: InformixConnectorConfi
   @throws[InterruptedException]
   override def execute(context: ChangeEventSource.ChangeEventSourceContext): Unit = {
     val cdcEngine = dataConnection.getCDCEngine()
-    val transactionCache = offsetContext.getInformixTransactionContext
+    val transactionCache = offsetContext.getInformixTransactionCache
     val schema = this.schema
 
     /*
@@ -285,7 +285,7 @@ class InformixStreamingChangeEventSource(connectorConfig: InformixConnectorConfi
             InformixChangeRecordEmitter.convertIfxData2Array(dataNext), clock)
 
           //add event in transcation
-          offsetContext.getInformixTransactionContext.addEvent2Tx(tableId, cre, offsetContext.getChangePosition.getTxId)
+          offsetContext.getInformixTransactionCache.addEvent2Tx(tableId, cre, offsetContext.getChangePosition.getTxId)
         }
 
         def handleTimeOutEvent(record: IfmxStreamRecord): Unit = {

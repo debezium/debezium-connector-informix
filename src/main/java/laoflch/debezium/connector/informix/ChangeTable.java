@@ -17,7 +17,7 @@ public class ChangeTable {
     private Lsn stopLsn;
 
     /**
-     * The table in the CDC schema that captures changes, suitably quoted for Db2
+     * The table in the CDC schema that captures changes, suitably quoted for Informix
      */
     private final String captureInstance;
 
