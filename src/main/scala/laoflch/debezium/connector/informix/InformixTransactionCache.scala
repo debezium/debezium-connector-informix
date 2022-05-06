@@ -3,7 +3,6 @@ package laoflch.debezium.connector.informix
 import java.util
 
 import com.informix.jdbc.IfmxReadableType
-import io.debezium.pipeline.txmetadata.TransactionContext
 import io.debezium.relational.TableId
 
 import scala.collection.mutable

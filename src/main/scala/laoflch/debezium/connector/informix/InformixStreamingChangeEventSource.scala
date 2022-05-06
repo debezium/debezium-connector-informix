@@ -160,6 +160,7 @@ class InformixStreamingChangeEventSource(connectorConfig: InformixConnectorConfi
                   record.getSequenceId,
                   record.getTransactionId,
                   record.getSequenceId))
+
                 offsetContext.getTransactionContext.beginTransaction(record.getTransactionId.toString)
               }
             }
@@ -187,6 +188,7 @@ class InformixStreamingChangeEventSource(connectorConfig: InformixConnectorConfi
                 //val tableId=label2TableId(record.getLabel.toInt)
               }
             }
+
             offsetContext.getTransactionContext.endTransaction()
           }
 
