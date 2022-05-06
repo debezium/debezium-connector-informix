@@ -11,12 +11,7 @@ import java.util
 
 object InformixConnection {
 
-  private val GET_DATABASE_NAME = "SELECT CURRENT_SERVER FROM SYSIBM.SYSDUMMY1" // DB2
-
-  //private val JDBC_URL = "jdbc:informix-sqli://{}:{}/{}:user={};password={}}"
-
   private val LOGGER = LoggerFactory.getLogger(classOf[InformixConnector])
-
 
   // No new Tabels 1=0
 
@@ -30,14 +25,6 @@ object InformixConnection {
   private val FACTORY = JdbcConnection.patternBasedFactory(URL_PATTERN,
     classOf[com.informix.jdbc.IfxDriver].getName,
     classOf[InformixConnection].getClassLoader)
-
-
-  //private val CDC_SOURCE =  new IfxDataSource("jdbc:informix-sqli://localhost:9998/syscdcv1:user=informix;password=informix")
-  private var lsnToInstantCache = null
-
-  /**
-   * actual name of the database, which could differ in casing from the database name given in the connector config.
-   */
 
   private trait ResultSetExtractor[T] {
     @throws[SQLException]
