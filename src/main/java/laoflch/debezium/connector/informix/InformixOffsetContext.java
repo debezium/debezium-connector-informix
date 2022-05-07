@@ -27,7 +27,7 @@ public class InformixOffsetContext implements OffsetContext {
     private final TransactionContext transactionContext;
 
     // TODO: We should move informixTransactionCache into InformixCDCEngine?
-    private final InformixTransactionCache informixTransactionCache;
+    private final InformixTransactionCache transactionCache;
 
     public InformixOffsetContext(InformixConnectorConfig connectorConfig, TxLogPosition position, boolean snapshot,
                                  boolean snapshotCompleted, TransactionContext transactionContext) {
@@ -48,7 +48,7 @@ public class InformixOffsetContext implements OffsetContext {
 
         this.transactionContext = transactionContext;
 
-        this.informixTransactionCache = new InformixTransactionCache();
+        this.transactionCache = new InformixTransactionCache();
     }
 
     public InformixOffsetContext(InformixConnectorConfig connectorConfig, TxLogPosition position, boolean snapshot, boolean snapshotCompleted) {
@@ -180,6 +180,6 @@ public class InformixOffsetContext implements OffsetContext {
     }
 
     InformixTransactionCache getInformixTransactionCache() {
-        return informixTransactionCache;
+        return transactionCache;
     }
 }
