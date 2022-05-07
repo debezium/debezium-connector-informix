@@ -12,6 +12,7 @@ import com.informix.stream.cdc.records.IfxCDCOperationRecord
 import io.debezium.time.Timestamp
 
 import scala.collection.mutable
+import scala.jdk.javaapi.OptionConverters
 
 object InformixStreamingChangeEventSource {
 
@@ -148,9 +149,9 @@ class InformixStreamingChangeEventSource(connectorConfig: InformixConnectorConfi
            *
            * */
           case IfmxStreamRecordType.BEGIN => {
-            LOGGER.info("Received BEGIN :: transId={} seqId={}", record.getTransactionId(),  record.getSequenceId)
 
-            transactionCache.beginTxn(record.getTransactionId) match {
+            val _start = System.nanoTime()
+            OptionConverters.toScala(transactionCache.beginTxn(record.getTransactionId)) match {
               case Some(value) => {
                 println(value)
               }
@@ -164,6 +165,8 @@ class InformixStreamingChangeEventSource(connectorConfig: InformixConnectorConfi
                 offsetContext.getTransactionContext.beginTransaction(record.getTransactionId.toString)
               }
             }
+            val _end = System.nanoTime()
+            LOGGER.info("Received BEGIN :: transId={} seqId={} elaspedTs={}ms", record.getTransactionId(),  record.getSequenceId, (_end - _start)/1000000d)
           }
 
           /**
@@ -172,9 +175,9 @@ class InformixStreamingChangeEventSource(connectorConfig: InformixConnectorConfi
            *
            * */
           case IfmxStreamRecordType.COMMIT => {
-            LOGGER.info("Received COMMIT :: transId={} seqId={}", record.getTransactionId(),  record.getSequenceId)
 
-            transactionCache.commitTxn(record.getTransactionId) match {
+            val _start = System.nanoTime()
+            OptionConverters.toScala(transactionCache.commitTxn(record.getTransactionId)) match {
               case Some(value) => {
                 offsetContext.setChangePosition(TxLogPosition.cloneAndSet(offsetContext.getChangePosition,
                   record.getSequenceId,
@@ -188,8 +191,10 @@ class InformixStreamingChangeEventSource(connectorConfig: InformixConnectorConfi
                 //val tableId=label2TableId(record.getLabel.toInt)
               }
             }
-
             offsetContext.getTransactionContext.endTransaction()
+            val _end = System.nanoTime()
+
+            LOGGER.info("Received COMMIT :: transId={} seqId={} elaspedTime={} ms", record.getTransactionId(),  record.getSequenceId, (_end - _start)/1000000d)
           }
 
           /**
@@ -198,9 +203,9 @@ class InformixStreamingChangeEventSource(connectorConfig: InformixConnectorConfi
            *
            * */
           case IfmxStreamRecordType.ROLLBACK => {
-            LOGGER.info("Received ROLLBACK :: transId={} seqId={}", record.getTransactionId(),  record.getSequenceId)
 
-            transactionCache.rollbackTxn(record.getTransactionId) match {
+            val _start = System.nanoTime()
+            OptionConverters.toScala(transactionCache.rollbackTxn(record.getTransactionId)) match {
               case Some(value) => {
 
                 offsetContext.setChangePosition(TxLogPosition.cloneAndSet(offsetContext.getChangePosition,
@@ -220,6 +225,9 @@ class InformixStreamingChangeEventSource(connectorConfig: InformixConnectorConfi
               }
             }
             offsetContext.getTransactionContext.endTransaction()
+            val _end = System.nanoTime()
+
+            LOGGER.info("Received ROLLBACK :: transId={} seqId={} elaspedTime={} ms", record.getTransactionId(),  record.getSequenceId, (_end - _start)/1000000d)
           }
 
           /**
@@ -229,9 +237,9 @@ class InformixStreamingChangeEventSource(connectorConfig: InformixConnectorConfi
            * */
           case IfmxStreamRecordType.INSERT => {
 
-            val data = record.asInstanceOf[IfxCDCOperationRecord].getData
+            val _start = System.nanoTime()
 
-            LOGGER.info("Received INSERT :: transId={} seqId={}", record.getTransactionId(), record.getSequenceId())
+            val data = record.asInstanceOf[IfxCDCOperationRecord].getData
 
             offsetContext.setChangePosition(TxLogPosition.cloneAndSet(offsetContext.getChangePosition,
               TxLogPosition.LSN_NULL,
@@ -244,6 +252,9 @@ class InformixStreamingChangeEventSource(connectorConfig: InformixConnectorConfi
               LOGGER.trace("Lookup label to tableId : {} -> {}", record.getLabel.toInt, tableId)
             }
             handleEvent(tableId, offsetContext, InformixChangeRecordEmitter.OP_INSERT, null, data, clock, null)
+            val _end = System.nanoTime()
+
+            LOGGER.info("Received INSERT :: transId={} seqId={} elaspedTime={} ms", record.getTransactionId(), record.getSequenceId(), (_end - _start)/1000000d)
           }
 
           /**
@@ -286,7 +297,7 @@ class InformixStreamingChangeEventSource(connectorConfig: InformixConnectorConfi
             InformixChangeRecordEmitter.convertIfxData2Array(data),
             InformixChangeRecordEmitter.convertIfxData2Array(dataNext), clock)
 
-          //add event in transcation
+          // add event in transcation
           offsetContext.getInformixTransactionCache.addEvent2Tx(tableId, cre, offsetContext.getChangePosition.getTxId)
         }
 
@@ -298,12 +309,17 @@ class InformixStreamingChangeEventSource(connectorConfig: InformixConnectorConfi
             TxLogPosition.LSN_NULL))
         }
 
-        def handleCommitEvent(offsetContext: InformixOffsetContext, cre: mutable.Buffer[(TableId, InformixChangeRecordEmitter)]): Unit = {
+        def handleCommitEvent(offsetContext: InformixOffsetContext, cre: InformixTransactionCache.TransactionCacheBuffer): Unit = {
           try {
             LOGGER.info("Handle Commit {} Events", cre.size)
+            cre.getTransactionCacheRecords.forEach(r => {
+              dispatcher.dispatchDataChangeEvent(r.getTableId, r.getInformixChangeRecordEmitter)
+            });
+            /*
             cre.foreach(tuple => {
               dispatcher.dispatchDataChangeEvent(tuple._1, tuple._2)
             })
+            */
 
           } catch {
             case e: Exception => LOGGER.info("HandleCommit got exception: {}", e.toString);
@@ -311,7 +327,7 @@ class InformixStreamingChangeEventSource(connectorConfig: InformixConnectorConfi
           }
         }
 
-        def handleRollbackEvent(offsetContext: InformixOffsetContext, cre: mutable.Buffer[(TableId, InformixChangeRecordEmitter)]): Unit = {
+        def handleRollbackEvent(offsetContext: InformixOffsetContext,  cre: InformixTransactionCache.TransactionCacheBuffer): Unit = {
           try {
             // cre.foreach(tuple => LOGGER.info("id:" + tuple._1 + ":" + "ChangeRecord:" + tuple._2.toString))
             LOGGER.info("Handle Rollback {} Events", cre.size)

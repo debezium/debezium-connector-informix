@@ -73,7 +73,8 @@ class InformixCDCEngine(host: String, port: String, user: String, dataBase: Stri
   def buildCDCEngine(url: String, lsn: Long, timeOut: Int,
                      schema: InformixDatabaseSchema): IfxCDCEngine = {
 
-    val builder = new IfxCDCEngine.Builder(new IfxDataSource(url))
+    val ds = new IfxDataSource(url)
+    val builder = new IfxCDCEngine.Builder(ds)
 
     LOGGER.info("CDCEngine set LSN = {}", lsn)
 
