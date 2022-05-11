@@ -32,7 +32,7 @@ public class TestHelper {
         // TODO: Fix parameter from properties
         return JdbcConfiguration.copy(Configuration.fromSystemProperties("database."))
                 .withDefault(JdbcConfiguration.DATABASE, "testdb")
-                .withDefault(JdbcConfiguration.HOSTNAME, "localhost" /* "172.20.3.242" */)
+                .withDefault(JdbcConfiguration.HOSTNAME, "localhost")
                 .withDefault(JdbcConfiguration.PORT, 9088)
                 .withDefault(JdbcConfiguration.USER, "informix")
                 .withDefault(JdbcConfiguration.PASSWORD, "in4mix")
@@ -43,7 +43,7 @@ public class TestHelper {
         // TODO: Fix parameter from properties
         return JdbcConfiguration.copy(Configuration.fromSystemProperties("database."))
                 .withDefault(JdbcConfiguration.DATABASE, TEST_DATABASE)
-                .withDefault(JdbcConfiguration.HOSTNAME, "localhost" /* "172.20.3.242" */)
+                .withDefault(JdbcConfiguration.HOSTNAME, "localhost")
                 .withDefault(JdbcConfiguration.PORT, 9088)
                 .withDefault(JdbcConfiguration.USER, "informix")
                 .withDefault(JdbcConfiguration.PASSWORD, "in4mix")

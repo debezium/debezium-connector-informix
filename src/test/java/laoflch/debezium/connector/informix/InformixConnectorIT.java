@@ -15,7 +15,10 @@ import static org.fest.assertions.Assertions.assertThat;
 
 import java.sql.SQLException;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 
 public class InformixConnectorIT extends AbstractConnectorTest {
@@ -70,6 +73,55 @@ public class InformixConnectorIT extends AbstractConnectorTest {
         final Struct insertOneValue = (Struct) insertOneRecord.value();
 
         assertRecord((Struct) insertOneValue.get("after"), expectedDeleteRow);
+
+        stopConnector();
+    }
+
+    @Test
+    public void insertBatchRecords() throws Exception {
+        final int RECORDS_PER_TABLE = 5;
+
+        final Configuration config = TestHelper.defaultConfig()
+                .build();
+
+        start(InformixConnector.class, config);
+        /*
+         * Wait InformixStreamingChangeEventSource.execute() is running.
+         */
+        Thread.sleep(60_000);
+
+        List<Integer> listIntIds = IntStream.range(0, RECORDS_PER_TABLE)
+                .boxed().collect(Collectors.toList());
+        Collections.shuffle(listIntIds);
+
+        for (int i = 0; i < RECORDS_PER_TABLE; i++) {
+            String insertSql = String.format("INSERT INTO testdb:hello VALUES (%d, 'hello-%d')",
+                    listIntIds.get(i),
+                    listIntIds.get(i)
+            );
+            System.out.println(insertSql);
+            connection.execute(insertSql);
+        }
+
+        SourceRecords sourceRecords = consumeRecordsByTopic(RECORDS_PER_TABLE);
+        List<SourceRecord> insertOne = sourceRecords.recordsForTopic("testdb.informix.hello");
+        assertThat(insertOne).isNotNull();
+        assertThat(insertOne).hasSize(RECORDS_PER_TABLE);
+
+        for (int i = 0; i < RECORDS_PER_TABLE; i++) {
+            Integer currIdx = listIntIds.get(i);
+            String strValue = "hello-" + currIdx;
+            System.out.println("Expect: " + strValue);
+
+            final List<SchemaAndValueField> expectedDeleteRow = Arrays.asList(
+                    new SchemaAndValueField("a", Schema.OPTIONAL_INT32_SCHEMA, currIdx),
+                    new SchemaAndValueField("b", Schema.OPTIONAL_STRING_SCHEMA, strValue));
+
+            final SourceRecord insertOneRecord = insertOne.get(i);
+            final Struct insertOneValue = (Struct) insertOneRecord.value();
+
+            assertRecord((Struct) insertOneValue.get("after"), expectedDeleteRow);
+        }
 
         stopConnector();
     }
