@@ -2,8 +2,7 @@ package laoflch.debezium.connector.informix;
 
 import static org.fest.assertions.Assertions.assertThat;
 
-import io.debezium.relational.history.HistoryRecordComparator;
-import org.testng.annotations.Test;
+import org.junit.Test;
 
 public class LsnTest {
 
