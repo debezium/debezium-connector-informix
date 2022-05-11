@@ -76,9 +76,7 @@ public class InformixCDCEngine {
         // TODO: Make an parameter 'buffer size' for better performance. Default value is 10240
         builder.buffer(819200);
 
-        List<TableId> tableIds = new ArrayList<>();
-        tableIds.addAll(schema.tableIds());
-        tableIds.stream().forEach((TableId tid) -> {
+        schema.tableIds().stream().forEach((TableId tid) -> {
             List<String> cols = schema.tableFor(tid).columns().stream()
                     .map(col -> col.name())
                     .collect(Collectors.toList());
@@ -95,9 +93,11 @@ public class InformixCDCEngine {
         /*
          * Build Map of Label_id to TableId.
          */
-        this.labelId_tableId_map = IntStream.range(0, tableIds.size())
-                .boxed()
-                .collect(Collectors.toMap(i -> i + 1, tableIds::get));
+        for (IfxCDCEngine.IfmxWatchedTable tbl: builder.getWatchedTables()) {
+            TableId tid = new TableId(tbl.getDatabaseName(), tbl.getNamespace(), tbl.getTableName());
+            labelId_tableId_map.put(tbl.getLabel(), tid);
+            LOGGER.info("Added WatchedTable : label={} -> tableId={}", tbl.getLabel(), tid);
+        }
 
         return builder.build();
     }
@@ -106,6 +106,7 @@ public class InformixCDCEngine {
         this.lsn = fromLsn;
         return fromLsn;
     }
+
     public Map<Integer, TableId> convertLabel2TableId() {
         return this.labelId_tableId_map;
     }
@@ -114,6 +115,10 @@ public class InformixCDCEngine {
         while (streamHandler.accept(cdcEngine.getRecord())) {
 
         }
+    }
+
+    public IfxCDCEngine getCdcEngine() {
+        return cdcEngine;
     }
 
     public static String genURLStr(String host, String port, String user, String password) {

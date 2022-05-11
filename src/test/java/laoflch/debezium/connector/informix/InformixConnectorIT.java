@@ -48,6 +48,8 @@ public class InformixConnectorIT extends AbstractConnectorTest {
 
     @Test
     public void insertOneRecord() throws Exception {
+        connection.execute("truncate table hello");
+
         final Configuration config = TestHelper.defaultConfig()
                 .build();
 
@@ -81,6 +83,8 @@ public class InformixConnectorIT extends AbstractConnectorTest {
     public void insertBatchRecords() throws Exception {
         final int RECORDS_PER_TABLE = 5;
 
+        connection.execute("truncate table hello");
+
         final Configuration config = TestHelper.defaultConfig()
                 .build();
 
@@ -99,7 +103,7 @@ public class InformixConnectorIT extends AbstractConnectorTest {
                     listIntIds.get(i),
                     listIntIds.get(i)
             );
-            System.out.println(insertSql);
+
             connection.execute(insertSql);
         }
 
@@ -111,7 +115,6 @@ public class InformixConnectorIT extends AbstractConnectorTest {
         for (int i = 0; i < RECORDS_PER_TABLE; i++) {
             Integer currIdx = listIntIds.get(i);
             String strValue = "hello-" + currIdx;
-            System.out.println("Expect: " + strValue);
 
             final List<SchemaAndValueField> expectedDeleteRow = Arrays.asList(
                     new SchemaAndValueField("a", Schema.OPTIONAL_INT32_SCHEMA, currIdx),

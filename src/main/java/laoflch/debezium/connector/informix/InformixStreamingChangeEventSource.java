@@ -1,9 +1,12 @@
 package laoflch.debezium.connector.informix;
 
 import com.informix.jdbc.IfmxReadableType;
+import com.informix.jdbc.IfxColumnInfo;
 import com.informix.stream.api.IfmxStreamRecord;
+import com.informix.stream.cdc.IfxCDCEngine;
 import com.informix.stream.cdc.records.IfxCDCBeginTransactionRecord;
 import com.informix.stream.cdc.records.IfxCDCCommitTransactionRecord;
+import com.informix.stream.cdc.records.IfxCDCMetaDataRecord;
 import com.informix.stream.cdc.records.IfxCDCOperationRecord;
 import com.informix.stream.cdc.records.IfxCDCRollbackTransactionRecord;
 import com.informix.stream.cdc.records.IfxCDCTimeoutRecord;
@@ -18,6 +21,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.SQLException;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -103,6 +107,9 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
                         case ROLLBACK:
                             handleRollback(cdcEngine, (IfxCDCRollbackTransactionRecord) record, transCache);
                             break;
+                        case METADATA:
+                            handleMetadata(cdcEngine, (IfxCDCMetaDataRecord) record);
+                            break;
                         case DELETE:
                             break;
                         default:
@@ -129,6 +136,25 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
                         TxLogPosition.LSN_NULL
                 )
         );
+    }
+
+    public void handleMetadata(InformixCDCEngine cdcEngine, IfxCDCMetaDataRecord record) {
+
+        LOGGER.info("Received A Metadata: {}", record);
+        LOGGER.info("METADATA: label={}, seqId={}", record.getLabel(), record.getSequenceId());
+
+        /*
+        IfxCDCEngine engine = cdcEngine.getCdcEngine();
+        List<IfxCDCEngine.IfmxWatchedTable> watchedTables = engine.getBuilder().getWatchedTables();
+        List<IfxColumnInfo> cols = record.getColumns();
+        for (IfxColumnInfo cinfo : cols) {
+            LOGGER.info("ColumnInfo: colName={}, {}", cinfo.getColumnName(), cinfo.toString());
+        }
+
+        for (IfxCDCEngine.IfmxWatchedTable tbl : watchedTables) {
+            LOGGER.info("Engine Watched Table: label={}, tabName={}", tbl.getLabel(), tbl.getTableName());
+        }
+        */
     }
 
     public void handleBeforeUpdate(InformixCDCEngine cdcEngine, IfxCDCOperationRecord record, InformixTransactionCache transactionCache) throws IfxStreamException {
