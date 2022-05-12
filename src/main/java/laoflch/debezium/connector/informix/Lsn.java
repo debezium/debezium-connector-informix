@@ -12,30 +12,23 @@ import java.util.Arrays;
  * @author laoflch Luo, Xiaolin Zhang
  *
  */
-/*
- * TODO: Since Informix's LSN is an bigint, which is 8 bytes long, we can rewrite it with
- *       'Long' type instead of byte[]?
- */
 public class Lsn implements Comparable<Lsn>, Nullable {
     private static final String NULL_STRING = "NULL";
     private static final String NEGATIVE_ONE = "-1";
 
     public static final Lsn NULL = new Lsn(null);
 
-    private final byte[] binary;
-    private int[] unsignedBinary;
+    private Long lsn;
+    private boolean isInitialized;
 
-    private String string;
-
-    private Lsn(byte[] binary) {
-        this.binary = binary;
+    public Lsn() {
+        lsn = -2L;
+        isInitialized = false;
     }
 
-    /**
-     * @return binary representation of the stored LSN
-     */
-    public byte[] getBinary() {
-        return binary;
+    public Lsn(Long lsn) {
+        this.lsn = lsn;
+        this.isInitialized = true;
     }
 
     /**
@@ -43,71 +36,31 @@ public class Lsn implements Comparable<Lsn>, Nullable {
      */
     @Override
     public boolean isAvailable() {
-        return binary != null;
-    }
-
-    private int[] getUnsignedBinary() {
-        if (unsignedBinary != null || binary == null) {
-            return unsignedBinary;
-        }
-
-        unsignedBinary = new int[binary.length];
-        for (int i = 0; i < binary.length; i++) {
-            unsignedBinary[i] = Byte.toUnsignedInt(binary[i]);
-        }
-        return unsignedBinary;
+        return isInitialized;
     }
 
     /**
      * @return textual representation of the stored LSN
      */
     public String toString() {
-        if (string != null) {
-            return string;
-        }
-        final StringBuilder sb = new StringBuilder();
-        if (binary == null) {
-            return NULL_STRING;
-        }
-        final int[] unsigned = getUnsignedBinary();
-        for (int i = 0; i < unsigned.length; i++) {
-            final String byteStr = Integer.toHexString(unsigned[i]);
-            if (byteStr.length() == 1) {
-                sb.append('0');
-            }
-            sb.append(byteStr);
-            if (i == 3 || i == 7) {
-                sb.append(':');
-            }
-        }
-        string = sb.toString();
-        return string;
+        return Long.toString(lsn);
     }
 
     /**
-     * @param lsnString - textual representation of Lsn
+     * @param lsnString - signed long integer string
      * @return LSN converted from its textual representation
      */
     public static Lsn valueOf(String lsnString) {
-        return (lsnString == null || NULL_STRING.equals(lsnString) || NEGATIVE_ONE.equals(lsnString)) ?
-                NULL :
-                new Lsn(Strings.hexStringToByteArray(lsnString.replace(":", "")));
+        return Lsn.valueOf(Long.parseLong(lsnString));
     }
 
-    /**
-     * @param lsnBinary - binary representation of Lsn
-     * @return LSN converted from its binary representation
-     */
-    public static Lsn valueOf(byte[] lsnBinary) {
-        return (lsnBinary == null) ? NULL : new Lsn(lsnBinary);
+    public static Lsn valueOf(Long val) {
+        return new Lsn(val);
     }
 
     @Override
     public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + Arrays.hashCode(binary);
-        return result;
+        return lsn.hashCode();
     }
 
     @Override
@@ -122,10 +75,7 @@ public class Lsn implements Comparable<Lsn>, Nullable {
             return false;
         }
         Lsn other = (Lsn) obj;
-        if (!Arrays.equals(binary, other.binary)) {
-            return false;
-        }
-        return true;
+        return lsn.equals(other.lsn);
     }
 
     /**
@@ -145,15 +95,7 @@ public class Lsn implements Comparable<Lsn>, Nullable {
         if (!o.isAvailable()) {
             return 1;
         }
-        final int[] thisU = getUnsignedBinary();
-        final int[] thatU = o.getUnsignedBinary();
-        for (int i = 0; i < thisU.length; i++) {
-            final int diff = thisU[i] - thatU[i];
-            if (diff != 0) {
-                return diff;
-            }
-        }
-        return 0;
+        return lsn.compareTo(o.lsn);
     }
 
     /**
@@ -172,12 +114,7 @@ public class Lsn implements Comparable<Lsn>, Nullable {
      * Return the next LSN in sequence
      */
     public Lsn increment() {
-        final BigInteger bi = new BigInteger(this.toString().replace(":", ""), 16).add(BigInteger.ONE);
-        final byte[] biByteArray = bi.toByteArray();
-        final byte[] lsnByteArray = new byte[16];
-        for (int i = 0; i < biByteArray.length; i++) {
-            lsnByteArray[i + 16 - biByteArray.length] = biByteArray[i];
-        }
-        return Lsn.valueOf(lsnByteArray);
+        lsn = lsn + 1;
+        return Lsn.valueOf(lsn);
     }
 }
