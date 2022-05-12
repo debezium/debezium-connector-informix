@@ -4,25 +4,27 @@ import com.informix.jdbcx.IfxDataSource;
 import com.informix.stream.api.IfmxStreamRecord;
 import com.informix.stream.cdc.IfxCDCEngine;
 import com.informix.stream.impl.IfxStreamException;
+import com.informix.util.AdvancedUppercaseProperties;
 import io.debezium.config.Configuration;
 import io.debezium.jdbc.JdbcConfiguration;
+import io.debezium.jdbc.JdbcConnection;
+import io.debezium.relational.Column;
 import io.debezium.relational.TableId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.Hashtable;
-import java.util.List;
+import java.util.Locale;
 import java.util.Map;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
+import java.util.Properties;
 
 public class InformixCDCEngine {
 
     private static Logger LOGGER = LoggerFactory.getLogger(InformixCDCEngine.class);
 
-    private static String URL_PATTERN = "jdbc:informix-sqli://%s:%s/syscdcv1:user=%s;password=%s;";
+    // private static String URL_PATTERN = "jdbc:informix-sqli://%s:%s/syscdcv1:user=%s;password=%s;";
+    private static String URL_PATTERN = "jdbc:informix-sqli://%s:%s/syscdcv1";
 
     private String host;
     private String port;
@@ -53,42 +55,46 @@ public class InformixCDCEngine {
         labelId_tableId_map = new Hashtable<>();
     }
 
-    public void init(InformixDatabaseSchema schema) {
+    public void init(InformixDatabaseSchema schema) throws InterruptedException {
         try {
-            String url = InformixCDCEngine.genURLStr(host, port, user, password);
-            this.cdcEngine = this.buildCDCEngine(url, this.lsn, this.timeOut, schema);
-
-            LOGGER.info("Connecting to Informix URL: {}", url);
+            String url = InformixCDCEngine.genURLStr(host, port);
+            this.cdcEngine = this.buildCDCEngine(url, user, password, schema);
 
             this.cdcEngine.init();
             this.hasInit = true;
         } catch (SQLException ex) {
-            LOGGER.error("Caught SQLException: {}", ex);
+            LOGGER.error("Caught SQLException", ex);
+            throw new InterruptedException("Failed while while initialize CDC Engine");
         } catch (IfxStreamException ex) {
-            LOGGER.error("Caught IfxStreamException: {}", ex);
+            LOGGER.error("Caught IfxStreamException", ex);
+            throw new InterruptedException("Failed while while initialize CDC Engine");
         }
     }
 
-    public IfxCDCEngine buildCDCEngine(String url, Long lsn, int timeOut, InformixDatabaseSchema schema) throws SQLException {
+    public IfxCDCEngine buildCDCEngine(String url, String user, String password, InformixDatabaseSchema schema) throws SQLException {
         IfxDataSource ds = new IfxDataSource(url);
+        ds.setUser(user);
+        ds.setPassword(password);
+        Properties dsMasked = propsWithMaskedPassword(ds.getDsProperties());
+        LOGGER.info("Connecting to Informix CDC: {}", dsMasked);
+
         IfxCDCEngine.Builder builder = new IfxCDCEngine.Builder(ds);
 
         // TODO: Make an parameter 'buffer size' for better performance. Default value is 10240
         builder.buffer(819200);
+        builder.timeout(this.timeOut);
 
-        schema.tableIds().stream().forEach((TableId tid) -> {
-            List<String> cols = schema.tableFor(tid).columns().stream()
-                    .map(col -> col.name())
-                    .collect(Collectors.toList());
-
+        schema.tableIds().forEach((TableId tid) -> {
             String tname = tid.catalog() + ":" + tid.schema() + "." + tid.table();
-            builder.watchTable(tname, cols.toArray(new String[0]));
+            String[] colNames = schema.tableFor(tid).columns().stream()
+                    .map(Column::name).toArray(String[]::new);
+            builder.watchTable(tname, colNames);
         });
 
-        if (lsn > 0) {
-            builder.sequenceId(lsn);
+        if (this.lsn > 0) {
+            builder.sequenceId(this.lsn);
         }
-        builder.timeout(timeOut);
+        LOGGER.info("Set CDCEngine's LSN to {}", builder.getSequenceId());
 
         /*
          * Build Map of Label_id to TableId.
@@ -102,9 +108,16 @@ public class InformixCDCEngine {
         return builder.build();
     }
 
-    public Long setStartLsn(Long fromLsn) {
+    public void close() {
+        try {
+            this.cdcEngine.close();
+        } catch (IfxStreamException e) {
+            LOGGER.error("Caught a exception while closing cdcEngine", e);
+        }
+    }
+
+    public void setStartLsn(Long fromLsn) {
         this.lsn = fromLsn;
-        return fromLsn;
     }
 
     public Map<Integer, TableId> convertLabel2TableId() {
@@ -121,12 +134,23 @@ public class InformixCDCEngine {
         return cdcEngine;
     }
 
-    public static String genURLStr(String host, String port, String user, String password) {
-        return String.format(URL_PATTERN, host, port, user, password);
+    public static String genURLStr(String host, String port) {
+        return String.format(URL_PATTERN, host, port);
     }
 
     public static InformixCDCEngine build(Configuration config) {
         return new InformixCDCEngine(config);
+    }
+
+    private static Properties propsWithMaskedPassword(Properties props) {
+        final Properties filtered = new Properties();
+        filtered.putAll(props);
+        String passwdKeyName = props instanceof AdvancedUppercaseProperties ?
+                JdbcConfiguration.PASSWORD.name().toUpperCase() : JdbcConfiguration.PASSWORD.name();
+        if (props.containsKey(passwdKeyName)) {
+            filtered.put(passwdKeyName, "***");
+        }
+        return filtered;
     }
 
     public interface StreamHandler {

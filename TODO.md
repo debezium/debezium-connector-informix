@@ -64,7 +64,7 @@ $ kcat -b localhost:9092 -t informix-214414.cdctable.hello -C | jq ".payload.sou
 "171814396820"
 ```
 
-## 8. Docker Integration Test
+## 8. [X] Docker Integration Test
 
 ## 9. Implements Metrics
 
