@@ -79,11 +79,11 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
 
         Map<Integer, TableId> label2TableId = cdcEngine.convertLabel2TableId();
 
-        /*
-         * Main Handler Loop
-         */
-        while (context.isRunning()) {
-            try {
+        try {
+            /*
+             * Main Handler Loop
+             */
+            while (context.isRunning()) {
                 cdcEngine.stream((IfmxStreamRecord record) -> {
                     switch (record.getType()) {
                         case TIMEOUT:
@@ -118,11 +118,18 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
 
                     return false;
                 });
-            } catch (SQLException e) {
-                LOGGER.error("Caught SQLException", e);
-            } catch (IfxStreamException e) {
-                LOGGER.error("Caught IfxStreamException", e);
             }
+        } catch (SQLException e) {
+            LOGGER.error("Caught SQLException", e);
+            errorHandler.setProducerThrowable(e);
+        } catch (IfxStreamException e) {
+            LOGGER.error("Caught IfxStreamException", e);
+            errorHandler.setProducerThrowable(e);
+        }  catch (Exception e) {
+            LOGGER.error("Caught Unkown Exception", e);
+            errorHandler.setProducerThrowable(e);
+        } finally {
+            cdcEngine.close();
         }
     }
 
@@ -140,8 +147,8 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
 
     public void handleMetadata(InformixCDCEngine cdcEngine, IfxCDCMetaDataRecord record) {
 
-        LOGGER.info("Received A Metadata: {}", record);
-        LOGGER.info("METADATA: label={}, seqId={}", record.getLabel(), record.getSequenceId());
+        LOGGER.info("Received A Metadata: type={}, label={}, seqId={}",
+                record.getType(), record.getLabel(), record.getSequenceId());
 
         /*
         IfxCDCEngine engine = cdcEngine.getCdcEngine();

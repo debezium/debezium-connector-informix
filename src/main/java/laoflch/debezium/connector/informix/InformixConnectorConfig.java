@@ -35,6 +35,8 @@ import io.debezium.relational.history.HistoryRecordComparator;
 import io.debezium.relational.history.KafkaDatabaseHistory;
 
 import laoflch.debezium.connector.informix.Module;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * The list of configuration options for Informix connector
@@ -120,8 +122,6 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
 
     /**
      * The set of predefined snapshot isolation mode options.
-     *
-     * https://www.ibm.com/support/knowledgecenter/en/SSEPGG_11.5.0/com.ibm.db2.luw.apdv.java.doc/src/tpc/imjcc_r0052429.html
      */
     public static enum SnapshotIsolationMode implements EnumeratedValue {
 
@@ -257,28 +257,40 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
             CommonConnectorConfig.MAX_QUEUE_SIZE,
             CommonConnectorConfig.SNAPSHOT_DELAY_MS,
             CommonConnectorConfig.SNAPSHOT_FETCH_SIZE,
-            Heartbeat.HEARTBEAT_INTERVAL, Heartbeat.HEARTBEAT_TOPICS_PREFIX,
+            Heartbeat.HEARTBEAT_INTERVAL,
+            Heartbeat.HEARTBEAT_TOPICS_PREFIX,
             CommonConnectorConfig.SOURCE_STRUCT_MAKER_VERSION,
             CommonConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE);
 
     public static ConfigDef configDef() {
         ConfigDef config = new ConfigDef();
 
-        Field.group(config, "Informix Server", SERVER_NAME, DATABASE_NAME, SNAPSHOT_MODE);
-        Field.group(config, "History Storage", KafkaDatabaseHistory.BOOTSTRAP_SERVERS,
-                KafkaDatabaseHistory.TOPIC, KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS,
-                KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS, HistorizedRelationalDatabaseConnectorConfig.DATABASE_HISTORY);
-        Field.group(config, "Events", RelationalDatabaseConnectorConfig.TABLE_WHITELIST,
+        Field.group(config, "Informix Server",
+                SERVER_NAME, DATABASE_NAME, SNAPSHOT_MODE);
+        Field.group(config, "History Storage",
+                KafkaDatabaseHistory.BOOTSTRAP_SERVERS,
+                KafkaDatabaseHistory.TOPIC,
+                KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS,
+                KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS,
+                HistorizedRelationalDatabaseConnectorConfig.DATABASE_HISTORY);
+        Field.group(config, "Events",
+                RelationalDatabaseConnectorConfig.TABLE_WHITELIST,
                 RelationalDatabaseConnectorConfig.TABLE_BLACKLIST,
                 RelationalDatabaseConnectorConfig.COLUMN_BLACKLIST,
                 RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
                 RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN,
-                Heartbeat.HEARTBEAT_INTERVAL, Heartbeat.HEARTBEAT_TOPICS_PREFIX,
+                Heartbeat.HEARTBEAT_INTERVAL,
+                Heartbeat.HEARTBEAT_TOPICS_PREFIX,
                 CommonConnectorConfig.SOURCE_STRUCT_MAKER_VERSION,
                 CommonConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE);
-        Field.group(config, "Connector", CommonConnectorConfig.POLL_INTERVAL_MS, CommonConnectorConfig.MAX_BATCH_SIZE,
-                CommonConnectorConfig.MAX_QUEUE_SIZE, CommonConnectorConfig.SNAPSHOT_DELAY_MS, CommonConnectorConfig.SNAPSHOT_FETCH_SIZE,
-                RelationalDatabaseConnectorConfig.DECIMAL_HANDLING_MODE, RelationalDatabaseConnectorConfig.TIME_PRECISION_MODE);
+        Field.group(config, "Connector",
+                CommonConnectorConfig.POLL_INTERVAL_MS,
+                CommonConnectorConfig.MAX_BATCH_SIZE,
+                CommonConnectorConfig.MAX_QUEUE_SIZE,
+                CommonConnectorConfig.SNAPSHOT_DELAY_MS,
+                CommonConnectorConfig.SNAPSHOT_FETCH_SIZE,
+                RelationalDatabaseConnectorConfig.DECIMAL_HANDLING_MODE,
+                RelationalDatabaseConnectorConfig.TIME_PRECISION_MODE);
 
         return config;
     }
@@ -332,7 +344,6 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
         try {
             InformixSourceInfoStructMaker informixSourceInfoStructMaker;
 
-            // TODO:
             String moduleName = Module.name();
             String moduleVersion = Module.version();
 
@@ -349,12 +360,8 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
 
         @Override
         public boolean isIncluded(TableId t) {
-             //过滤库中的系统表，informix的系统表以sys开头
-            return !(t.table().toLowerCase().startsWith("sys") /*||
-                    t.schema().toUpperCase().startsWith("ASNCDC") ||
-                    t.schema().toUpperCase().startsWith("SYSTOOLS") ||
-                    t.table().toLowerCase().startsWith("ibmqrep_")*/);
-
+            // 过滤库中的系统表，informix的系统表以sys开头
+            return !(t.table().toLowerCase().startsWith("sys"));
         }
     }
 
