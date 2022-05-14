@@ -69,3 +69,8 @@ $ kcat -b localhost:9092 -t informix-214414.cdctable.hello -C | jq ".payload.sou
 ## 9. Implements Metrics
 
 - Reference: https://github.com/debezium/debezium/blob/main/debezium-connector-mysql/src/main/java/io/debezium/connector/mysql/MySqlChangeEventSourceMetricsFactory.java
+
+## 10. Testcases
+
+- [ ] `.with(SNAPSHOT_MODE, INITIAL)`
+- [ ] More Types: bigint, bigserial

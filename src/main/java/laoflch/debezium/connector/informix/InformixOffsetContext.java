@@ -26,7 +26,6 @@ public class InformixOffsetContext implements OffsetContext {
 
     private final TransactionContext transactionContext;
 
-    // TODO: We should move informixTransactionCache into InformixCDCEngine?
     private final InformixTransactionCache transactionCache;
 
     public InformixOffsetContext(InformixConnectorConfig connectorConfig, TxLogPosition position, boolean snapshot,

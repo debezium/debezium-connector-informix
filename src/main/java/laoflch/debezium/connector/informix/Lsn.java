@@ -4,6 +4,7 @@ import io.debezium.util.Strings;
 
 import java.math.BigInteger;
 import java.util.Arrays;
+import java.util.Objects;
 
 /**
  * A logical representation of LSN (log sequence number) position. When LSN is not available
@@ -27,7 +28,7 @@ public class Lsn implements Comparable<Lsn>, Nullable {
     }
 
     public Lsn(Long lsn) {
-        this.lsn = lsn;
+        this.lsn = lsn == null ? -1 : lsn;
         this.isInitialized = true;
     }
 
@@ -47,10 +48,14 @@ public class Lsn implements Comparable<Lsn>, Nullable {
     }
 
     /**
-     * @param lsnString - signed long integer string
+     * @param lsnString - signed long integer string. We consider "NULL" and "-1L"
+     *                  as same as "new Lsn(-1)".
      * @return LSN converted from its textual representation
      */
     public static Lsn valueOf(String lsnString) {
+        if (Objects.equals(lsnString.toUpperCase(), Lsn.NULL_STRING))
+            return Lsn.valueOf(-1L);
+
         return Lsn.valueOf(Long.parseLong(lsnString));
     }
 

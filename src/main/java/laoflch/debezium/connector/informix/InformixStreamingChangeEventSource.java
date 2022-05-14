@@ -1,9 +1,7 @@
 package laoflch.debezium.connector.informix;
 
 import com.informix.jdbc.IfmxReadableType;
-import com.informix.jdbc.IfxColumnInfo;
 import com.informix.stream.api.IfmxStreamRecord;
-import com.informix.stream.cdc.IfxCDCEngine;
 import com.informix.stream.cdc.records.IfxCDCBeginTransactionRecord;
 import com.informix.stream.cdc.records.IfxCDCCommitTransactionRecord;
 import com.informix.stream.cdc.records.IfxCDCMetaDataRecord;
@@ -21,7 +19,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.SQLException;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -69,15 +66,13 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
         InformixCDCEngine cdcEngine = dataConnection.getCdcEngine();
         InformixTransactionCache transCache = offsetContext.getInformixTransactionCache();
 
-        /**
+        /*
          * Initialize CDC Engine before main loop;
          */
         TxLogPosition lastPosition = offsetContext.getChangePosition();
         Long fromLsn = lastPosition.getCommitLsn();
         cdcEngine.setStartLsn(fromLsn);
         cdcEngine.init(schema);
-
-        Map<Integer, TableId> label2TableId = cdcEngine.convertLabel2TableId();
 
         try {
             /*
@@ -126,7 +121,7 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
             LOGGER.error("Caught IfxStreamException", e);
             errorHandler.setProducerThrowable(e);
         }  catch (Exception e) {
-            LOGGER.error("Caught Unkown Exception", e);
+            LOGGER.error("Caught Unknown Exception", e);
             errorHandler.setProducerThrowable(e);
         } finally {
             cdcEngine.close();
@@ -206,8 +201,9 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
         long _start = System.nanoTime();
 
         Long transId = (long) record.getTransactionId();
+        Long beginTs = record.getTime();
 
-        Optional<InformixTransactionCache.TransactionCacheBuffer> transactionCacheBuffer = transactionCache.beginTxn(transId);
+        Optional<InformixTransactionCache.TransactionCacheBuffer> transactionCacheBuffer = transactionCache.beginTxn(transId, beginTs);
         if (!transactionCacheBuffer.isPresent()) {
             offsetContext.setChangePosition(
                     TxLogPosition.cloneAndSet(
@@ -223,14 +219,18 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
 
         long _end = System.nanoTime();
 
-        LOGGER.info("Received BEGIN :: transId={} seqId={} elaspedTs={}ms", record.getTransactionId(), record.getSequenceId(), (_end - _start) / 1000000d);
+        LOGGER.info("Received BEGIN :: transId={} seqId={} time={} userId={} elapsedTs={}ms",
+                record.getTransactionId(), record.getSequenceId(),
+                record.getTime(), record.getUserId(),
+                (_end - _start) / 1000000d);
     }
 
     public void handleCommit(InformixCDCEngine cdcEngine, IfxCDCCommitTransactionRecord record, InformixTransactionCache transactionCache) throws InterruptedException, IfxStreamException {
         long _start = System.nanoTime();
         Long transId = (long) record.getTransactionId();
+        Long endTime = record.getTime();
 
-        Optional<InformixTransactionCache.TransactionCacheBuffer> transactionCacheBuffer = transactionCache.commitTxn(transId);
+        Optional<InformixTransactionCache.TransactionCacheBuffer> transactionCacheBuffer = transactionCache.commitTxn(transId, endTime);
         if (transactionCacheBuffer.isPresent()) {
             offsetContext.setChangePosition(
                     TxLogPosition.cloneAndSet(
@@ -245,12 +245,16 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
             for (InformixTransactionCache.TransactionCacheRecord r : transactionCacheBuffer.get().getTransactionCacheRecords()) {
                 dispatcher.dispatchDataChangeEvent(r.getTableId(), r.getInformixChangeRecordEmitter());
             }
-            LOGGER.info("Handle Commit {} Events", transactionCacheBuffer.get().size());
+            LOGGER.info("Handle Commit {} Events, transElapsedTime={}",
+                    transactionCacheBuffer.get().size(), transactionCacheBuffer.get().getElapsed());
         }
         offsetContext.getTransactionContext().endTransaction();
 
         long _end = System.nanoTime();
-        LOGGER.info("Received COMMIT :: transId={} seqId={} elaspedTime={} ms", record.getTransactionId(), record.getSequenceId(), (_end - _start) / 1000000d);
+        LOGGER.info("Received COMMIT :: transId={} seqId={} time={} elapsedTime={} ms",
+                record.getTransactionId(), record.getSequenceId(),
+                record.getTime(),
+                (_end - _start) / 1000000d);
     }
 
     public void handleInsert(InformixCDCEngine cdcEngine, IfxCDCOperationRecord record, InformixTransactionCache transactionCache) throws IfxStreamException, SQLException {
@@ -271,7 +275,9 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
         handleEvent(tid, offsetContext, InformixChangeRecordEmitter.OP_INSERT, null, data, clock, null);
 
         long _end = System.nanoTime();
-        LOGGER.info("Received INSERT :: transId={} seqId={} elaspedTime={} ms", record.getTransactionId(), record.getSequenceId(), (_end - _start) / 1000000d);
+        LOGGER.info("Received INSERT :: transId={} seqId={} elapsedTime={} ms",
+                record.getTransactionId(), record.getSequenceId(),
+                (_end - _start) / 1000000d);
     }
 
     public void handleRollback(InformixCDCEngine cdcEngine, IfxCDCRollbackTransactionRecord record, InformixTransactionCache transactionCache) throws IfxStreamException {
@@ -291,12 +297,14 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
             /*
              * when rollbackTxn do nothing handle but log the discarded records
              */
-            LOGGER.info("Rollback Txn:" + record.getTransactionId());
+            LOGGER.info("Rollback Txn: {}", record.getTransactionId());
         }
         offsetContext.getTransactionContext().endTransaction();
 
         long _end = System.nanoTime();
-        LOGGER.info("Received ROLLBACK :: transId={} seqId={} elaspedTime={} ms", record.getTransactionId(), record.getSequenceId(), (_end - _start) / 1000000d);
+        LOGGER.info("Received ROLLBACK :: transId={} seqId={} elapsedTime={} ms",
+                record.getTransactionId(), record.getSequenceId(),
+                (_end - _start) / 1000000d);
     }
 
     public void handleEvent(TableId tableId,

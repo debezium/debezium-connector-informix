@@ -25,22 +25,24 @@ public class InformixTransactionCache {
         this.beforeAndAfter = new HashMap<>();
     }
 
-    public Optional<TransactionCacheBuffer> beginTxn(Long txn) {
+    public Optional<TransactionCacheBuffer> beginTxn(Long txn, Long beginTs) {
         if (transactionCacheBufferMap.containsKey(txn)) {
             LOGGER.warn("Transaction key={} already exists in InformixTransactionCache", txn);
             return Optional.empty();
         }
-        TransactionCacheBuffer cre = new TransactionCacheBuffer(4096);
-        return Optional.ofNullable(transactionCacheBufferMap.put(txn, cre));
+        TransactionCacheBuffer tb = new TransactionCacheBuffer(4096, beginTs);
+        return Optional.ofNullable(transactionCacheBufferMap.put(txn, tb));
     }
 
-    public Optional<TransactionCacheBuffer> commitTxn(Long txn) {
+    public Optional<TransactionCacheBuffer> commitTxn(Long txn, Long endTime) {
         if (!transactionCacheBufferMap.containsKey(txn)) {
             LOGGER.warn("Transaction key={} does not exist in InformixTransactionCache while commitTxn()", txn);
             return Optional.empty();
         }
 
-        return Optional.ofNullable(transactionCacheBufferMap.remove(txn));
+        TransactionCacheBuffer transactionCacheBuffer = transactionCacheBufferMap.remove(txn);
+        transactionCacheBuffer.setEndTime(endTime);
+        return Optional.of(transactionCacheBuffer);
     }
 
     public Optional<TransactionCacheBuffer> rollbackTxn(Long txn) {
@@ -52,7 +54,7 @@ public class InformixTransactionCache {
         return Optional.ofNullable(transactionCacheBufferMap.remove(txn));
     }
 
-    public TransactionCacheBuffer addEvent2Tx(TableId tableId, InformixChangeRecordEmitter event, Long txn) {
+    public void addEvent2Tx(TableId tableId, InformixChangeRecordEmitter event, Long txn) {
         if (event != null) {
             TransactionCacheBuffer buffer = transactionCacheBufferMap.get(txn);
 
@@ -60,11 +62,8 @@ public class InformixTransactionCache {
                 buffer.getTransactionCacheRecords().add(
                         new TransactionCacheRecord(tableId, event)
                 );
-                return buffer;
             }
         }
-
-        return null;
     }
 
     public Optional<Map<String, IfmxReadableType>> beforeUpdate(Long txn, Map<String, IfmxReadableType> data) {
@@ -87,15 +86,34 @@ public class InformixTransactionCache {
 
     public static class TransactionCacheBuffer {
 
-        // TODO: Transaction BeginTime & EndTime
-        private List<TransactionCacheRecord> transactionCacheRecordList;
+        private final List<TransactionCacheRecord> transactionCacheRecordList;
+        private Long beginTime; // Begin time of transaction
+        private Long endTime;   // Commit/Rollback of the transaction
 
-        public TransactionCacheBuffer(int initialSize) {
-            transactionCacheRecordList = new ArrayList<TransactionCacheRecord>(initialSize);
+        public TransactionCacheBuffer(int initialSize, Long beginTs) {
+            transactionCacheRecordList = new ArrayList<>(initialSize);
+            beginTime = beginTs;
+            endTime = -1L;
         }
 
         public List<TransactionCacheRecord> getTransactionCacheRecords() {
             return transactionCacheRecordList;
+        }
+
+        public Long getBeginTime() {
+            return beginTime;
+        }
+
+        public Long getEndTime() {
+            return endTime;
+        }
+
+        public void setEndTime(Long endTime) {
+            this.endTime = endTime;
+        }
+
+        public Long getElapsed() {
+            return this.endTime - this.beginTime;
         }
 
         public int size() {

@@ -3,20 +3,25 @@ package laoflch.debezium.connector.informix;
 import io.debezium.config.Configuration;
 import io.debezium.data.SchemaAndValueField;
 import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.util.Testing;
 import laoflch.debezium.connector.informix.util.TestHelper;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
+import static laoflch.debezium.connector.informix.InformixConnectorConfig.SNAPSHOT_MODE;
+import static laoflch.debezium.connector.informix.InformixConnectorConfig.SnapshotMode.INITIAL_SCHEMA_ONLY;
 import static org.fest.assertions.Assertions.assertThat;
 
 import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Random;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -36,6 +41,9 @@ public class InformixConnectorIT extends AbstractConnectorTest {
          */
         connection.execute("create table if not exists hello(a integer, b varchar(200))");
         connection.execute("truncate table hello");
+        initializeConnectorTestFramework();
+        Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
+        Testing.Print.enable();
     }
 
     @After
@@ -51,6 +59,7 @@ public class InformixConnectorIT extends AbstractConnectorTest {
         connection.execute("truncate table hello");
 
         final Configuration config = TestHelper.defaultConfig()
+                .with(SNAPSHOT_MODE, INITIAL_SCHEMA_ONLY)
                 .build();
 
         start(InformixConnector.class, config);
@@ -81,11 +90,13 @@ public class InformixConnectorIT extends AbstractConnectorTest {
 
     @Test
     public void insertBatchRecords() throws Exception {
+        int randStart = (new Random()).nextInt(0, 1000);
         final int RECORDS_PER_TABLE = 5;
 
         connection.execute("truncate table hello");
 
         final Configuration config = TestHelper.defaultConfig()
+                .with(SNAPSHOT_MODE, INITIAL_SCHEMA_ONLY)
                 .build();
 
         start(InformixConnector.class, config);
@@ -98,10 +109,10 @@ public class InformixConnectorIT extends AbstractConnectorTest {
                 .boxed().collect(Collectors.toList());
         Collections.shuffle(listIntIds);
 
-        for (int i = 0; i < RECORDS_PER_TABLE; i++) {
+        for (int i = randStart; i < randStart + RECORDS_PER_TABLE; i++) {
             String insertSql = String.format("INSERT INTO testdb:hello VALUES (%d, 'hello-%d')",
-                    listIntIds.get(i),
-                    listIntIds.get(i)
+                    listIntIds.get(i - randStart),
+                    listIntIds.get(i - randStart)
             );
 
             connection.execute(insertSql);
@@ -112,15 +123,15 @@ public class InformixConnectorIT extends AbstractConnectorTest {
         assertThat(insertOne).isNotNull();
         assertThat(insertOne).hasSize(RECORDS_PER_TABLE);
 
-        for (int i = 0; i < RECORDS_PER_TABLE; i++) {
-            Integer currIdx = listIntIds.get(i);
+        for (int i = randStart; i < randStart + RECORDS_PER_TABLE; i++) {
+            Integer currIdx = listIntIds.get(i - randStart);
             String strValue = "hello-" + currIdx;
 
             final List<SchemaAndValueField> expectedDeleteRow = Arrays.asList(
                     new SchemaAndValueField("a", Schema.OPTIONAL_INT32_SCHEMA, currIdx),
                     new SchemaAndValueField("b", Schema.OPTIONAL_STRING_SCHEMA, strValue));
 
-            final SourceRecord insertOneRecord = insertOne.get(i);
+            final SourceRecord insertOneRecord = insertOne.get(i - randStart);
             final Struct insertOneValue = (Struct) insertOneRecord.value();
 
             assertRecord((Struct) insertOneValue.get("after"), expectedDeleteRow);

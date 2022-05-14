@@ -2,16 +2,18 @@ package laoflch.debezium.connector.informix;
 
 import static org.fest.assertions.Assertions.assertThat;
 
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.ArrayList;
 
 public class LsnTest {
 
+    @Ignore("Rewrite these tests")
     @Test
     public void testLsnMinusOne() {
-        Lsn recorded = Lsn.valueOf("10:00");
-        Lsn desired = Lsn.valueOf("10:46");
+        Lsn recorded = Lsn.valueOf("1000");
+        Lsn desired = Lsn.valueOf("1046");
         int ret = recorded.compareTo(desired);
         System.out.println(ret);
         // assertThat(ret).isEqualTo(-1);
@@ -37,11 +39,12 @@ public class LsnTest {
 
     @Test
     public void testValueOf() {
-        String lsnStr1 = "146039087264";
-        String lsnStr2 = "14603908:7264";
-        Lsn lsn1 = Lsn.valueOf(lsnStr1);
-        Lsn lsn2 = Lsn.valueOf(lsnStr2);
+        String lsnStr = "146039087264";
+        Lsn lsn1 = Lsn.valueOf(lsnStr);
+        Lsn lsn2 = Lsn.valueOf(146039087264L);
+        Lsn lsn3 = new Lsn(146039087264L);
         assertThat(lsn1).isEqualTo(lsn2);
+        assertThat(lsn2).isEqualTo(lsn3);
     }
 
     @Test
