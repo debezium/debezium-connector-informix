@@ -24,6 +24,12 @@ like this:
 $ mvn verify -Ddatabase.hostname=172.20.3.242
 ```
 
+Or, run single Integration Test:
+
+```text
+mvn -Dit.test=InformixCdcTypesIT verify -Ddatabase.hostname=172.20.3.242
+```
+
 ## Thanks
 
 This codebase is derived from two projects: [debezium-connector-db2](https://github.com/debezium/debezium-connector-db2) and [debezium-informix-connector](https://github.com/laoflch/debezium-informix-connector). Thanks for originated ideas and Proof-of-Concept about how to integrate Informix CDC API with Debezium Connector Frameworks.

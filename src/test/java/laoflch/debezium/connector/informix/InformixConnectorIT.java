@@ -29,6 +29,7 @@ import java.util.stream.IntStream;
 public class InformixConnectorIT extends AbstractConnectorTest {
 
     private InformixConnection connection;
+    public Random rand = new Random();
 
     @Before
     public void before() throws SQLException {
@@ -90,7 +91,7 @@ public class InformixConnectorIT extends AbstractConnectorTest {
 
     @Test
     public void insertBatchRecords() throws Exception {
-        int randStart = (new Random()).nextInt(0, 1000);
+        int randStart = rand.nextInt() / 1000;
         final int RECORDS_PER_TABLE = 5;
 
         connection.execute("truncate table hello");
