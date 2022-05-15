@@ -3,6 +3,7 @@ package laoflch.debezium.connector.informix;
 import java.sql.Types;
 import java.time.ZoneOffset;
 
+import io.debezium.data.SpecialValueDecimal;
 import io.debezium.time.MicroTimestamp;
 import io.debezium.time.NanoTimestamp;
 import io.debezium.time.Timestamp;
@@ -50,6 +51,8 @@ public class InformixValueConverters extends JdbcValueConverters {
             case Types.TINYINT:
                 // values are an 8-bit unsigned integer value between 0 and 255, we thus need to store it in short int
                 return SchemaBuilder.int16();
+            case Types.DECIMAL:
+                return SpecialValueDecimal.builder(this.decimalMode, column.length(), column.scale().get());
             case Types.TIMESTAMP:
                 if (!this.adaptiveTimePrecisionMode && !this.adaptiveTimeMicrosecondsPrecisionMode) {
                     if (this.getTimePrecision(column) <= 3) {
