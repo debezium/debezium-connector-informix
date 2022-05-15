@@ -80,6 +80,7 @@ public class InformixCdcTypesIT extends AbstractConnectorTest {
         connection.execute("truncate table test_char");
         connection.execute("truncate table test_date");
         connection.execute("truncate table test_decimal");
+        connection.execute("truncate table test_decimal_20");
         connection.execute("truncate table test_decimal_20_5");
 
         final Configuration config = TestHelper.defaultConfig()
