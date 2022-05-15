@@ -2,10 +2,14 @@ package laoflch.debezium.connector.informix;
 
 import io.debezium.config.Configuration;
 import io.debezium.data.SchemaAndValueField;
+import io.debezium.data.SpecialValueDecimal;
 import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.time.Date;
+import io.debezium.util.Strings;
 import io.debezium.util.Testing;
 import laoflch.debezium.connector.informix.util.TestHelper;
+import org.apache.kafka.connect.data.Decimal;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -25,6 +29,7 @@ import java.util.List;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
+import static io.debezium.relational.RelationalDatabaseConnectorConfig.DECIMAL_HANDLING_MODE;
 import static laoflch.debezium.connector.informix.InformixConnectorConfig.SNAPSHOT_MODE;
 import static laoflch.debezium.connector.informix.InformixConnectorConfig.SnapshotMode.INITIAL_SCHEMA_ONLY;
 import static org.fest.assertions.Assertions.assertThat;
@@ -45,6 +50,8 @@ public class InformixCdcTypesIT extends AbstractConnectorTest {
         connection.execute("truncate table test_char");
         connection.execute("create table if not exists test_date(a date)");
         connection.execute("truncate table test_date");
+        connection.execute("create table if not exists test_decimal(a decimal)");
+        connection.execute("truncate table test_decimal");
 
         initializeConnectorTestFramework();
         Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
@@ -66,9 +73,11 @@ public class InformixCdcTypesIT extends AbstractConnectorTest {
         connection.execute("truncate table test_bigserial");
         connection.execute("truncate table test_char");
         connection.execute("truncate table test_date");
+        connection.execute("truncate table test_decimal");
 
         final Configuration config = TestHelper.defaultConfig()
                 .with(SNAPSHOT_MODE, INITIAL_SCHEMA_ONLY)
+                .with(DECIMAL_HANDLING_MODE, JdbcValueConverters.DecimalMode.STRING)
                 .build();
 
         start(InformixConnector.class, config);
@@ -111,6 +120,12 @@ public class InformixCdcTypesIT extends AbstractConnectorTest {
             Integer d = Math.toIntExact(diffInDays(strTestDate, "1970-01-01"));
             insertOneAndValidate("test_date", io.debezium.time.Date.builder().optional().build(), "'" + strTestDate + "'", d);
         }
+
+        /*
+         * decimal
+         */
+        String testDecimal = "12.1";
+        insertOneAndValidate("test_decimal", Schema.OPTIONAL_STRING_SCHEMA, testDecimal, testDecimal);
 
         stopConnector();
     }
