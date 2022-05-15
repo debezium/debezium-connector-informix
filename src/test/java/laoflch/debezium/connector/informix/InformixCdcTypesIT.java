@@ -25,7 +25,9 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
@@ -52,6 +54,10 @@ public class InformixCdcTypesIT extends AbstractConnectorTest {
         connection.execute("truncate table test_date");
         connection.execute("create table if not exists test_decimal(a decimal)");
         connection.execute("truncate table test_decimal");
+        connection.execute("create table if not exists test_decimal_20(a decimal(20))");
+        connection.execute("truncate table test_decimal_20");
+        connection.execute("create table if not exists test_decimal_20_5(a decimal(20, 5))");
+        connection.execute("truncate table test_decimal_20_5");
 
         initializeConnectorTestFramework();
         Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
@@ -74,6 +80,7 @@ public class InformixCdcTypesIT extends AbstractConnectorTest {
         connection.execute("truncate table test_char");
         connection.execute("truncate table test_date");
         connection.execute("truncate table test_decimal");
+        connection.execute("truncate table test_decimal_20_5");
 
         final Configuration config = TestHelper.defaultConfig()
                 .with(SNAPSHOT_MODE, INITIAL_SCHEMA_ONLY)
@@ -124,8 +131,38 @@ public class InformixCdcTypesIT extends AbstractConnectorTest {
         /*
          * decimal
          */
-        String testDecimal = "12.1";
-        insertOneAndValidate("test_decimal", Schema.OPTIONAL_STRING_SCHEMA, testDecimal, testDecimal);
+        Map<String, String> decimal_data_expect = new LinkedHashMap<String, String>() {{
+            put("12.1", "12.1");
+            put("22.12345678901234567890", "22.12345678901235");        // Rounded number
+            put("12345678901234567890.12345", "12345678901234570000");
+        }};
+        for (Map.Entry<String, String> entry: decimal_data_expect.entrySet()) {
+            insertOneAndValidate("test_decimal", Schema.OPTIONAL_STRING_SCHEMA, entry.getKey(), entry.getValue());
+        }
+
+        /*
+         * decimal(20)
+         */
+        Map<String, String> decimal_20_data_expect = new LinkedHashMap<String, String>() {{
+            put("88.07", "88.07");
+            put("33.12345", "33.12345");        // Rounded number
+            put("123456789012345.12345", "123456789012345.12345");
+        }};
+        for (Map.Entry<String, String> entry: decimal_20_data_expect.entrySet()) {
+            insertOneAndValidate("test_decimal_20", Schema.OPTIONAL_STRING_SCHEMA, entry.getKey(), entry.getValue());
+        }
+
+        /*
+         * decimal(20, 5)
+         */
+        Map<String, String> decimal_20_5_data_expect = new LinkedHashMap<String, String>() {{
+            put("12.1", "12.10000");
+            put("22.12345", "22.12345");        // Rounded number
+            put("123456789012345.12345", "123456789012345.12345");
+        }};
+        for (Map.Entry<String, String> entry: decimal_20_5_data_expect.entrySet()) {
+            insertOneAndValidate("test_decimal_20_5", Schema.OPTIONAL_STRING_SCHEMA, entry.getKey(), entry.getValue());
+        }
 
         stopConnector();
     }
