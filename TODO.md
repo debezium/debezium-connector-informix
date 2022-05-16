@@ -74,6 +74,7 @@ $ kcat -b localhost:9092 -t informix-214414.cdctable.hello -C | jq ".payload.sou
 
 - [ ] `.with(SNAPSHOT_MODE, INITIAL)`
 - [ ] More Types: bigint, bigserial
+- [ ] `update clause`
 
 ## 11. decimal handling mode
 
@@ -108,4 +109,6 @@ Caused by: org.apache.kafka.connect.errors.DataException: BigDecimal has mismatc
 	at org.apache.kafka.connect.runtime.errors.RetryWithToleranceOperator.execAndHandleError(RetryWithToleranceOperator.java:162)
 	... 11 more
 ```
+
+## 12. `transaction.total_order` is always same as `data_collection_order`, when enabled connector option `provide.transaction.metadata`
 

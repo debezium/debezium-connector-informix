@@ -14,6 +14,12 @@
         <version.kafka>2.4.1</version.kafka>
         <version.confluent.platform>5.5.0</version.confluent.platform>
 
+        <!-- docker related options -->
+        <docker.filter>xiaolin/ifx12-cdc-test:v1</docker.filter>
+        <docker.skip>false</docker.skip>
+        <docker.showLogs>true</docker.showLogs>
+        <ifx.port>9088</ifx.port>
+
         <!-- Assembly configuration -->
         <assembly.descriptor>connector-distribution</assembly.descriptor>
     </properties>
@@ -145,46 +151,74 @@
                     <target>8</target>
                 </configuration>
             </plugin>
-            <!--
             <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>exec-maven-plugin</artifactId>
-                <version>1.6.0</version>
+                <groupId>io.fabric8</groupId>
+                <artifactId>docker-maven-plugin</artifactId>
+                <configuration>
+                    <watchInterval>500</watchInterval>
+                    <logDate>default</logDate>
+                    <verbose>true</verbose>
+                    <images>
+                        <image>
+                            <!-- A Docker image using the SQL Server -->
+                            <name>${docker.filter}</name>
+                            <run>
+                                <namingStrategy>none</namingStrategy>
+                                <env>
+                                    <SIZE>small</SIZE>
+                                    <LICENSE>accept</LICENSE>
+                                </env>
+                                <ports>
+                                    <port>${ifx.port}:9088</port>
+                                    <port>9089:9089</port>
+                                    <port>27017:27017</port>
+                                    <port>27883:27883</port>
+                                </ports>
+                                <log>
+                                    <prefix>ifx-cdc-test</prefix>
+                                    <enabled>true</enabled>
+                                    <color>yellow</color>
+                                </log>
+                                <wait>
+                                    <time>60000</time> <!-- 60 seconds max -->
+
+                                    <!-- TODO: we should find a stable message that indicate informix is READY -->
+                                    <log>starting mongo listener on port 27017</log>
+                                </wait>
+                            </run>
+                        </image>
+                    </images>
+                </configuration>
+                <!--
+                Connect this plugin to the maven lifecycle around the integration-test phase:
+                start the container in pre-integration-test and stop it in post-integration-test.
+                -->
                 <executions>
                     <execution>
-                        <id>prepareTestServer</id>
+                        <id>start</id>
                         <phase>pre-integration-test</phase>
                         <goals>
-                            <goal>exec</goal>
+                            <goal>start</goal>
                         </goals>
-                        <configuration>
-                            <executable>${basedir}/src/test/bin/prepareTestServer.sh</executable>
-                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>stop</id>
+                        <phase>post-integration-test</phase>
+                        <goals>
+                            <goal>stop</goal>
+                        </goals>
                     </execution>
                 </executions>
             </plugin>
-            -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.0.0-M4</version>
-                <!--
-                <configuration>
-                    <groups>unittest</groups>
-                </configuration>
-                -->
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
                 <version>3.0.0-M4</version>
-                <!--
-                <configuration>
-                    <suiteXmlFiles>
-                        <suiteXmlFile>src/test/resources/suite.xml</suiteXmlFile>
-                    </suiteXmlFiles>
-                </configuration>
-                -->
                 <executions>
                     <execution>
                         <id>integration-test</id>
@@ -192,11 +226,6 @@
                         <goals>
                             <goal>integration-test</goal>
                         </goals>
-                        <!--
-                        <configuration>
-                            <groups>integrationtest</groups>
-                        </configuration>
-                        -->
                     </execution>
                     <execution>
                         <id>verify</id>
