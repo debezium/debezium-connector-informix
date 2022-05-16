@@ -9,6 +9,14 @@ This repository is an incubating Debezium Connector for [Informix Database](http
 
 ## Testing
 
+### Integration Tests
+
+Before you run the following command, please ensure you have installed [docker](https://docs.docker.com/engine/install/):
+
+```text
+mvn integration-test
+```
+
 ### Debugging Tests
 
 If you want to do local test, you can start a container manually:
