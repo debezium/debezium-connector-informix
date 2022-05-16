@@ -25,7 +25,7 @@ $ docker run -it --name ifx --privileged -e SIZE=small \
     -p 27018:27018    \
     -p 27883:27883    \
     -e LICENSE=accept \
-    xiaolin/xiaolin/ifx12-localdata-base:v1
+    xiaolin/ifx12-localdata-base:v1
 ```
 
 Then, we switch to another shell:
