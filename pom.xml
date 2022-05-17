@@ -13,11 +13,15 @@
         <scala.version>2.13.1</scala.version>
         <version.kafka>2.4.1</version.kafka>
         <version.confluent.platform>5.5.0</version.confluent.platform>
+        <version.informix.jdbc>4.50.3</version.informix.jdbc>
+        <version.informix.ifx-changestream-client>1.1.1</version.informix.ifx-changestream-client>
 
         <!-- docker related options -->
         <docker.filter>xiaolin/ifx12-cdc-test:v1</docker.filter>
         <docker.skip>false</docker.skip>
         <docker.showLogs>true</docker.showLogs>
+        <docker.keepRunning>false</docker.keepRunning>
+        <docker.removeVolumes>true</docker.removeVolumes>
         <ifx.port>9088</ifx.port>
 
         <!-- Assembly configuration -->
@@ -78,12 +82,12 @@
         <dependency>
             <groupId>com.ibm.informix</groupId>
             <artifactId>jdbc</artifactId>
-            <version>4.50.8</version>
+            <version>${version.informix.jdbc}</version>
         </dependency>
         <dependency>
             <groupId>com.ibm.informix</groupId>
             <artifactId>ifx-changestream-client</artifactId>
-            <version>1.1.1</version>
+            <version>${version.informix.ifx-changestream-client}</version>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
@@ -138,11 +142,13 @@
     </dependencies>
     <build>
         <plugins>
+            <!--
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>build-helper-maven-plugin</artifactId>
                 <version>3.1.0</version>
             </plugin>
+            -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -298,6 +304,22 @@
                     </plugin>
                 </plugins>
             </build>
+        </profile>
+        <!--  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+              Do not perform any Docker-related functionality
+              To use, specify "-DskipITs" on the Maven command line.
+              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+        <profile>
+            <id>skip-integration-tests</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+                <property>
+                    <name>skipITs</name>
+                </property>
+            </activation>
+            <properties>
+                <docker.skip>true</docker.skip>
+            </properties>
         </profile>
     </profiles>
     <reporting>
