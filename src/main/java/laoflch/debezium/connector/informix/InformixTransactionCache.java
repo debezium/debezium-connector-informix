@@ -1,9 +1,10 @@
-package laoflch.debezium.connector.informix;
+/*
+ * Copyright Debezium-Informix-Connector Authors.
+ *
+ * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
+ */
 
-import com.informix.jdbc.IfmxReadableType;
-import io.debezium.relational.TableId;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+package laoflch.debezium.connector.informix;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -11,6 +12,13 @@ import java.util.Hashtable;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.informix.jdbc.IfmxReadableType;
+
+import io.debezium.relational.TableId;
 
 public class InformixTransactionCache {
 
@@ -60,8 +68,7 @@ public class InformixTransactionCache {
 
             if (buffer != null) {
                 buffer.getTransactionCacheRecords().add(
-                        new TransactionCacheRecord(tableId, event)
-                );
+                        new TransactionCacheRecord(tableId, event));
             }
         }
     }
@@ -88,7 +95,7 @@ public class InformixTransactionCache {
 
         private final List<TransactionCacheRecord> transactionCacheRecordList;
         private Long beginTime; // Begin time of transaction
-        private Long endTime;   // Commit/Rollback of the transaction
+        private Long endTime; // Commit/Rollback of the transaction
 
         public TransactionCacheBuffer(int initialSize, Long beginTs) {
             transactionCacheRecordList = new ArrayList<>(initialSize);

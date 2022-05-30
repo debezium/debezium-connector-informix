@@ -1,29 +1,19 @@
+/*
+ * Copyright Debezium-Informix-Connector Authors.
+ *
+ * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
+ */
+
 package laoflch.debezium.connector.informix;
 
-import io.debezium.config.Configuration;
-import io.debezium.data.SchemaAndValueField;
-import io.debezium.data.SpecialValueDecimal;
-import io.debezium.embedded.AbstractConnectorTest;
-import io.debezium.jdbc.JdbcValueConverters;
-import io.debezium.time.Date;
-import io.debezium.util.Strings;
-import io.debezium.util.Testing;
-import laoflch.debezium.connector.informix.util.TestHelper;
-import org.apache.kafka.connect.data.Decimal;
-import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import static io.debezium.relational.RelationalDatabaseConnectorConfig.DECIMAL_HANDLING_MODE;
+import static laoflch.debezium.connector.informix.InformixConnectorConfig.SNAPSHOT_MODE;
+import static laoflch.debezium.connector.informix.InformixConnectorConfig.SnapshotMode.INITIAL_SCHEMA_ONLY;
+import static org.fest.assertions.Assertions.assertThat;
 
 import java.sql.SQLException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.time.Duration;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -31,10 +21,20 @@ import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
-import static io.debezium.relational.RelationalDatabaseConnectorConfig.DECIMAL_HANDLING_MODE;
-import static laoflch.debezium.connector.informix.InformixConnectorConfig.SNAPSHOT_MODE;
-import static laoflch.debezium.connector.informix.InformixConnectorConfig.SnapshotMode.INITIAL_SCHEMA_ONLY;
-import static org.fest.assertions.Assertions.assertThat;
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.source.SourceRecord;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+
+import io.debezium.config.Configuration;
+import io.debezium.data.SchemaAndValueField;
+import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.jdbc.JdbcValueConverters;
+import io.debezium.util.Testing;
+
+import laoflch.debezium.connector.informix.util.TestHelper;
 
 public class InformixCdcTypesIT extends AbstractConnectorTest {
 
@@ -116,14 +116,14 @@ public class InformixCdcTypesIT extends AbstractConnectorTest {
          * date
          *
          * As described from official manual:
-         *    "The DATE data type stores the calendar date. DATE data types require four bytes. A
-         *     calendar date is stored internally as an integer value equal to the number of days
-         *     since December 31, 1899."
+         * "The DATE data type stores the calendar date. DATE data types require four bytes. A
+         * calendar date is stored internally as an integer value equal to the number of days
+         * since December 31, 1899."
          * - https://www.ibm.com/docs/en/informix-servers/12.10?topic=types-date-data-type
          *
          * TODO: But, as we test locally, it seems the base date is "1970-01-01", not the "1899-12-31".
          */
-        List<String> arrTestDate = Arrays.asList(new String[] { "2022-01-01" });
+        List<String> arrTestDate = Arrays.asList(new String[]{ "2022-01-01" });
         for (String strTestDate : arrTestDate) {
             Integer d = Math.toIntExact(diffInDays(strTestDate, "1970-01-01"));
             insertOneAndValidate("test_date", io.debezium.time.Date.builder().optional().build(), "'" + strTestDate + "'", d);
@@ -132,36 +132,42 @@ public class InformixCdcTypesIT extends AbstractConnectorTest {
         /*
          * decimal
          */
-        Map<String, String> decimal_data_expect = new LinkedHashMap<String, String>() {{
-            put("12.1", "12.1");
-            put("22.12345678901234567890", "22.12345678901235");        // Rounded number
-            put("12345678901234567890.12345", "12345678901234570000");
-        }};
-        for (Map.Entry<String, String> entry: decimal_data_expect.entrySet()) {
+        Map<String, String> decimal_data_expect = new LinkedHashMap<String, String>() {
+            {
+                put("12.1", "12.1");
+                put("22.12345678901234567890", "22.12345678901235"); // Rounded number
+                put("12345678901234567890.12345", "12345678901234570000");
+            }
+        };
+        for (Map.Entry<String, String> entry : decimal_data_expect.entrySet()) {
             insertOneAndValidate("test_decimal", Schema.OPTIONAL_STRING_SCHEMA, entry.getKey(), entry.getValue());
         }
 
         /*
          * decimal(20)
          */
-        Map<String, String> decimal_20_data_expect = new LinkedHashMap<String, String>() {{
-            put("88.07", "88.07");
-            put("33.12345", "33.12345");        // Rounded number
-            put("123456789012345.12345", "123456789012345.12345");
-        }};
-        for (Map.Entry<String, String> entry: decimal_20_data_expect.entrySet()) {
+        Map<String, String> decimal_20_data_expect = new LinkedHashMap<String, String>() {
+            {
+                put("88.07", "88.07");
+                put("33.12345", "33.12345"); // Rounded number
+                put("123456789012345.12345", "123456789012345.12345");
+            }
+        };
+        for (Map.Entry<String, String> entry : decimal_20_data_expect.entrySet()) {
             insertOneAndValidate("test_decimal_20", Schema.OPTIONAL_STRING_SCHEMA, entry.getKey(), entry.getValue());
         }
 
         /*
          * decimal(20, 5)
          */
-        Map<String, String> decimal_20_5_data_expect = new LinkedHashMap<String, String>() {{
-            put("12.1", "12.10000");
-            put("22.12345", "22.12345");        // Rounded number
-            put("123456789012345.12345", "123456789012345.12345");
-        }};
-        for (Map.Entry<String, String> entry: decimal_20_5_data_expect.entrySet()) {
+        Map<String, String> decimal_20_5_data_expect = new LinkedHashMap<String, String>() {
+            {
+                put("12.1", "12.10000");
+                put("22.12345", "22.12345"); // Rounded number
+                put("123456789012345.12345", "123456789012345.12345");
+            }
+        };
+        for (Map.Entry<String, String> entry : decimal_20_5_data_expect.entrySet()) {
             insertOneAndValidate("test_decimal_20_5", Schema.OPTIONAL_STRING_SCHEMA, entry.getKey(), entry.getValue());
         }
 
@@ -178,8 +184,7 @@ public class InformixCdcTypesIT extends AbstractConnectorTest {
         assertThat(insertOne).hasSize(1);
 
         final List<SchemaAndValueField> expectedDeleteRow = Arrays.asList(
-                new SchemaAndValueField("a", valueSchema, expectValue)
-        );
+                new SchemaAndValueField("a", valueSchema, expectValue));
 
         final SourceRecord insertedOneRecord = insertOne.get(0);
         final Struct insertedOneValue = (Struct) insertedOneRecord.value();
@@ -201,7 +206,8 @@ public class InformixCdcTypesIT extends AbstractConnectorTest {
             long diff = TimeUnit.DAYS.convert(diffInMs, TimeUnit.MILLISECONDS);
             System.out.println(diff);
             return diff;
-        } catch (ParseException e) {
+        }
+        catch (ParseException e) {
             return -1;
         }
     }

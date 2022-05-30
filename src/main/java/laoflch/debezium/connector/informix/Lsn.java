@@ -1,9 +1,11 @@
+/*
+ * Copyright Debezium-Informix-Connector Authors.
+ *
+ * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
+ */
+
 package laoflch.debezium.connector.informix;
 
-import io.debezium.util.Strings;
-
-import java.math.BigInteger;
-import java.util.Arrays;
 import java.util.Objects;
 
 /**
@@ -53,8 +55,9 @@ public class Lsn implements Comparable<Lsn>, Nullable {
      * @return LSN converted from its textual representation
      */
     public static Lsn valueOf(String lsnString) {
-        if (Objects.equals(lsnString.toUpperCase(), Lsn.NULL_STRING))
+        if (lsnString == null || Objects.equals(lsnString.toUpperCase(), Lsn.NULL_STRING)) {
             return Lsn.valueOf(-1L);
+        }
 
         return Lsn.valueOf(Long.parseLong(lsnString));
     }

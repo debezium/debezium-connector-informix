@@ -1,29 +1,34 @@
+/*
+ * Copyright Debezium-Informix-Connector Authors.
+ *
+ * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
+ */
+
 package laoflch.debezium.connector.informix;
+
+import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Properties;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.informix.jdbcx.IfxDataSource;
 import com.informix.stream.api.IfmxStreamRecord;
 import com.informix.stream.cdc.IfxCDCEngine;
 import com.informix.stream.impl.IfxStreamException;
 import com.informix.util.AdvancedUppercaseProperties;
+
 import io.debezium.config.Configuration;
 import io.debezium.jdbc.JdbcConfiguration;
-import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.Column;
 import io.debezium.relational.TableId;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.sql.SQLException;
-import java.util.Hashtable;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Properties;
 
 public class InformixCDCEngine {
 
     private static Logger LOGGER = LoggerFactory.getLogger(InformixCDCEngine.class);
 
-    // private static String URL_PATTERN = "jdbc:informix-sqli://%s:%s/syscdcv1:user=%s;password=%s;";
     private static String URL_PATTERN = "jdbc:informix-sqli://%s:%s/syscdcv1";
 
     private String host;
@@ -49,10 +54,9 @@ public class InformixCDCEngine {
         port = config.getString(JdbcConfiguration.PORT);
         user = config.getString(JdbcConfiguration.USER);
         password = config.getString(JdbcConfiguration.PASSWORD);
-        // new InformixCDCEngineJava(host, port, user, password);
 
         // TODO: try HPPC or FastUtils's Integer Map?
-        labelId_tableId_map = new Hashtable<>();
+        labelId_tableId_map = new HashMap<>();
     }
 
     public void init(InformixDatabaseSchema schema) throws InterruptedException {
@@ -62,10 +66,12 @@ public class InformixCDCEngine {
 
             this.cdcEngine.init();
             this.hasInit = true;
-        } catch (SQLException ex) {
+        }
+        catch (SQLException ex) {
             LOGGER.error("Caught SQLException", ex);
             throw new InterruptedException("Failed while while initialize CDC Engine");
-        } catch (IfxStreamException ex) {
+        }
+        catch (IfxStreamException ex) {
             LOGGER.error("Caught IfxStreamException", ex);
             throw new InterruptedException("Failed while while initialize CDC Engine");
         }
@@ -99,7 +105,7 @@ public class InformixCDCEngine {
         /*
          * Build Map of Label_id to TableId.
          */
-        for (IfxCDCEngine.IfmxWatchedTable tbl: builder.getWatchedTables()) {
+        for (IfxCDCEngine.IfmxWatchedTable tbl : builder.getWatchedTables()) {
             TableId tid = new TableId(tbl.getDatabaseName(), tbl.getNamespace(), tbl.getTableName());
             labelId_tableId_map.put(tbl.getLabel(), tid);
             LOGGER.info("Added WatchedTable : label={} -> tableId={}", tbl.getLabel(), tid);
@@ -111,7 +117,8 @@ public class InformixCDCEngine {
     public void close() {
         try {
             this.cdcEngine.close();
-        } catch (IfxStreamException e) {
+        }
+        catch (IfxStreamException e) {
             LOGGER.error("Caught a exception while closing cdcEngine", e);
         }
     }
@@ -145,8 +152,7 @@ public class InformixCDCEngine {
     private static Properties propsWithMaskedPassword(Properties props) {
         final Properties filtered = new Properties();
         filtered.putAll(props);
-        String passwdKeyName = props instanceof AdvancedUppercaseProperties ?
-                JdbcConfiguration.PASSWORD.name().toUpperCase() : JdbcConfiguration.PASSWORD.name();
+        String passwdKeyName = props instanceof AdvancedUppercaseProperties ? JdbcConfiguration.PASSWORD.name().toUpperCase() : JdbcConfiguration.PASSWORD.name();
         if (props.containsKey(passwdKeyName)) {
             filtered.put(passwdKeyName, "***");
         }

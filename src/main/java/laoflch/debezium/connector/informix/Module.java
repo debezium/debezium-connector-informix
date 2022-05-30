@@ -1,8 +1,14 @@
+/*
+ * Copyright Debezium-Informix-Connector Authors.
+ *
+ * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
+ */
+
 package laoflch.debezium.connector.informix;
 
-import io.debezium.util.IoUtil;
-
 import java.util.Properties;
+
+import io.debezium.util.IoUtil;
 
 public class Module {
     private static final Properties INFO = IoUtil.loadProperties(Module.class, "laoflch/debezium/connector/informix/build.version");
