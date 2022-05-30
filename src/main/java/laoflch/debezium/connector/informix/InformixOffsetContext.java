@@ -1,4 +1,17 @@
+/*
+ * Copyright Debezium-Informix-Connector Authors.
+ *
+ * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
+ */
+
 package laoflch.debezium.connector.informix;
+
+import java.time.Instant;
+import java.util.Collections;
+import java.util.Map;
+
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.connector.SnapshotRecord;
 import io.debezium.pipeline.spi.OffsetContext;
@@ -6,12 +19,6 @@ import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.relational.TableId;
 import io.debezium.schema.DataCollectionId;
 import io.debezium.util.Collect;
-import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.Struct;
-
-import java.time.Instant;
-import java.util.Collections;
-import java.util.Map;
 
 public class InformixOffsetContext implements OffsetContext {
 
@@ -150,7 +157,6 @@ public class InformixOffsetContext implements OffsetContext {
                     TransactionContext.load(offset));
         }
     }
-
 
     @Override
     public String toString() {

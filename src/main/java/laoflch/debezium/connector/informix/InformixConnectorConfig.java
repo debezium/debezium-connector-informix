@@ -1,5 +1,5 @@
 /*
- * Copyright Debezium Authors.
+ * Copyright Debezium-Informix-Connector Authors.
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
@@ -25,6 +25,7 @@ import io.debezium.document.Document;
 import io.debezium.function.Predicates;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcConfiguration;
+import io.debezium.relational.ColumnFilterMode;
 import io.debezium.relational.ColumnId;
 import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
@@ -33,10 +34,6 @@ import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.history.HistoryRecordComparator;
 import io.debezium.relational.history.KafkaDatabaseHistory;
-
-import laoflch.debezium.connector.informix.Module;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * The list of configuration options for Informix connector
@@ -130,7 +127,7 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
          *
          * The connector will execute {@code SELECT * FROM .. WITH (TABLOCKX)}
          */
-        //EXCLUSIVE("exclusive"),
+        // EXCLUSIVE("exclusive"),
         // informix 使用标准的jdbc隔离级别，由于在informix中SERIALIZABLE的隔离级别和TRANSACTION_REPEATABLE_READ一样，所以不单独设置
         /**
          * This mode uses REPEATABLE READ isolation level. This mode will avoid taking any table
@@ -229,7 +226,7 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
             .withDescription("Controls which transaction isolation level is used and how long the connector locks the monitored tables. "
                     + "The default is '" + SnapshotIsolationMode.REPEATABLE_READ.getValue()
                     + "', which means that repeatable read isolation level is used. In addition, exclusive locks are taken only during schema snapshot. "
-                    //+ "Using a value of '" + SnapshotIsolationMode.EXCLUSIVE.getValue()
+                    // + "Using a value of '" + SnapshotIsolationMode.EXCLUSIVE.getValue()
                     + "' ensures that the connector holds the exclusive lock (and thus prevents any reads and updates) for all monitored tables during the entire snapshot duration. "
                     + "In '" + SnapshotIsolationMode.READ_COMMITTED.getValue()
                     + "' mode no table locks or any *long-lasting* row-level locks are acquired, but connector does not guarantee snapshot consistency."
@@ -301,7 +298,8 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
     private final ColumnNameFilter columnFilter;
 
     public InformixConnectorConfig(Configuration config) {
-        super(config, config.getString(SERVER_NAME), new SystemTablesPredicate(), x -> x.schema() + "." + x.table(), false);
+        super(InformixConnector.class, config, config.getString(SERVER_NAME), new SystemTablesPredicate(), x -> x.schema() + "." + x.table(), false,
+                ColumnFilterMode.SCHEMA);
 
         this.databaseName = config.getString(DATABASE_NAME);
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE), SNAPSHOT_MODE.defaultValueAsString());
@@ -349,7 +347,8 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
 
             informixSourceInfoStructMaker = new InformixSourceInfoStructMaker(moduleName, moduleVersion, this);
             return informixSourceInfoStructMaker;
-        } catch (Exception ex) {
+        }
+        catch (Exception ex) {
             ex.printStackTrace();
         }
 
@@ -401,5 +400,10 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
         }
 
         return Collections.unmodifiableMap(snapshotSelectOverridesByTable);
+    }
+
+    @Override
+    public String getConnectorName() {
+        return Module.name();
     }
 }

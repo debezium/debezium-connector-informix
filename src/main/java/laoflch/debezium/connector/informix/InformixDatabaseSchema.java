@@ -1,4 +1,13 @@
+/*
+ * Copyright Debezium-Informix-Connector Authors.
+ *
+ * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
+ */
+
 package laoflch.debezium.connector.informix;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.relational.HistorizedRelationalDatabaseSchema;
 import io.debezium.relational.Table;
@@ -10,14 +19,13 @@ import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
 import io.debezium.schema.TopicSelector;
 import io.debezium.util.SchemaNameAdjuster;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class InformixDatabaseSchema extends HistorizedRelationalDatabaseSchema {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(InformixDatabaseSchema.class);
 
-    public InformixDatabaseSchema(InformixConnectorConfig connectorConfig, SchemaNameAdjuster schemaNameAdjuster, TopicSelector<TableId> topicSelector, InformixConnection connection) {
+    public InformixDatabaseSchema(InformixConnectorConfig connectorConfig, SchemaNameAdjuster schemaNameAdjuster, TopicSelector<TableId> topicSelector,
+                                  InformixConnection connection) {
         super(connectorConfig, topicSelector, connectorConfig.getTableFilters().dataCollectionFilter(), connectorConfig.getColumnFilter(),
                 new TableSchemaBuilder(
                         new InformixValueConverters(connectorConfig.getDecimalMode(), connectorConfig.getTemporalPrecisionMode()),

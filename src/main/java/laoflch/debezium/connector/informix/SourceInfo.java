@@ -1,12 +1,19 @@
-package laoflch.debezium.connector.informix;
+/*
+ * Copyright Debezium-Informix-Connector Authors.
+ *
+ * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
+ */
 
-import com.informix.jdbc.IfxColumnInfo;
-import io.debezium.connector.AbstractSourceInfo;
-import io.debezium.connector.common.BaseSourceInfo;
-import io.debezium.relational.TableId;
+package laoflch.debezium.connector.informix;
 
 import java.time.Instant;
 import java.util.List;
+
+import com.informix.jdbc.IfxColumnInfo;
+
+import io.debezium.connector.AbstractSourceInfo;
+import io.debezium.connector.common.BaseSourceInfo;
+import io.debezium.relational.TableId;
 
 public class SourceInfo extends BaseSourceInfo {
     public static String CHANGE_LSN_KEY = "change_lsn";
@@ -40,7 +47,7 @@ public class SourceInfo extends BaseSourceInfo {
     /**
      * @param changeLsn - LSN of the change in the database log
      */
-    public void setChangeLsn(Long changeLsn){
+    public void setChangeLsn(Long changeLsn) {
         this.changeLsn = changeLsn;
     }
 
@@ -74,8 +81,9 @@ public class SourceInfo extends BaseSourceInfo {
      * @param commitLsn - LSN of the { @code COMMIT} of the transaction whose part the change is
      */
     public void setCommitLsn(Long commitLsn) {
-        this.commitLsn=commitLsn;
+        this.commitLsn = commitLsn;
     }
+
     public Long getCommitLsn() {
         return commitLsn;
     }

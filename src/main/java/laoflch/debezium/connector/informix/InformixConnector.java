@@ -1,14 +1,21 @@
-package laoflch.debezium.connector.informix;
+/*
+ * Copyright Debezium-Informix-Connector Authors.
+ *
+ * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
+ */
 
-import io.debezium.annotation.ThreadSafe;
-import org.apache.kafka.common.config.ConfigDef;
-import org.apache.kafka.connect.connector.Task;
-import org.apache.kafka.connect.source.SourceConnector;
+package laoflch.debezium.connector.informix;
 
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import org.apache.kafka.common.config.ConfigDef;
+import org.apache.kafka.connect.connector.Task;
+import org.apache.kafka.connect.source.SourceConnector;
+
+import io.debezium.annotation.ThreadSafe;
 
 @ThreadSafe
 public class InformixConnector extends SourceConnector {

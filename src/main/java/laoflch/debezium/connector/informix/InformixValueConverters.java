@@ -1,19 +1,25 @@
+/*
+ * Copyright Debezium-Informix-Connector Authors.
+ *
+ * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
+ */
+
 package laoflch.debezium.connector.informix;
 
 import java.sql.Types;
 import java.time.ZoneOffset;
 
-import io.debezium.data.SpecialValueDecimal;
-import io.debezium.time.MicroTimestamp;
-import io.debezium.time.NanoTimestamp;
-import io.debezium.time.Timestamp;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.SchemaBuilder;
 
+import io.debezium.data.SpecialValueDecimal;
 import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.Column;
 import io.debezium.relational.ValueConverter;
+import io.debezium.time.MicroTimestamp;
+import io.debezium.time.NanoTimestamp;
+import io.debezium.time.Timestamp;
 
 /**
  * Conversion of Informix specific datatypes.
@@ -41,7 +47,7 @@ public class InformixValueConverters extends JdbcValueConverters {
      *            date/time value will be represented either as Connect datatypes or Debezium specific datatypes
      */
     public InformixValueConverters(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode) {
-        super(decimalMode, temporalPrecisionMode, ZoneOffset.UTC, null, null);
+        super(decimalMode, temporalPrecisionMode, ZoneOffset.UTC, null, null, null);
     }
 
     @Override
@@ -57,12 +63,15 @@ public class InformixValueConverters extends JdbcValueConverters {
                 if (!this.adaptiveTimePrecisionMode && !this.adaptiveTimeMicrosecondsPrecisionMode) {
                     if (this.getTimePrecision(column) <= 3) {
                         return io.debezium.time.Timestamp.builder();
-                    } else if (this.getTimePrecision(column) <= 6) {
+                    }
+                    else if (this.getTimePrecision(column) <= 6) {
                         return MicroTimestamp.builder();
-                    } else {
+                    }
+                    else {
                         return NanoTimestamp.builder();
                     }
-                } else {
+                }
+                else {
                     return Timestamp.builder();
                 }
             default:
@@ -84,12 +93,15 @@ public class InformixValueConverters extends JdbcValueConverters {
                     if (!adaptiveTimePrecisionMode && !adaptiveTimeMicrosecondsPrecisionMode) {
                         if (getTimePrecision(column) <= 3) {
                             return convertTimestampToEpochMillis(column, fieldDefn, data);
-                        } else if (getTimePrecision(column) <= 6) {
+                        }
+                        else if (getTimePrecision(column) <= 6) {
                             return convertTimestampToEpochMicros(column, fieldDefn, data);
-                        } else {
+                        }
+                        else {
                             return convertTimestampToEpochNanos(column, fieldDefn, data);
                         }
-                    } else {
+                    }
+                    else {
                         return convertTimestampToEpochMillisAsDate(column, fieldDefn, data);
                     }
                 };

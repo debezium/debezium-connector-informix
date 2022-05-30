@@ -1,15 +1,22 @@
-package laoflch.debezium.connector.informix;
+/*
+ * Copyright Debezium-Informix-Connector Authors.
+ *
+ * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
+ */
 
-import com.informix.jdbc.IfmxReadableType;
-import io.debezium.data.Envelope.Operation;
-import io.debezium.pipeline.spi.OffsetContext;
-import io.debezium.relational.RelationalChangeRecordEmitter;
-import io.debezium.util.Clock;
+package laoflch.debezium.connector.informix;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+
+import com.informix.jdbc.IfmxReadableType;
+
+import io.debezium.data.Envelope.Operation;
+import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.relational.RelationalChangeRecordEmitter;
+import io.debezium.util.Clock;
 
 public class InformixChangeRecordEmitter extends RelationalChangeRecordEmitter {
 

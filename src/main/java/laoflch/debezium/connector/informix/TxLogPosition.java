@@ -1,3 +1,9 @@
+/*
+ * Copyright Debezium-Informix-Connector Authors.
+ *
+ * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
+ */
+
 package laoflch.debezium.connector.informix;
 
 public class TxLogPosition implements Nullable, Comparable<TxLogPosition> {
@@ -39,14 +45,24 @@ public class TxLogPosition implements Nullable, Comparable<TxLogPosition> {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
 
         TxLogPosition that = (TxLogPosition) o;
 
-        if (commitLsn != null ? !commitLsn.equals(that.commitLsn) : that.commitLsn != null) return false;
-        if (changeLsn != null ? !changeLsn.equals(that.changeLsn) : that.changeLsn != null) return false;
-        if (txId != null ? !txId.equals(that.txId) : that.txId != null) return false;
+        if (commitLsn != null ? !commitLsn.equals(that.commitLsn) : that.commitLsn != null) {
+            return false;
+        }
+        if (changeLsn != null ? !changeLsn.equals(that.changeLsn) : that.changeLsn != null) {
+            return false;
+        }
+        if (txId != null ? !txId.equals(that.txId) : that.txId != null) {
+            return false;
+        }
         return beginLsn != null ? beginLsn.equals(that.beginLsn) : that.beginLsn == null;
     }
 
@@ -75,8 +91,9 @@ public class TxLogPosition implements Nullable, Comparable<TxLogPosition> {
     }
 
     public static TxLogPosition valueOf(Long commitLsn, Long changeLsn) {
-        if (commitLsn == null && changeLsn == null)
+        if (commitLsn == null && changeLsn == null) {
             return NULL;
+        }
         else {
             return new TxLogPosition(commitLsn, changeLsn, 0x00L, 0x00L);
         }
@@ -98,25 +115,29 @@ public class TxLogPosition implements Nullable, Comparable<TxLogPosition> {
 
         if (commitLsn > LSN_NULL) {
             _commitLsn = commitLsn;
-        } else {
+        }
+        else {
             _commitLsn = position.getCommitLsn();
         }
 
         if (changeLsn > LSN_NULL) {
             _changeLsn = changeLsn;
-        } else {
+        }
+        else {
             _changeLsn = position.getChangeLsn();
         }
 
         if (txId > LSN_NULL) {
             _txId = txId;
-        } else {
+        }
+        else {
             _txId = position.getTxId();
         }
 
         if (beginLsn > LSN_NULL) {
             _beginLsn = beginLsn;
-        } else {
+        }
+        else {
             _beginLsn = position.getBeginLsn();
         }
 

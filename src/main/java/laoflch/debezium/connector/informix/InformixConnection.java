@@ -1,10 +1,17 @@
+/*
+ * Copyright Debezium-Informix-Connector Authors.
+ *
+ * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
+ */
+
 package laoflch.debezium.connector.informix;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class InformixConnection extends JdbcConnection {
 
@@ -24,16 +31,11 @@ public class InformixConnection extends JdbcConnection {
     private String realDatabaseName;
     private InformixCDCEngine cdcEngine;
 
-    private Long lsn;
-    private Integer transactionID;
-
     public InformixConnection(Configuration config) {
         super(config, FACTORY);
 
         realDatabaseName = config.getString(JdbcConfiguration.DATABASE);
         cdcEngine = InformixCDCEngine.build(config);
-        lsn = 0L;
-        transactionID = 0;
     }
 
     public InformixCDCEngine getCdcEngine() {

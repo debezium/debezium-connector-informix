@@ -1,20 +1,26 @@
-package laoflch.debezium.connector.informix.util;
+/*
+ * Copyright Debezium-Informix-Connector Authors.
+ *
+ * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
+ */
 
-import io.debezium.config.Configuration;
-import io.debezium.jdbc.JdbcConfiguration;
-import io.debezium.relational.history.FileDatabaseHistory;
-import io.debezium.util.Testing;
-import laoflch.debezium.connector.informix.InformixConnection;
-import laoflch.debezium.connector.informix.InformixConnectorConfig;
-import org.apache.kafka.connect.runtime.ConnectorConfig;
-import org.junit.Assert;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+package laoflch.debezium.connector.informix.util;
 
 import java.nio.file.Path;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import io.debezium.config.Configuration;
+import io.debezium.jdbc.JdbcConfiguration;
+import io.debezium.relational.history.FileDatabaseHistory;
+import io.debezium.util.Testing;
+
+import laoflch.debezium.connector.informix.InformixConnection;
+import laoflch.debezium.connector.informix.InformixConnectorConfig;
 
 public class TestHelper {
 

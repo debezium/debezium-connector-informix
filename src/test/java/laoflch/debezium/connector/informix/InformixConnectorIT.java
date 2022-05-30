@@ -1,17 +1,10 @@
-package laoflch.debezium.connector.informix;
+/*
+ * Copyright Debezium-Informix-Connector Authors.
+ *
+ * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
+ */
 
-import io.debezium.config.Configuration;
-import io.debezium.data.SchemaAndValueField;
-import io.debezium.embedded.AbstractConnectorTest;
-import io.debezium.util.Testing;
-import laoflch.debezium.connector.informix.util.TestHelper;
-import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Ignore;
-import org.junit.Test;
+package laoflch.debezium.connector.informix;
 
 import static laoflch.debezium.connector.informix.InformixConnectorConfig.SNAPSHOT_MODE;
 import static laoflch.debezium.connector.informix.InformixConnectorConfig.SnapshotMode.INITIAL_SCHEMA_ONLY;
@@ -25,6 +18,19 @@ import java.util.Random;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.source.SourceRecord;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+
+import io.debezium.config.Configuration;
+import io.debezium.data.SchemaAndValueField;
+import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.util.Testing;
+
+import laoflch.debezium.connector.informix.util.TestHelper;
 
 public class InformixConnectorIT extends AbstractConnectorTest {
 
@@ -113,8 +119,7 @@ public class InformixConnectorIT extends AbstractConnectorTest {
         for (int i = randStart; i < randStart + RECORDS_PER_TABLE; i++) {
             String insertSql = String.format("INSERT INTO testdb:hello VALUES (%d, 'hello-%d')",
                     listIntIds.get(i - randStart),
-                    listIntIds.get(i - randStart)
-            );
+                    listIntIds.get(i - randStart));
 
             connection.execute(insertSql);
         }

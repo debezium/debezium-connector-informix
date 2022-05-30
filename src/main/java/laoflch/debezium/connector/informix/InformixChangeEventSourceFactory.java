@@ -1,3 +1,9 @@
+/*
+ * Copyright Debezium-Informix-Connector Authors.
+ *
+ * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
+ */
+
 package laoflch.debezium.connector.informix;
 
 import io.debezium.pipeline.ErrorHandler;
@@ -21,7 +27,7 @@ public class InformixChangeEventSourceFactory implements ChangeEventSourceFactor
     private final InformixDatabaseSchema schema;
 
     public InformixChangeEventSourceFactory(InformixConnectorConfig configuration, InformixConnection dataConnection, InformixConnection metadataConnection,
-                                       ErrorHandler errorHandler, EventDispatcher<TableId> dispatcher, Clock clock, InformixDatabaseSchema schema) {
+                                            ErrorHandler errorHandler, EventDispatcher<TableId> dispatcher, Clock clock, InformixDatabaseSchema schema) {
         this.configuration = configuration;
         this.dataConnection = dataConnection;
         this.metadataConnection = metadataConnection;
@@ -33,7 +39,8 @@ public class InformixChangeEventSourceFactory implements ChangeEventSourceFactor
 
     @Override
     public SnapshotChangeEventSource getSnapshotChangeEventSource(OffsetContext offsetContext, SnapshotProgressListener snapshotProgressListener) {
-        return new InformixSnapshotChangeEventSource(configuration, (InformixOffsetContext) offsetContext, dataConnection, schema, dispatcher, clock, snapshotProgressListener);
+        return new InformixSnapshotChangeEventSource(configuration, (InformixOffsetContext) offsetContext, dataConnection, schema, dispatcher, clock,
+                snapshotProgressListener);
     }
 
     @Override
@@ -48,4 +55,3 @@ public class InformixChangeEventSourceFactory implements ChangeEventSourceFactor
                 schema);
     }
 }
-

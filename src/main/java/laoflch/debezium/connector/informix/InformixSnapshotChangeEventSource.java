@@ -1,4 +1,21 @@
+/*
+ * Copyright Debezium-Informix-Connector Authors.
+ *
+ * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
+ */
+
 package laoflch.debezium.connector.informix;
+
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.sql.Savepoint;
+import java.util.HashMap;
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
@@ -10,16 +27,7 @@ import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
 import io.debezium.util.Clock;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.sql.Savepoint;
-import java.util.HashMap;
-import java.util.Optional;
-import java.util.Set;
-import java.util.stream.Collectors;
 import laoflch.debezium.connector.informix.InformixConnectorConfig.SnapshotIsolationMode;
 
 public class InformixSnapshotChangeEventSource extends RelationalSnapshotChangeEventSource {
@@ -29,7 +37,8 @@ public class InformixSnapshotChangeEventSource extends RelationalSnapshotChangeE
     private final InformixConnectorConfig connectorConfig;
     private final InformixConnection jdbcConnection;
 
-    public InformixSnapshotChangeEventSource(InformixConnectorConfig connectorConfig, InformixOffsetContext previousOffset, InformixConnection jdbcConnection, InformixDatabaseSchema schema,
+    public InformixSnapshotChangeEventSource(InformixConnectorConfig connectorConfig, InformixOffsetContext previousOffset, InformixConnection jdbcConnection,
+                                             InformixDatabaseSchema schema,
                                              EventDispatcher<TableId> dispatcher, Clock clock, SnapshotProgressListener snapshotProgressListener) {
         super(connectorConfig, previousOffset, jdbcConnection, schema, dispatcher, clock, snapshotProgressListener);
         this.connectorConfig = connectorConfig;
@@ -88,25 +97,26 @@ public class InformixSnapshotChangeEventSource extends RelationalSnapshotChangeE
             LOGGER.info("Schema locking was disabled in connector configuration");
         }
         else if (/* connectorConfig.getSnapshotIsolationMode() == SnapshotIsolationMode.EXCLUSIVE || */
-                connectorConfig.getSnapshotIsolationMode() == SnapshotIsolationMode.REPEATABLE_READ) {
+        connectorConfig.getSnapshotIsolationMode() == SnapshotIsolationMode.REPEATABLE_READ) {
             jdbcConnection.connection().setTransactionIsolation(Connection.TRANSACTION_REPEATABLE_READ);
             // TODO: confirm these modifications
             /*
-            ((InformixSnapshotContext) snapshotContext).preSchemaSnapshotSavepoint = jdbcConnection.connection().setSavepoint("informix_schema_snapshot");
-
-            LOGGER.info("Executing schema locking");
-            try (Statement statement = jdbcConnection.connection().createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY)) {
-                for (TableId tableId : snapshotContext.capturedTables) {
-                    if (!sourceContext.isRunning()) {
-                        throw new InterruptedException("Interrupted while locking table " + tableId);
-                    }
-
-                    LOGGER.info("Locking table {}", tableId);
-                    String query = String.format("SELECT * FROM %s.%s WHERE 0=1 WITH CS", Db2ObjectNameQuoter.quoteNameIfNecessary(tableId.schema()),
-                            Db2ObjectNameQuoter.quoteNameIfNecessary(tableId.table()));
-                    statement.executeQuery(query).close();
-                }
-            }*/
+             * ((InformixSnapshotContext) snapshotContext).preSchemaSnapshotSavepoint = jdbcConnection.connection().setSavepoint("informix_schema_snapshot");
+             * 
+             * LOGGER.info("Executing schema locking");
+             * try (Statement statement = jdbcConnection.connection().createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY)) {
+             * for (TableId tableId : snapshotContext.capturedTables) {
+             * if (!sourceContext.isRunning()) {
+             * throw new InterruptedException("Interrupted while locking table " + tableId);
+             * }
+             * 
+             * LOGGER.info("Locking table {}", tableId);
+             * String query = String.format("SELECT * FROM %s.%s WHERE 0=1 WITH CS", Db2ObjectNameQuoter.quoteNameIfNecessary(tableId.schema()),
+             * Db2ObjectNameQuoter.quoteNameIfNecessary(tableId.table()));
+             * statement.executeQuery(query).close();
+             * }
+             * }
+             */
         }
         else {
             throw new IllegalStateException("Unknown locking mode specified.");
@@ -168,7 +178,7 @@ public class InformixSnapshotChangeEventSource extends RelationalSnapshotChangeE
         return new SchemaChangeEvent(
                 snapshotContext.offset.getPartition(),
                 snapshotContext.offset.getOffset(),
-                // snapshotContext.offset.getSourceInfo(),
+                snapshotContext.offset.getSourceInfo(),
                 snapshotContext.catalogName,
                 table.id().schema(),
                 null,
@@ -193,7 +203,7 @@ public class InformixSnapshotChangeEventSource extends RelationalSnapshotChangeE
      * @return a valid query string
      */
     @Override
-    protected Optional<String> getSnapshotSelect(SnapshotContext snapshotContext, TableId tableId) {
+    protected Optional<String> getSnapshotSelect(RelationalSnapshotContext snapshotContext, TableId tableId) {
         return Optional.of(String.format("SELECT * FROM %s.%s", tableId.schema(), tableId.table()));
     }
 

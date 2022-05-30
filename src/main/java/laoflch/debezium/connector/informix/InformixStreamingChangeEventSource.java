@@ -1,4 +1,17 @@
+/*
+ * Copyright Debezium-Informix-Connector Authors.
+ *
+ * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
+ */
+
 package laoflch.debezium.connector.informix;
+
+import java.sql.SQLException;
+import java.util.Map;
+import java.util.Optional;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.informix.jdbc.IfmxReadableType;
 import com.informix.stream.api.IfmxStreamRecord;
@@ -9,19 +22,13 @@ import com.informix.stream.cdc.records.IfxCDCOperationRecord;
 import com.informix.stream.cdc.records.IfxCDCRollbackTransactionRecord;
 import com.informix.stream.cdc.records.IfxCDCTimeoutRecord;
 import com.informix.stream.impl.IfxStreamException;
+
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.relational.TableId;
 import io.debezium.time.Timestamp;
 import io.debezium.util.Clock;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.sql.SQLException;
-import java.util.Map;
-import java.util.Optional;
-
 
 public class InformixStreamingChangeEventSource implements StreamingChangeEventSource {
 
@@ -38,7 +45,7 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
     public InformixStreamingChangeEventSource(InformixConnectorConfig connectorConfig,
                                               InformixOffsetContext offsetContext,
                                               InformixConnection dataConnection,
-                                              //metadataConnection: InformixConnection,
+                                              // metadataConnection: InformixConnection,
                                               EventDispatcher<TableId> dispatcher,
                                               ErrorHandler errorHandler,
                                               Clock clock,
@@ -114,16 +121,20 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
                     return false;
                 });
             }
-        } catch (SQLException e) {
+        }
+        catch (SQLException e) {
             LOGGER.error("Caught SQLException", e);
             errorHandler.setProducerThrowable(e);
-        } catch (IfxStreamException e) {
+        }
+        catch (IfxStreamException e) {
             LOGGER.error("Caught IfxStreamException", e);
             errorHandler.setProducerThrowable(e);
-        }  catch (Exception e) {
+        }
+        catch (Exception e) {
             LOGGER.error("Caught Unknown Exception", e);
             errorHandler.setProducerThrowable(e);
-        } finally {
+        }
+        finally {
             cdcEngine.close();
         }
     }
@@ -135,9 +146,7 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
                         TxLogPosition.LSN_NULL,
                         record.getSequenceId(),
                         TxLogPosition.LSN_NULL,
-                        TxLogPosition.LSN_NULL
-                )
-        );
+                        TxLogPosition.LSN_NULL));
     }
 
     public void handleMetadata(InformixCDCEngine cdcEngine, IfxCDCMetaDataRecord record) {
@@ -146,17 +155,17 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
                 record.getType(), record.getLabel(), record.getSequenceId());
 
         /*
-        IfxCDCEngine engine = cdcEngine.getCdcEngine();
-        List<IfxCDCEngine.IfmxWatchedTable> watchedTables = engine.getBuilder().getWatchedTables();
-        List<IfxColumnInfo> cols = record.getColumns();
-        for (IfxColumnInfo cinfo : cols) {
-            LOGGER.info("ColumnInfo: colName={}, {}", cinfo.getColumnName(), cinfo.toString());
-        }
-
-        for (IfxCDCEngine.IfmxWatchedTable tbl : watchedTables) {
-            LOGGER.info("Engine Watched Table: label={}, tabName={}", tbl.getLabel(), tbl.getTableName());
-        }
-        */
+         * IfxCDCEngine engine = cdcEngine.getCdcEngine();
+         * List<IfxCDCEngine.IfmxWatchedTable> watchedTables = engine.getBuilder().getWatchedTables();
+         * List<IfxColumnInfo> cols = record.getColumns();
+         * for (IfxColumnInfo cinfo : cols) {
+         * LOGGER.info("ColumnInfo: colName={}, {}", cinfo.getColumnName(), cinfo.toString());
+         * }
+         * 
+         * for (IfxCDCEngine.IfmxWatchedTable tbl : watchedTables) {
+         * LOGGER.info("Engine Watched Table: label={}, tabName={}", tbl.getLabel(), tbl.getTableName());
+         * }
+         */
     }
 
     public void handleBeforeUpdate(InformixCDCEngine cdcEngine, IfxCDCOperationRecord record, InformixTransactionCache transactionCache) throws IfxStreamException {
@@ -170,13 +179,13 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
                         TxLogPosition.LSN_NULL,
                         record.getSequenceId(),
                         transId,
-                        TxLogPosition.LSN_NULL)
-        );
+                        TxLogPosition.LSN_NULL));
 
         transactionCache.beforeUpdate(transId, data);
     }
 
-    public void handleAfterUpdate(InformixCDCEngine cdcEngine, IfxCDCOperationRecord record, InformixTransactionCache transactionCache) throws IfxStreamException, SQLException {
+    public void handleAfterUpdate(InformixCDCEngine cdcEngine, IfxCDCOperationRecord record, InformixTransactionCache transactionCache)
+            throws IfxStreamException, SQLException {
         Long transId = (long) record.getTransactionId();
 
         Map<String, IfmxReadableType> newData = record.getData();
@@ -188,8 +197,7 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
                         TxLogPosition.LSN_NULL,
                         record.getSequenceId(),
                         transId,
-                        TxLogPosition.LSN_NULL)
-        );
+                        TxLogPosition.LSN_NULL));
 
         Map<Integer, TableId> label2TableId = cdcEngine.convertLabel2TableId();
         TableId tid = label2TableId.get(Integer.parseInt(record.getLabel()));
@@ -211,8 +219,7 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
                             TxLogPosition.LSN_NULL,
                             record.getSequenceId(),
                             transId,
-                            record.getSequenceId())
-            );
+                            record.getSequenceId()));
 
             offsetContext.getTransactionContext().beginTransaction(String.valueOf(record.getTransactionId()));
         }
@@ -225,7 +232,8 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
                 (_end - _start) / 1000000d);
     }
 
-    public void handleCommit(InformixCDCEngine cdcEngine, IfxCDCCommitTransactionRecord record, InformixTransactionCache transactionCache) throws InterruptedException, IfxStreamException {
+    public void handleCommit(InformixCDCEngine cdcEngine, IfxCDCCommitTransactionRecord record, InformixTransactionCache transactionCache)
+            throws InterruptedException, IfxStreamException {
         long _start = System.nanoTime();
         Long transId = (long) record.getTransactionId();
         Long endTime = record.getTime();
@@ -238,8 +246,7 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
                             record.getSequenceId(),
                             record.getSequenceId(),
                             transId,
-                            TxLogPosition.LSN_NULL)
-            );
+                            TxLogPosition.LSN_NULL));
 
             // Originated from handleCommitEvent()
             for (InformixTransactionCache.TransactionCacheRecord r : transactionCacheBuffer.get().getTransactionCacheRecords()) {
@@ -257,7 +264,8 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
                 (_end - _start) / 1000000d);
     }
 
-    public void handleInsert(InformixCDCEngine cdcEngine, IfxCDCOperationRecord record, InformixTransactionCache transactionCache) throws IfxStreamException, SQLException {
+    public void handleInsert(InformixCDCEngine cdcEngine, IfxCDCOperationRecord record, InformixTransactionCache transactionCache)
+            throws IfxStreamException, SQLException {
         long _start = System.nanoTime();
         Long transId = (long) record.getTransactionId();
 
@@ -309,12 +317,13 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
 
     public void handleEvent(TableId tableId,
                             InformixOffsetContext offsetContext,
-                            //txn:Long,
+                            // txn:Long,
                             Integer operation,
                             Map<String, IfmxReadableType> data,
                             Map<String, IfmxReadableType> dataNext,
                             Clock clock,
-                            Timestamp timestamp) throws SQLException {
+                            Timestamp timestamp)
+            throws SQLException {
 
         offsetContext.event(tableId, clock.currentTime());
 
