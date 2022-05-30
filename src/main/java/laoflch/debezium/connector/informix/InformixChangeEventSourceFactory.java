@@ -6,17 +6,22 @@
 
 package laoflch.debezium.connector.informix;
 
+import java.util.Optional;
+
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
+import io.debezium.pipeline.source.snapshot.incremental.SignalBasedIncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.ChangeEventSourceFactory;
+import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
-import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.relational.TableId;
+import io.debezium.schema.DataCollectionId;
 import io.debezium.util.Clock;
 
-public class InformixChangeEventSourceFactory implements ChangeEventSourceFactory {
+public class InformixChangeEventSourceFactory implements ChangeEventSourceFactory<InformixOffsetContext> {
 
     private final InformixConnectorConfig configuration;
     private final InformixConnection dataConnection;
@@ -38,20 +43,33 @@ public class InformixChangeEventSourceFactory implements ChangeEventSourceFactor
     }
 
     @Override
-    public SnapshotChangeEventSource getSnapshotChangeEventSource(OffsetContext offsetContext, SnapshotProgressListener snapshotProgressListener) {
-        return new InformixSnapshotChangeEventSource(configuration, (InformixOffsetContext) offsetContext, dataConnection, schema, dispatcher, clock,
-                snapshotProgressListener);
+    public SnapshotChangeEventSource<InformixOffsetContext> getSnapshotChangeEventSource(SnapshotProgressListener snapshotProgressListener) {
+        return new InformixSnapshotChangeEventSource(configuration, dataConnection, schema, dispatcher, clock, snapshotProgressListener);
     }
 
     @Override
-    public StreamingChangeEventSource getStreamingChangeEventSource(OffsetContext offsetContext) {
+    public StreamingChangeEventSource<InformixOffsetContext> getStreamingChangeEventSource() {
         return new InformixStreamingChangeEventSource(
                 configuration,
-                (InformixOffsetContext) offsetContext,
                 dataConnection,
                 dispatcher,
                 errorHandler,
                 clock,
                 schema);
+    }
+
+    @Override
+    public Optional<IncrementalSnapshotChangeEventSource<? extends DataCollectionId>> getIncrementalSnapshotChangeEventSource(
+                                                                                                                              InformixOffsetContext offsetContext,
+                                                                                                                              SnapshotProgressListener snapshotProgressListener,
+                                                                                                                              DataChangeEventListener dataChangeEventListener) {
+        final SignalBasedIncrementalSnapshotChangeEventSource<TableId> incrementalSnapshotChangeEventSource = new SignalBasedIncrementalSnapshotChangeEventSource<TableId>(
+                configuration,
+                dataConnection,
+                schema,
+                clock,
+                snapshotProgressListener,
+                dataChangeEventListener);
+        return Optional.of(incrementalSnapshotChangeEventSource);
     }
 }

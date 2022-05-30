@@ -14,6 +14,7 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.connector.SnapshotRecord;
+import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.relational.TableId;
@@ -32,11 +33,13 @@ public class InformixOffsetContext implements OffsetContext {
     private boolean snapshotCompleted;
 
     private final TransactionContext transactionContext;
+    private final IncrementalSnapshotContext<TableId> incrementalSnapshotContext;
 
     private final InformixTransactionCache transactionCache;
 
     public InformixOffsetContext(InformixConnectorConfig connectorConfig, TxLogPosition position, boolean snapshot,
-                                 boolean snapshotCompleted, TransactionContext transactionContext) {
+                                 boolean snapshotCompleted, TransactionContext transactionContext,
+                                 IncrementalSnapshotContext<TableId> incrementalSnapshotContext) {
         partition = Collections.singletonMap(SERVER_PARTITION_KEY, connectorConfig.getLogicalName());
         sourceInfo = new SourceInfo(connectorConfig);
 
@@ -55,10 +58,11 @@ public class InformixOffsetContext implements OffsetContext {
         this.transactionContext = transactionContext;
 
         this.transactionCache = new InformixTransactionCache();
+        this.incrementalSnapshotContext = incrementalSnapshotContext;
     }
 
     public InformixOffsetContext(InformixConnectorConfig connectorConfig, TxLogPosition position, boolean snapshot, boolean snapshotCompleted) {
-        this(connectorConfig, position, snapshot, snapshotCompleted, new TransactionContext());
+        this(connectorConfig, position, snapshot, snapshotCompleted, new TransactionContext(), new IncrementalSnapshotContext<>(false));
     }
 
     @Override
@@ -75,10 +79,10 @@ public class InformixOffsetContext implements OffsetContext {
                     SourceInfo.COMMIT_LSN_KEY, sourceInfo.getCommitLsn().toString());
         }
         else {
-            return transactionContext.store(Collect.hashMapOf(
+            return incrementalSnapshotContext.store(transactionContext.store(Collect.hashMapOf(
                     SourceInfo.COMMIT_LSN_KEY, sourceInfo.getCommitLsn().toString(),
                     SourceInfo.CHANGE_LSN_KEY,
-                    sourceInfo.getChangeLsn() == null ? null : sourceInfo.getChangeLsn().toString()));
+                    sourceInfo.getChangeLsn() == null ? null : sourceInfo.getChangeLsn().toString())));
         }
     }
 
@@ -130,7 +134,7 @@ public class InformixOffsetContext implements OffsetContext {
         sourceInfo.setSnapshot(SnapshotRecord.FALSE);
     }
 
-    public static class Loader implements OffsetContext.Loader {
+    public static class Loader implements OffsetContext.Loader<InformixOffsetContext> {
 
         private final InformixConnectorConfig connectorConfig;
 
@@ -144,7 +148,7 @@ public class InformixOffsetContext implements OffsetContext {
         }
 
         @Override
-        public OffsetContext load(Map<String, ?> offset) {
+        public InformixOffsetContext load(Map<String, ?> offset) {
             // TODO: Is this a special case for Informix?
             Map<String, String> offset_map = (Map<String, String>) offset;
             final Long changeLsn = Long.parseLong(offset_map.getOrDefault(SourceInfo.CHANGE_LSN_KEY, "-1"));
@@ -154,7 +158,7 @@ public class InformixOffsetContext implements OffsetContext {
             boolean snapshotCompleted = Boolean.TRUE.equals(offset.get(SNAPSHOT_COMPLETED_KEY));
 
             return new InformixOffsetContext(connectorConfig, TxLogPosition.valueOf(commitLsn, changeLsn), snapshot, snapshotCompleted,
-                    TransactionContext.load(offset));
+                    TransactionContext.load(offset), IncrementalSnapshotContext.load(offset, false, TableId.class));
         }
     }
 
@@ -186,5 +190,15 @@ public class InformixOffsetContext implements OffsetContext {
 
     InformixTransactionCache getInformixTransactionCache() {
         return transactionCache;
+    }
+
+    @Override
+    public void incrementalSnapshotEvents() {
+        sourceInfo.setSnapshot(SnapshotRecord.INCREMENTAL);
+    }
+
+    @Override
+    public IncrementalSnapshotContext<?> getIncrementalSnapshotContext() {
+        return incrementalSnapshotContext;
     }
 }
