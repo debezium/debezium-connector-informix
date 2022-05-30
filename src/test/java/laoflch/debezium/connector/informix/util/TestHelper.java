@@ -69,7 +69,8 @@ public class TestHelper {
 
         return builder.with(InformixConnectorConfig.SERVER_NAME, "testdb")
                 .with(InformixConnectorConfig.DATABASE_HISTORY, FileDatabaseHistory.class)
-                .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH);
+                .with(FileDatabaseHistory.FILE_PATH, DB_HISTORY_PATH)
+                .with(InformixConnectorConfig.INCLUDE_SCHEMA_CHANGES, false);
     }
 
     public static InformixConnection adminConnection() {
