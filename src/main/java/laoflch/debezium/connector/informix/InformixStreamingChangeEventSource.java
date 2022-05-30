@@ -30,12 +30,11 @@ import io.debezium.relational.TableId;
 import io.debezium.time.Timestamp;
 import io.debezium.util.Clock;
 
-public class InformixStreamingChangeEventSource implements StreamingChangeEventSource {
+public class InformixStreamingChangeEventSource implements StreamingChangeEventSource<InformixOffsetContext> {
 
     private static Logger LOGGER = LoggerFactory.getLogger(InformixStreamingChangeEventSource.class);
 
     private final InformixConnectorConfig config;
-    private final InformixOffsetContext offsetContext;
     private final InformixConnection dataConnection;
     private final EventDispatcher<TableId> dispatcher;
     private final ErrorHandler errorHandler;
@@ -43,15 +42,12 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
     private final InformixDatabaseSchema schema;
 
     public InformixStreamingChangeEventSource(InformixConnectorConfig connectorConfig,
-                                              InformixOffsetContext offsetContext,
                                               InformixConnection dataConnection,
-                                              // metadataConnection: InformixConnection,
                                               EventDispatcher<TableId> dispatcher,
                                               ErrorHandler errorHandler,
                                               Clock clock,
                                               InformixDatabaseSchema schema) {
         this.config = connectorConfig;
-        this.offsetContext = offsetContext;
         this.dataConnection = dataConnection;
         this.dispatcher = dispatcher;
         this.errorHandler = errorHandler;
@@ -69,7 +65,7 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
      * @throws InterruptedException in case the snapshot was aborted before completion
      */
     @Override
-    public void execute(ChangeEventSourceContext context) throws InterruptedException {
+    public void execute(ChangeEventSourceContext context, InformixOffsetContext offsetContext) throws InterruptedException {
         InformixCDCEngine cdcEngine = dataConnection.getCdcEngine();
         InformixTransactionCache transCache = offsetContext.getInformixTransactionCache();
 
@@ -89,25 +85,25 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
                 cdcEngine.stream((IfmxStreamRecord record) -> {
                     switch (record.getType()) {
                         case TIMEOUT:
-                            handleTimeout(cdcEngine, (IfxCDCTimeoutRecord) record);
+                            handleTimeout(offsetContext, (IfxCDCTimeoutRecord) record);
                             break;
                         case BEFORE_UPDATE:
-                            handleBeforeUpdate(cdcEngine, (IfxCDCOperationRecord) record, transCache);
+                            handleBeforeUpdate(offsetContext, (IfxCDCOperationRecord) record, transCache);
                             break;
                         case AFTER_UPDATE:
-                            handleAfterUpdate(cdcEngine, (IfxCDCOperationRecord) record, transCache);
+                            handleAfterUpdate(cdcEngine, offsetContext, (IfxCDCOperationRecord) record, transCache);
                             break;
                         case BEGIN:
-                            handleBegin(cdcEngine, (IfxCDCBeginTransactionRecord) record, transCache);
+                            handleBegin(offsetContext, (IfxCDCBeginTransactionRecord) record, transCache);
                             break;
                         case INSERT:
-                            handleInsert(cdcEngine, (IfxCDCOperationRecord) record, transCache);
+                            handleInsert(cdcEngine, offsetContext, (IfxCDCOperationRecord) record, transCache);
                             break;
                         case COMMIT:
-                            handleCommit(cdcEngine, (IfxCDCCommitTransactionRecord) record, transCache);
+                            handleCommit(offsetContext, (IfxCDCCommitTransactionRecord) record, transCache);
                             break;
                         case ROLLBACK:
-                            handleRollback(cdcEngine, (IfxCDCRollbackTransactionRecord) record, transCache);
+                            handleRollback(offsetContext, (IfxCDCRollbackTransactionRecord) record, transCache);
                             break;
                         case METADATA:
                             handleMetadata(cdcEngine, (IfxCDCMetaDataRecord) record);
@@ -139,7 +135,7 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
         }
     }
 
-    public void handleTimeout(InformixCDCEngine cdcEngine, IfxCDCTimeoutRecord record) {
+    public void handleTimeout(InformixOffsetContext offsetContext, IfxCDCTimeoutRecord record) {
         offsetContext.setChangePosition(
                 TxLogPosition.cloneAndSet(
                         offsetContext.getChangePosition(),
@@ -168,7 +164,8 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
          */
     }
 
-    public void handleBeforeUpdate(InformixCDCEngine cdcEngine, IfxCDCOperationRecord record, InformixTransactionCache transactionCache) throws IfxStreamException {
+    public void handleBeforeUpdate(InformixOffsetContext offsetContext, IfxCDCOperationRecord record, InformixTransactionCache transactionCache)
+            throws IfxStreamException {
 
         Map<String, IfmxReadableType> data = record.getData();
         Long transId = (long) record.getTransactionId();
@@ -184,7 +181,8 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
         transactionCache.beforeUpdate(transId, data);
     }
 
-    public void handleAfterUpdate(InformixCDCEngine cdcEngine, IfxCDCOperationRecord record, InformixTransactionCache transactionCache)
+    public void handleAfterUpdate(InformixCDCEngine cdcEngine, InformixOffsetContext offsetContext, IfxCDCOperationRecord record,
+                                  InformixTransactionCache transactionCache)
             throws IfxStreamException, SQLException {
         Long transId = (long) record.getTransactionId();
 
@@ -205,7 +203,8 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
         handleEvent(tid, offsetContext, InformixChangeRecordEmitter.OP_UPDATE, oldData, newData, clock, null);
     }
 
-    public void handleBegin(InformixCDCEngine cdcEngine, IfxCDCBeginTransactionRecord record, InformixTransactionCache transactionCache) throws IfxStreamException {
+    public void handleBegin(InformixOffsetContext offsetContext, IfxCDCBeginTransactionRecord record, InformixTransactionCache transactionCache)
+            throws IfxStreamException {
         long _start = System.nanoTime();
 
         Long transId = (long) record.getTransactionId();
@@ -232,7 +231,7 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
                 (_end - _start) / 1000000d);
     }
 
-    public void handleCommit(InformixCDCEngine cdcEngine, IfxCDCCommitTransactionRecord record, InformixTransactionCache transactionCache)
+    public void handleCommit(InformixOffsetContext offsetContext, IfxCDCCommitTransactionRecord record, InformixTransactionCache transactionCache)
             throws InterruptedException, IfxStreamException {
         long _start = System.nanoTime();
         Long transId = (long) record.getTransactionId();
@@ -264,7 +263,7 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
                 (_end - _start) / 1000000d);
     }
 
-    public void handleInsert(InformixCDCEngine cdcEngine, IfxCDCOperationRecord record, InformixTransactionCache transactionCache)
+    public void handleInsert(InformixCDCEngine cdcEngine, InformixOffsetContext offsetContext, IfxCDCOperationRecord record, InformixTransactionCache transactionCache)
             throws IfxStreamException, SQLException {
         long _start = System.nanoTime();
         Long transId = (long) record.getTransactionId();
@@ -288,7 +287,8 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
                 (_end - _start) / 1000000d);
     }
 
-    public void handleRollback(InformixCDCEngine cdcEngine, IfxCDCRollbackTransactionRecord record, InformixTransactionCache transactionCache) throws IfxStreamException {
+    public void handleRollback(InformixOffsetContext offsetContext, IfxCDCRollbackTransactionRecord record, InformixTransactionCache transactionCache)
+            throws IfxStreamException {
         long _start = System.nanoTime();
         Long transId = (long) record.getTransactionId();
 

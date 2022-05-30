@@ -9,7 +9,6 @@ package laoflch.debezium.connector.informix;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Savepoint;
-import java.util.HashMap;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -19,8 +18,6 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
-import io.debezium.pipeline.spi.OffsetContext;
-import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -30,23 +27,23 @@ import io.debezium.util.Clock;
 
 import laoflch.debezium.connector.informix.InformixConnectorConfig.SnapshotIsolationMode;
 
-public class InformixSnapshotChangeEventSource extends RelationalSnapshotChangeEventSource {
+public class InformixSnapshotChangeEventSource extends RelationalSnapshotChangeEventSource<InformixOffsetContext> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(InformixSnapshotChangeEventSource.class);
 
     private final InformixConnectorConfig connectorConfig;
     private final InformixConnection jdbcConnection;
 
-    public InformixSnapshotChangeEventSource(InformixConnectorConfig connectorConfig, InformixOffsetContext previousOffset, InformixConnection jdbcConnection,
+    public InformixSnapshotChangeEventSource(InformixConnectorConfig connectorConfig, InformixConnection jdbcConnection,
                                              InformixDatabaseSchema schema,
                                              EventDispatcher<TableId> dispatcher, Clock clock, SnapshotProgressListener snapshotProgressListener) {
-        super(connectorConfig, previousOffset, jdbcConnection, schema, dispatcher, clock, snapshotProgressListener);
+        super(connectorConfig, jdbcConnection, schema, dispatcher, clock, snapshotProgressListener);
         this.connectorConfig = connectorConfig;
         this.jdbcConnection = jdbcConnection;
     }
 
     @Override
-    protected SnapshottingTask getSnapshottingTask(OffsetContext previousOffset) {
+    protected SnapshottingTask getSnapshottingTask(InformixOffsetContext previousOffset) {
         boolean snapshotSchema = true;
         boolean snapshotData = true;
 
@@ -71,22 +68,22 @@ public class InformixSnapshotChangeEventSource extends RelationalSnapshotChangeE
     }
 
     @Override
-    protected SnapshotContext prepare(ChangeEventSourceContext context) throws Exception {
-        return new InformixSnapshotChangeEventSource.InformixSnapshotContext(jdbcConnection.getRealDatabaseName());
+    protected SnapshotContext<InformixOffsetContext> prepare(ChangeEventSourceContext context) throws Exception {
+        return new InformixSnapshotContext(jdbcConnection.getRealDatabaseName());
     }
 
     @Override
-    protected void connectionCreated(RelationalSnapshotContext snapshotContext) throws Exception {
+    protected void connectionCreated(RelationalSnapshotContext<InformixOffsetContext> snapshotContext) throws Exception {
         ((InformixSnapshotContext) snapshotContext).isolationLevelBeforeStart = jdbcConnection.connection().getTransactionIsolation();
     }
 
     @Override
-    protected Set<TableId> getAllTableIds(RelationalSnapshotContext ctx) throws Exception {
+    protected Set<TableId> getAllTableIds(RelationalSnapshotContext<InformixOffsetContext> ctx) throws Exception {
         return jdbcConnection.readTableNames(null, null, null, new String[]{ "TABLE" });
     }
 
     @Override
-    protected void lockTablesForSchemaSnapshot(ChangeEventSourceContext sourceContext, RelationalSnapshotContext snapshotContext)
+    protected void lockTablesForSchemaSnapshot(ChangeEventSourceContext sourceContext, RelationalSnapshotContext<InformixOffsetContext> snapshotContext)
             throws SQLException, InterruptedException {
         if (connectorConfig.getSnapshotIsolationMode() == SnapshotIsolationMode.READ_UNCOMMITTED) {
             jdbcConnection.connection().setTransactionIsolation(Connection.TRANSACTION_READ_UNCOMMITTED);
@@ -124,7 +121,7 @@ public class InformixSnapshotChangeEventSource extends RelationalSnapshotChangeE
     }
 
     @Override
-    protected void releaseSchemaSnapshotLocks(RelationalSnapshotContext snapshotContext) throws SQLException {
+    protected void releaseSchemaSnapshotLocks(RelationalSnapshotContext<InformixOffsetContext> snapshotContext) throws SQLException {
         // Exclusive mode: locks should be kept until the end of transaction.
         // read_uncommitted mode; read_committed mode: no locks have been acquired.
         if (connectorConfig.getSnapshotIsolationMode() == SnapshotIsolationMode.REPEATABLE_READ) {
@@ -135,20 +132,19 @@ public class InformixSnapshotChangeEventSource extends RelationalSnapshotChangeE
     }
 
     @Override
-    protected void determineSnapshotOffset(RelationalSnapshotContext ctx) throws Exception {
+    protected void determineSnapshotOffset(RelationalSnapshotContext<InformixOffsetContext> ctx, InformixOffsetContext previousOffset) throws Exception {
         // TODO: Check the following modification
         ctx.offset = new InformixOffsetContext(
                 connectorConfig,
-                // TxLogPosition.valueOf(jdbcConnection.getMaxLsn()),
                 TxLogPosition.NULL,
                 false,
-                false,
-                //
-                TransactionContext.load(new HashMap<String, Object>()));
+                false);
     }
 
     @Override
-    protected void readTableStructure(ChangeEventSourceContext sourceContext, RelationalSnapshotContext snapshotContext) throws SQLException, InterruptedException {
+    protected void readTableStructure(ChangeEventSourceContext sourceContext, RelationalSnapshotContext<InformixOffsetContext> snapshotContext,
+                                      InformixOffsetContext previousOffset)
+            throws SQLException, InterruptedException {
         Set<String> schemas = snapshotContext.capturedTables.stream()
                 .map(TableId::schema)
                 .collect(Collectors.toSet());
@@ -174,7 +170,7 @@ public class InformixSnapshotChangeEventSource extends RelationalSnapshotChangeE
     }
 
     @Override
-    protected SchemaChangeEvent getCreateTableEvent(RelationalSnapshotContext snapshotContext, Table table) throws SQLException {
+    protected SchemaChangeEvent getCreateTableEvent(RelationalSnapshotContext<InformixOffsetContext> snapshotContext, Table table) throws SQLException {
         return new SchemaChangeEvent(
                 snapshotContext.offset.getPartition(),
                 snapshotContext.offset.getOffset(),
@@ -187,7 +183,7 @@ public class InformixSnapshotChangeEventSource extends RelationalSnapshotChangeE
     }
 
     @Override
-    protected void complete(SnapshotContext snapshotContext) {
+    protected void complete(SnapshotContext<InformixOffsetContext> snapshotContext) {
         try {
             jdbcConnection.connection().setTransactionIsolation(((InformixSnapshotContext) snapshotContext).isolationLevelBeforeStart);
         }
@@ -203,14 +199,14 @@ public class InformixSnapshotChangeEventSource extends RelationalSnapshotChangeE
      * @return a valid query string
      */
     @Override
-    protected Optional<String> getSnapshotSelect(RelationalSnapshotContext snapshotContext, TableId tableId) {
+    protected Optional<String> getSnapshotSelect(RelationalSnapshotContext<InformixOffsetContext> snapshotContext, TableId tableId) {
         return Optional.of(String.format("SELECT * FROM %s.%s", tableId.schema(), tableId.table()));
     }
 
     /**
      * Mutable context which is populated in the course of snapshotting.
      */
-    private static class InformixSnapshotContext extends RelationalSnapshotContext {
+    private static class InformixSnapshotContext extends RelationalSnapshotContext<InformixOffsetContext> {
 
         private int isolationLevelBeforeStart;
         private Savepoint preSchemaSnapshotSavepoint;
