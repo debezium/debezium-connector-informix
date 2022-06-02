@@ -10,11 +10,14 @@ import java.nio.file.Path;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.List;
 
+import org.apache.kafka.connect.data.Struct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
+import io.debezium.data.SchemaAndValueField;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.relational.history.FileDatabaseHistory;
 import io.debezium.util.Testing;
@@ -98,5 +101,9 @@ public class TestHelper {
         }
 
         // Assert.assertFalse(is_logging != 1 && is_buff_logging != 1, "Logging or Buf_Logging should enabled for 'testdb'");
+    }
+
+    public static void assertRecord(Struct record, List<SchemaAndValueField> expected) {
+        expected.forEach(schemaAndValueField -> schemaAndValueField.assertFor(record));
     }
 }

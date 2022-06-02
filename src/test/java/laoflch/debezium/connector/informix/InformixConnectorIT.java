@@ -8,6 +8,7 @@ package laoflch.debezium.connector.informix;
 
 import static laoflch.debezium.connector.informix.InformixConnectorConfig.SNAPSHOT_MODE;
 import static laoflch.debezium.connector.informix.InformixConnectorConfig.SnapshotMode.INITIAL_SCHEMA_ONLY;
+import static laoflch.debezium.connector.informix.util.TestHelper.assertRecord;
 import static org.fest.assertions.Assertions.assertThat;
 
 import java.sql.SQLException;
@@ -34,8 +35,8 @@ import laoflch.debezium.connector.informix.util.TestHelper;
 
 public class InformixConnectorIT extends AbstractConnectorTest {
 
-    private InformixConnection connection;
     public Random rand = new Random();
+    private InformixConnection connection;
 
     @Before
     public void before() throws SQLException {
@@ -144,9 +145,5 @@ public class InformixConnectorIT extends AbstractConnectorTest {
         }
 
         stopConnector();
-    }
-
-    private void assertRecord(Struct record, List<SchemaAndValueField> expected) {
-        expected.forEach(schemaAndValueField -> schemaAndValueField.assertFor(record));
     }
 }
