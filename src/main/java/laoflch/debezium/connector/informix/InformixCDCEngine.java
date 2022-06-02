@@ -42,7 +42,7 @@ public class InformixCDCEngine {
 
     private IfxCDCEngine cdcEngine;
 
-    private Map<Integer, TableId> labelId_tableId_map;
+    private Map<Integer, TableId> tableIdByLabelId;
 
     public InformixCDCEngine(Configuration config) {
         cdcEngine = null;
@@ -56,7 +56,7 @@ public class InformixCDCEngine {
         password = config.getString(JdbcConfiguration.PASSWORD);
 
         // TODO: try HPPC or FastUtils's Integer Map?
-        labelId_tableId_map = new HashMap<>();
+        tableIdByLabelId = new HashMap<>();
     }
 
     public void init(InformixDatabaseSchema schema) throws InterruptedException {
@@ -100,14 +100,15 @@ public class InformixCDCEngine {
         if (this.lsn > 0) {
             builder.sequenceId(this.lsn);
         }
-        LOGGER.info("Set CDCEngine's LSN to {}", builder.getSequenceId());
+        long seqId = builder.getSequenceId();
+        LOGGER.info("Set CDCEngine's LSN to '{}' aka {}", seqId, Lsn.valueOf(seqId).toLongString());
 
         /*
          * Build Map of Label_id to TableId.
          */
         for (IfxCDCEngine.IfmxWatchedTable tbl : builder.getWatchedTables()) {
             TableId tid = new TableId(tbl.getDatabaseName(), tbl.getNamespace(), tbl.getTableName());
-            labelId_tableId_map.put(tbl.getLabel(), tid);
+            tableIdByLabelId.put(tbl.getLabel(), tid);
             LOGGER.info("Added WatchedTable : label={} -> tableId={}", tbl.getLabel(), tid);
         }
 
@@ -128,7 +129,7 @@ public class InformixCDCEngine {
     }
 
     public Map<Integer, TableId> convertLabel2TableId() {
-        return this.labelId_tableId_map;
+        return this.tableIdByLabelId;
     }
 
     public void stream(StreamHandler streamHandler) throws InterruptedException, SQLException, IfxStreamException {

@@ -101,4 +101,11 @@ public class LsnTest {
         assertThat(lsnDigit5.compareTo(lsnDigit4)).isEqualTo(1);
         assertThat(lsnDigit6.compareTo(lsnDigit5)).isEqualTo(1);
     }
+
+    @Test
+    public void testLsnLongString() {
+        Lsn lsn = Lsn.valueOf("30073823388");
+
+        assertThat(lsn.toLongString()).isEqualTo("LSN(7:0x8a209c)");
+    }
 }
