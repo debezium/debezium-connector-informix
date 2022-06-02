@@ -21,6 +21,9 @@ public class Lsn implements Comparable<Lsn>, Nullable {
 
     public static final Lsn NULL = new Lsn(null);
 
+    private static long LO_MASK = Long.parseUnsignedLong("ffffffff", 16);
+    private static long HI_MASK = Long.parseUnsignedLong("ffffffff00000000", 16);
+
     private Long lsn;
     private boolean isInitialized;
 
@@ -47,6 +50,16 @@ public class Lsn implements Comparable<Lsn>, Nullable {
      */
     public String toString() {
         return Long.toString(lsn);
+    }
+
+    /**
+     * Return the LSN String for an official representation, like "LSN(7:0x8a209c)".
+     * @return official textual representation of LSN.
+     */
+    public String toLongString() {
+        long lo = LO_MASK & lsn;
+        long hi = lsn >> 32;
+        return String.format("LSN(%d:0x%x)", hi, lo);
     }
 
     /**
