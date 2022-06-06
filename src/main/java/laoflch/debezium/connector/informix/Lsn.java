@@ -53,7 +53,10 @@ public class Lsn implements Comparable<Lsn>, Nullable {
     }
 
     /**
-     * Return the LSN String for an official representation, like "LSN(7:0x8a209c)".
+     * Return the LSN String for an official representation, like "LSN(7:0x8a209c)". Reference
+     * <a href="https://www.oninit.com/manual/informix/117/documentation/ids_cdc_bookmap.pdf">Informix 11.70 CDC API Programmer's Guide</a> page 62 for
+     * more details.
+     *
      * @return official textual representation of LSN.
      */
     public String toLongString() {

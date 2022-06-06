@@ -33,12 +33,12 @@ public class InformixTransactionCache {
         this.beforeAndAfter = new HashMap<>();
     }
 
-    public Optional<TransactionCacheBuffer> beginTxn(Long txn, Long beginTs) {
+    public Optional<TransactionCacheBuffer> beginTxn(Long txn, Long beginTs, Long beginSeqId) {
         if (transactionCacheBufferMap.containsKey(txn)) {
             LOGGER.warn("Transaction key={} already exists in InformixTransactionCache", txn);
             return Optional.empty();
         }
-        TransactionCacheBuffer tb = new TransactionCacheBuffer(4096, beginTs);
+        TransactionCacheBuffer tb = new TransactionCacheBuffer(4096, beginTs, beginSeqId);
         return Optional.ofNullable(transactionCacheBufferMap.put(txn, tb));
     }
 
@@ -67,8 +67,7 @@ public class InformixTransactionCache {
             TransactionCacheBuffer buffer = transactionCacheBufferMap.get(txn);
 
             if (buffer != null) {
-                buffer.getTransactionCacheRecords().add(
-                        new TransactionCacheRecord(tableId, event));
+                buffer.getTransactionCacheRecords().add(new TransactionCacheRecord(tableId, event));
             }
         }
     }
@@ -91,16 +90,29 @@ public class InformixTransactionCache {
         return Optional.ofNullable(beforeAndAfter.remove(txn));
     }
 
+    public Optional<TransactionCacheBuffer> getMinTransactionCache() {
+        // TODO: Find the TransactionCache with the minimal beginTime/sequenceIdx
+        Map.Entry<Long, TransactionCacheBuffer> minEntry = null;
+        for (Map.Entry<Long, TransactionCacheBuffer> entry : transactionCacheBufferMap.entrySet()) {
+            if (minEntry == null || minEntry.getValue().getBeginSeqId() > entry.getValue().getBeginSeqId()) {
+                minEntry = entry;
+            }
+        }
+        return Optional.ofNullable(minEntry != null ? minEntry.getValue() : null);
+    }
+
     public static class TransactionCacheBuffer {
 
         private final List<TransactionCacheRecord> transactionCacheRecordList;
         private Long beginTime; // Begin time of transaction
         private Long endTime; // Commit/Rollback of the transaction
+        private Long beginSeqId;
 
-        public TransactionCacheBuffer(int initialSize, Long beginTs) {
+        public TransactionCacheBuffer(int initialSize, Long beginTs, Long beginSeqId) {
             transactionCacheRecordList = new ArrayList<>(initialSize);
-            beginTime = beginTs;
-            endTime = -1L;
+            this.beginTime = beginTs;
+            this.endTime = -1L;
+            this.beginSeqId = beginSeqId;
         }
 
         public List<TransactionCacheRecord> getTransactionCacheRecords() {
@@ -117,6 +129,14 @@ public class InformixTransactionCache {
 
         public void setEndTime(Long endTime) {
             this.endTime = endTime;
+        }
+
+        public Long getBeginSeqId() {
+            return beginSeqId;
+        }
+
+        public void setBeginSeqId(Long beginSeqId) {
+            this.beginSeqId = beginSeqId;
         }
 
         public Long getElapsed() {

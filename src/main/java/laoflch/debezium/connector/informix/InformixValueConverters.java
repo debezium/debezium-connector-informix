@@ -59,7 +59,7 @@ public class InformixValueConverters extends JdbcValueConverters {
                 return SchemaBuilder.int16();
             case Types.DECIMAL:
                 return SpecialValueDecimal.builder(this.decimalMode, column.length(), column.scale().get());
-            case Types.TIMESTAMP:
+            case Types.TIMESTAMP: // TODO: Remove this block
                 if (!this.adaptiveTimePrecisionMode && !this.adaptiveTimeMicrosecondsPrecisionMode) {
                     if (this.getTimePrecision(column) <= 3) {
                         return io.debezium.time.Timestamp.builder();
@@ -88,7 +88,7 @@ public class InformixValueConverters extends JdbcValueConverters {
                 return (data) -> convertSmallInt(column, fieldDefn, data);
             case Types.DECIMAL:
                 return (data) -> convertDecimal(column, fieldDefn, data);
-            case Types.TIMESTAMP:
+            case Types.TIMESTAMP: // TODO: remove this block for 1.6
                 return (data) -> {
                     if (!adaptiveTimePrecisionMode && !adaptiveTimeMicrosecondsPrecisionMode) {
                         if (getTimePrecision(column) <= 3) {
