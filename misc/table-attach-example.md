@@ -72,11 +72,28 @@ onspaces -c -d rootdbs4 -p $INFORMIX_DATA_DIR/spaces/rootdbs4 -o 60 -s 10240
 onstat -d
 ```
 
-```sql
+## Typical usecase at informix-server side: 
+
+```text
+// ----- block all clients requests ------
+
+1. create table bb_temp like bb;
+// cdc_set_fullrowlogging(0) // disable
+2. attach bb to bbhis
+3. rename bb_temp to bb;
+
+    /// call RESTfull --> debezium( 20s ) :: restart connector
+
+// --------------- restore ---------------
+```
+
+## Client Side script of `attach` table
+
+```text
 DATABASE testdb;
 
-DROP TABLE IF EXISTS testdb:informix.bbhis;
-DROP TABLE IF EXISTS testdb:informix.bb;
+DROP TABLE IF EXISTS testdb:informix.bbhis; // partitioned table composed by many fragments 
+DROP TABLE IF EXISTS testdb:informix.bb;    // 2022-06-02 
 
 CREATE TABLE testdb:informix.bbhis(id INTEGER NOT NULL)
     FRAGEMENT BY EXPRESSION

@@ -59,12 +59,17 @@ $ onmode -ky
 informix@77f7ee9ff52b:/$ exit
 ```
 
+Then, follow the [Preparing Steps](https://www.ibm.com/docs/en/informix-servers/12.10?topic=api-preparing-use-change-data-capture) from Informix to create Informix CDC's system database and tables: 
+
+```text
+dbaccess  < $INFORMIXDIR/etc/syscdcv1.sql
+```
+
 ### Finally, commit the image
 
 ```sh
 $ docker commit ifx xiaolin/ifx12-cdc-test:v1
 ```
-
 
 ### Local Usage
 
@@ -84,5 +89,5 @@ $ docker run -it --name ifx --privileged -e SIZE=small \
 - https://hub.docker.com/r/ibmcom/informix-developer-database/tags
 - https://github.com/informix/informix-server-dockerfiles
 - https://stackoverflow.com/questions/61595224/undo-dockerfile-volume-directive-from-a-base-image
-
-
+- https://github.com/informix/informix-dockerhub-readme
+- https://www.ibm.com/docs/en/informix-servers/12.10?topic=api-preparing-use-change-data-capture
