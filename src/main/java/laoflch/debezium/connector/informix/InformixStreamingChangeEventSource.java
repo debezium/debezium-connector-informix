@@ -21,6 +21,7 @@ import com.informix.stream.cdc.records.IfxCDCMetaDataRecord;
 import com.informix.stream.cdc.records.IfxCDCOperationRecord;
 import com.informix.stream.cdc.records.IfxCDCRollbackTransactionRecord;
 import com.informix.stream.cdc.records.IfxCDCTimeoutRecord;
+import com.informix.stream.cdc.records.IfxCDCTruncateRecord;
 import com.informix.stream.impl.IfxStreamException;
 
 import io.debezium.pipeline.ErrorHandler;
@@ -118,6 +119,9 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
                     case METADATA:
                         handleMetadata(cdcEngine, (IfxCDCMetaDataRecord) record);
                         break;
+                    case TRUNCATE:
+                        handleTruncate(cdcEngine, offsetContext, (IfxCDCTruncateRecord) record, transCache, true);
+                        break;
                     case DELETE:
                         break;
                     default:
@@ -164,6 +168,9 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
                             break;
                         case METADATA:
                             handleMetadata(cdcEngine, (IfxCDCMetaDataRecord) record);
+                            break;
+                        case TRUNCATE:
+                            handleTruncate(cdcEngine, offsetContext, (IfxCDCTruncateRecord) record, transCache, false);
                             break;
                         case DELETE:
                             break;
@@ -392,6 +399,36 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
 
         long _end = System.nanoTime();
         LOGGER.info("Received ROLLBACK :: transId={} seqId={} elapsedTime={} ms",
+                record.getTransactionId(), record.getSequenceId(),
+                (_end - _start) / 1000000d);
+    }
+
+
+    public void handleTruncate(InformixCDCEngine cdcEngine, InformixOffsetContext offsetContext, IfxCDCTruncateRecord record, InformixTransactionCache transactionCache,
+                               boolean recover)
+            throws IfxStreamException, SQLException {
+        long _start = System.nanoTime();
+        Long transId = (long) record.getTransactionId();
+
+        Optional<InformixTransactionCache.TransactionCacheBuffer> minTransactionCache = transactionCache.getMinTransactionCache();
+        Long minSeqId = minTransactionCache.isPresent() ? minTransactionCache.get().getBeginSeqId() : record.getSequenceId();
+
+        Map<Integer, TableId> label2TableId = cdcEngine.convertLabel2TableId();
+        TableId tid = label2TableId.get(record.getUserId());
+        handleEvent(tid, offsetContext, transId, InformixChangeRecordEmitter.OP_TRUNCATE, null, null, clock);
+
+        if (!recover) {
+            offsetContext.setChangePosition(
+                    TxLogPosition.cloneAndSet(
+                            offsetContext.getChangePosition(),
+                            minSeqId,
+                            record.getSequenceId(),
+                            transId,
+                            TxLogPosition.LSN_NULL));
+        }
+
+        long _end = System.nanoTime();
+        LOGGER.info("Received TRUNCATE :: transId={} seqId={} elapsedTime={} ms",
                 record.getTransactionId(), record.getSequenceId(),
                 (_end - _start) / 1000000d);
     }
