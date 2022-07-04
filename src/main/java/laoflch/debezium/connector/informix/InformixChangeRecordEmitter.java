@@ -16,7 +16,9 @@ import com.informix.jdbc.IfmxReadableType;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.relational.RelationalChangeRecordEmitter;
+import io.debezium.relational.TableSchema;
 import io.debezium.util.Clock;
+import org.apache.kafka.connect.data.Struct;
 
 public class InformixChangeRecordEmitter extends RelationalChangeRecordEmitter {
 
@@ -48,6 +50,9 @@ public class InformixChangeRecordEmitter extends RelationalChangeRecordEmitter {
         }
         else if (operation == OP_UPDATE) {
             return Operation.UPDATE;
+        }
+        else if (operation == OP_TRUNCATE) {
+            return Operation.TRUNCATE;
         }
         throw new IllegalArgumentException("Received event of unexpected command type: " + operation);
     }
@@ -96,5 +101,11 @@ public class InformixChangeRecordEmitter extends RelationalChangeRecordEmitter {
             list.add(toObject);
         }
         return list.toArray();
+    }
+
+    @Override
+    protected void emitTruncateRecord(Receiver receiver, TableSchema tableSchema) throws InterruptedException {
+        Struct envelope = tableSchema.getEnvelopeSchema().truncate(getOffset().getSourceInfo(), getClock().currentTimeAsInstant());
+        receiver.changeRecord(tableSchema, Operation.TRUNCATE, null, envelope, getOffset(), null);
     }
 }
