@@ -123,6 +123,7 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
                         handleTruncate(cdcEngine, offsetContext, (IfxCDCTruncateRecord) record, transCache, true);
                         break;
                     case DELETE:
+                        handleDelete(cdcEngine, offsetContext, (IfxCDCOperationRecord) record, transCache, true);
                         break;
                     default:
                         LOGGER.info("Handle unknown record-type = {}", record.getType());
@@ -173,6 +174,7 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
                             handleTruncate(cdcEngine, offsetContext, (IfxCDCTruncateRecord) record, transCache, false);
                             break;
                         case DELETE:
+                            handleDelete(cdcEngine, offsetContext, (IfxCDCOperationRecord) record, transCache, false);
                             break;
                         default:
                             LOGGER.info("Handle unknown record-type = {}", record.getType());
@@ -403,7 +405,6 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
                 (_end - _start) / 1000000d);
     }
 
-
     public void handleTruncate(InformixCDCEngine cdcEngine, InformixOffsetContext offsetContext, IfxCDCTruncateRecord record, InformixTransactionCache transactionCache,
                                boolean recover)
             throws IfxStreamException, SQLException {
@@ -429,6 +430,36 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
 
         long _end = System.nanoTime();
         LOGGER.info("Received TRUNCATE :: transId={} seqId={} elapsedTime={} ms",
+                record.getTransactionId(), record.getSequenceId(),
+                (_end - _start) / 1000000d);
+    }
+
+    public void handleDelete(InformixCDCEngine cdcEngine, InformixOffsetContext offsetContext, IfxCDCOperationRecord record, InformixTransactionCache transactionCache,
+                             boolean recover)
+            throws IfxStreamException, SQLException {
+        long _start = System.nanoTime();
+        Long transId = (long) record.getTransactionId();
+
+        Optional<InformixTransactionCache.TransactionCacheBuffer> minTransactionCache = transactionCache.getMinTransactionCache();
+        Long minSeqId = minTransactionCache.isPresent() ? minTransactionCache.get().getBeginSeqId() : record.getSequenceId();
+
+        Map<String, IfmxReadableType> data = record.getData();
+        Map<Integer, TableId> label2TableId = cdcEngine.convertLabel2TableId();
+        TableId tid = label2TableId.get(Integer.parseInt(record.getLabel()));
+        handleEvent(tid, offsetContext, transId, InformixChangeRecordEmitter.OP_DELETE, data, null, clock);
+
+        if (!recover) {
+            offsetContext.setChangePosition(
+                    TxLogPosition.cloneAndSet(
+                            offsetContext.getChangePosition(),
+                            minSeqId,
+                            record.getSequenceId(),
+                            transId,
+                            TxLogPosition.LSN_NULL));
+        }
+
+        long _end = System.nanoTime();
+        LOGGER.info("Received DELETE :: transId={} seqId={} elapsedTime={} ms",
                 record.getTransactionId(), record.getSequenceId(),
                 (_end - _start) / 1000000d);
     }
