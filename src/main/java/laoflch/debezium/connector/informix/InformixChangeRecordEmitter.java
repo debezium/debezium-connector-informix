@@ -11,6 +11,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.kafka.connect.data.Field;
+import org.apache.kafka.connect.data.Struct;
+
 import com.informix.jdbc.IfmxReadableType;
 
 import io.debezium.data.Envelope.Operation;
@@ -18,7 +21,6 @@ import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.relational.RelationalChangeRecordEmitter;
 import io.debezium.relational.TableSchema;
 import io.debezium.util.Clock;
-import org.apache.kafka.connect.data.Struct;
 
 public class InformixChangeRecordEmitter extends RelationalChangeRecordEmitter {
 
@@ -90,13 +92,14 @@ public class InformixChangeRecordEmitter extends RelationalChangeRecordEmitter {
      *
      * @author Laoflch Luo, Xiaolin Zhang
      */
-    public static Object[] convertIfxData2Array(Map<String, IfmxReadableType> data) throws SQLException {
+    public static Object[] convertIfxData2Array(Map<String, IfmxReadableType> data, TableSchema tableSchema) throws SQLException {
         if (data == null) {
             return new Object[0];
         }
 
         List<Object> list = new ArrayList<>();
-        for (IfmxReadableType ifmxReadableType : data.values()) {
+        for (Field field : tableSchema.valueSchema().fields()) {
+            IfmxReadableType ifmxReadableType = data.get(field.name());
             Object toObject = ifmxReadableType.toObject();
             list.add(toObject);
         }
