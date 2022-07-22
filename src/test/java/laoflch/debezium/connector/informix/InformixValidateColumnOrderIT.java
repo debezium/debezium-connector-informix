@@ -22,8 +22,6 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
 import io.debezium.data.VerifyRecord;
@@ -31,10 +29,10 @@ import io.debezium.embedded.AbstractConnectorTest;
 
 import laoflch.debezium.connector.informix.util.TestHelper;
 
-public class InformixFixColumnOrderIT extends AbstractConnectorTest {
+public class InformixValidateColumnOrderIT extends AbstractConnectorTest {
 
     private InformixConnection connection;
-    private static final String testTableName = "test_table";
+    private static final String testTableName = "test_column_order";
     private static final Map<String, String> testTableColumns = new LinkedHashMap<String, String>() {
         {
             put("id", "int");
@@ -44,8 +42,6 @@ public class InformixFixColumnOrderIT extends AbstractConnectorTest {
             put("address", "varchar(50)");
         }
     };
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(InformixFixColumnOrderIT.class);
 
     @Before
     public void before() throws SQLException {
