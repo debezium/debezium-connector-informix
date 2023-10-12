@@ -1,7 +1,0 @@
-#!/bin/bash
-
-TAG=xiaolin/ifx12-localdata-base
-VERSION=v1
-
-docker build -t ${TAG}:${VERSION} -f Dockerfile .
-
