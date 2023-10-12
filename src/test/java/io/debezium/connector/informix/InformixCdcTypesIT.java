@@ -1,20 +1,14 @@
 /*
- * Copyright Debezium-Informix-Connector Authors.
+ * Copyright Debezium Authors.
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-
 package io.debezium.connector.informix;
 
-import static io.debezium.relational.RelationalDatabaseConnectorConfig.DECIMAL_HANDLING_MODE;
-import static io.debezium.connector.informix.InformixConnectorConfig.SNAPSHOT_MODE;
-import static io.debezium.connector.informix.InformixConnectorConfig.SnapshotMode.INITIAL_SCHEMA_ONLY;
-import static org.fest.assertions.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
-import java.sql.SQLException;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.Arrays;
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,6 +16,7 @@ import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
@@ -29,71 +24,77 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
-import io.debezium.data.SchemaAndValueField;
+import io.debezium.connector.informix.InformixConnectorConfig.SnapshotMode;
+import io.debezium.connector.informix.util.TestHelper;
+import io.debezium.data.SourceRecordAssert;
 import io.debezium.embedded.AbstractConnectorTest;
-import io.debezium.jdbc.JdbcValueConverters;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
+import io.debezium.relational.RelationalDatabaseConnectorConfig.DecimalHandlingMode;
+import io.debezium.time.Date;
 import io.debezium.util.Testing;
 
-import io.debezium.connector.informix.util.TestHelper;
+import lombok.SneakyThrows;
 
 public class InformixCdcTypesIT extends AbstractConnectorTest {
 
     private InformixConnection connection;
 
     @Before
-    public void before() throws SQLException {
+    @SneakyThrows
+    public void before() {
         connection = TestHelper.testConnection();
-
-        connection.execute("create table if not exists test_bigint(a bigint)");
-        connection.execute("truncate table test_bigint");
-        connection.execute("create table if not exists test_bigserial(a bigserial)");
-        connection.execute("truncate table test_bigserial");
-        connection.execute("create table if not exists test_char(a char)");
-        connection.execute("truncate table test_char");
-        connection.execute("create table if not exists test_date(a date)");
-        connection.execute("truncate table test_date");
-        connection.execute("create table if not exists test_decimal(a decimal)");
-        connection.execute("truncate table test_decimal");
-        connection.execute("create table if not exists test_decimal_20(a decimal(20))");
-        connection.execute("truncate table test_decimal_20");
-        connection.execute("create table if not exists test_decimal_20_5(a decimal(20, 5))");
-        connection.execute("truncate table test_decimal_20_5");
+        connection.execute(
+                "create table test_bigint(a bigint)",
+                "create table test_bigserial(a bigserial)",
+                "create table test_char(a char)",
+                "create table test_date(a date)",
+                "create table test_decimal(a decimal)",
+                "create table test_decimal_20(a decimal(20))",
+                "create table test_decimal_20_5(a decimal(20, 5))");
 
         initializeConnectorTestFramework();
-        Testing.Files.delete(TestHelper.DB_HISTORY_PATH);
+        Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
         Testing.Print.enable();
     }
 
     @After
-    public void after() throws SQLException {
+    @SneakyThrows
+    public void after() {
+        /*
+         * Since all DDL operations are forbidden during Informix CDC,
+         * we have to ensure the connector is properly shut down before dropping tables.
+         */
+        stopConnector();
+        waitForConnectorShutdown(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
+        assertConnectorNotRunning();
         if (connection != null) {
-            // connection.execute("drop table if exists test_bigint");
-            connection.close();
+            connection.rollback()
+                    .execute("drop table test_bigint",
+                            "drop table test_bigserial",
+                            "drop table test_char",
+                            "drop table test_date",
+                            "drop table test_decimal",
+                            "drop table test_decimal_20",
+                            "drop table test_decimal_20_5")
+                    .close();
         }
     }
 
     @Test
-    public void testTypeBigint() throws Exception {
-
-        connection.execute("truncate table test_bigint");
-        connection.execute("truncate table test_bigserial");
-        connection.execute("truncate table test_char");
-        connection.execute("truncate table test_date");
-        connection.execute("truncate table test_decimal");
-        connection.execute("truncate table test_decimal_20");
-        connection.execute("truncate table test_decimal_20_5");
+    @SneakyThrows
+    public void testTypes() {
 
         final Configuration config = TestHelper.defaultConfig()
-                .with(SNAPSHOT_MODE, INITIAL_SCHEMA_ONLY)
-                .with(DECIMAL_HANDLING_MODE, JdbcValueConverters.DecimalMode.STRING)
-                .build();
+                .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .with(RelationalDatabaseConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.STRING).build();
 
         start(InformixConnector.class, config);
 
-        /*
-         * Wait InformixStreamingChangeEventSource.execute() is running.
-         */
-        Thread.sleep(60_000);
+        assertConnectorIsRunning();
+
+        waitForSnapshotToBeCompleted(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
+        consumeRecords(0);
+        waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
 
         /*
          * bigint
@@ -123,16 +124,16 @@ public class InformixCdcTypesIT extends AbstractConnectorTest {
          *
          * TODO: But, as we test locally, it seems the base date is "1970-01-01", not the "1899-12-31".
          */
-        List<String> arrTestDate = Arrays.asList(new String[]{ "2022-01-01" });
+        String[] arrTestDate = new String[]{ "2022-01-01" };
         for (String strTestDate : arrTestDate) {
-            Integer d = Math.toIntExact(diffInDays(strTestDate, "1970-01-01"));
-            insertOneAndValidate("test_date", io.debezium.time.Date.builder().optional().build(), "'" + strTestDate + "'", d);
+            Integer d = Math.toIntExact(diffInDays("1970-01-01", strTestDate));
+            insertOneAndValidate("test_date", Date.builder().optional().build(), "'" + strTestDate + "'", d);
         }
 
         /*
          * decimal
          */
-        Map<String, String> decimal_data_expect = new LinkedHashMap<String, String>() {
+        Map<String, String> decimal_data_expect = new LinkedHashMap<>() {
             {
                 put("12.1", "12.1");
                 put("22.12345678901234567890", "22.12345678901235"); // Rounded number
@@ -146,7 +147,7 @@ public class InformixCdcTypesIT extends AbstractConnectorTest {
         /*
          * decimal(20)
          */
-        Map<String, String> decimal_20_data_expect = new LinkedHashMap<String, String>() {
+        Map<String, String> decimal_20_data_expect = new LinkedHashMap<>() {
             {
                 put("88.07", "88.07");
                 put("33.12345", "33.12345"); // Rounded number
@@ -160,7 +161,7 @@ public class InformixCdcTypesIT extends AbstractConnectorTest {
         /*
          * decimal(20, 5)
          */
-        Map<String, String> decimal_20_5_data_expect = new LinkedHashMap<String, String>() {
+        Map<String, String> decimal_20_5_data_expect = new LinkedHashMap<>() {
             {
                 put("12.1", "12.10000");
                 put("22.12345", "22.12345"); // Rounded number
@@ -170,45 +171,26 @@ public class InformixCdcTypesIT extends AbstractConnectorTest {
         for (Map.Entry<String, String> entry : decimal_20_5_data_expect.entrySet()) {
             insertOneAndValidate("test_decimal_20_5", Schema.OPTIONAL_STRING_SCHEMA, entry.getKey(), entry.getValue());
         }
-
-        stopConnector();
     }
 
-    private void insertOneAndValidate(String tableName, Schema valueSchema, String insertValue, Object expectValue) throws SQLException, InterruptedException {
+    @SneakyThrows
+    private void insertOneAndValidate(String tableName, Schema valueSchema, String insertValue, Object expectValue) {
         String topicName = String.format("testdb.informix.%s", tableName);
         connection.execute(String.format("insert into %s values(%s)", tableName, insertValue));
 
-        SourceRecords sourceRecords = consumeRecordsByTopic(1);
-        List<SourceRecord> insertOne = sourceRecords.recordsForTopic(topicName);
-        assertThat(insertOne).isNotNull();
-        assertThat(insertOne).hasSize(1);
+        waitForAvailableRecords(10, TimeUnit.SECONDS);
 
-        final List<SchemaAndValueField> expectedDeleteRow = Arrays.asList(
-                new SchemaAndValueField("a", valueSchema, expectValue));
+        List<SourceRecord> records = consumeRecordsByTopic(1).recordsForTopic(topicName);
+        assertThat(records).isNotNull().hasSize(1);
 
-        final SourceRecord insertedOneRecord = insertOne.get(0);
-        final Struct insertedOneValue = (Struct) insertedOneRecord.value();
+        Schema aSchema = SchemaBuilder.struct().optional().name(String.format("%s.Value", topicName)).field("a", valueSchema).build();
+        Struct aStruct = new Struct(aSchema).put("a", expectValue);
 
-        assertRecord((Struct) insertedOneValue.get("after"), expectedDeleteRow);
-        // SourceRecordAssert.assertThat(insertOneRecord).valueAfterFieldIsEqualTo();
+        SourceRecordAssert.assertThat(records.get(0)).valueAfterFieldIsEqualTo(aStruct);
     }
 
-    private void assertRecord(Struct record, List<SchemaAndValueField> expected) {
-        expected.forEach(schemaAndValueField -> schemaAndValueField.assertFor(record));
+    private long diffInDays(String one, String other) {
+        return LocalDate.parse(one).until(LocalDate.parse(other), ChronoUnit.DAYS);
     }
 
-    private long diffInDays(String date1, String date2) {
-        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
-        try {
-            java.util.Date d1 = sdf.parse(date1);
-            java.util.Date d2 = sdf.parse(date2);
-            long diffInMs = Math.abs(d1.getTime() - d2.getTime());
-            long diff = TimeUnit.DAYS.convert(diffInMs, TimeUnit.MILLISECONDS);
-            System.out.println(diff);
-            return diff;
-        }
-        catch (ParseException e) {
-            return -1;
-        }
-    }
 }
