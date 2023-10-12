@@ -2,7 +2,7 @@
 ## 1. Handle `TRUNCATE`
 
 ```text
-[2022-05-04 17:24:55,103] INFO Handle unknown record-type = [TRUNCATE] Transaction ID [31] Sequence ID [158922174488] (laoflch.debezium.connector.informix.InformixStreamingChangeEventSource:270)
+[2022-05-04 17:24:55,103] INFO Handle unknown record-type = [TRUNCATE] Transaction ID [31] Sequence ID [158922174488] (io.debezium.connector.informix.InformixStreamingChangeEventSource:270)
 ```
 
 ## 2. Late events of "ROLLBACK" and "COMMIT"
