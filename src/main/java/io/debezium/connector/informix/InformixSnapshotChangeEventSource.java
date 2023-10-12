@@ -150,11 +150,11 @@ public class InformixSnapshotChangeEventSource extends RelationalSnapshotChangeE
             }
             else {
                 offset = new InformixOffsetContext(
-                connectorConfig,
+                        connectorConfig,
                         TxLogPosition.valueOf(jdbcConnection.getMaxLsn()),
-                false,
-                false);
-    }
+                        false,
+                        false);
+            }
             ctx.offset = offset;
         }
     }

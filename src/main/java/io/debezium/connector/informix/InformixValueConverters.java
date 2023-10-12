@@ -29,10 +29,8 @@ public class InformixValueConverters extends JdbcValueConverters {
      * timezones.
      * <p>
      *
-     * @param decimalMode           how {@code DECIMAL} and {@code NUMERIC} values should be
-     *            treated; may be null if
-     *                              {@link DecimalMode#PRECISE}
-     *            is to be used
+     * @param decimalMode           how {@code DECIMAL} and {@code NUMERIC} values should be treated;
+     *                              may be null if {@link DecimalMode#PRECISE} is to be used
      * @param temporalPrecisionMode date/time value will be represented either as Connect datatypes or Debezium specific datatypes
      * @param binaryHandlingMode    ?
      */
