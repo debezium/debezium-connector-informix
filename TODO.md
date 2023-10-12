@@ -1,82 +1,18 @@
+## 1. Fix reload of schema after restart
 
-## 1. Handle `TRUNCATE`
+## 2. Fix blocking snapshot
 
-```text
-[2022-05-04 17:24:55,103] INFO Handle unknown record-type = [TRUNCATE] Transaction ID [31] Sequence ID [158922174488] (io.debezium.connector.informix.InformixStreamingChangeEventSource:270)
-```
+## 3. Successfully determine current maximum LSN
 
-## 2. Late events of "ROLLBACK" and "COMMIT"
+## 4. Testcases
 
-## 3. Interleaving Transaction
+Adapt more standard testcases from Debezium parent
 
-```
-Assume : 
- - X_0 Begin of Transaction
- - X_e End of Transaction
-
-A_0
-A_1
-    B_0
-A_2
-A_3
-    B_1
-    B_2
-    B_e    <- offset(commit_lsn = B_e.ts)
-A_4
-A_5
-A_6
-////
-A_e
-```
-
-## 4. Metric for CDCEngine?
-
-
-## 5. Column Type Blacklist
-
-- lvarchar
-- SMALLFLOAT
-- Decimal(x,8)
-
-## 6. 日切
-
-## 7. tx_id becomes commit_id
-
-```text
-$ kcat -b localhost:9092 -t informix-214414.cdctable.hello -C | jq ".payload.source.tx_id
-
-"36"
-"36"
-"36"
-"36"
-"34"
-"34"
-"34"
-"34"
-"34"
-...
-"171814396820"
-"171814396820"
-"171814396820"
-"171814396820"
-"171814396820"
-"171814396820"
-"171814396820"
-```
-
-## 8. [X] Docker Integration Test
-
-## 9. Implements Metrics
+## 5. Implements Metrics
 
 - Reference: https://github.com/debezium/debezium/blob/main/debezium-connector-mysql/src/main/java/io/debezium/connector/mysql/MySqlChangeEventSourceMetricsFactory.java
 
-## 10. Testcases
-
-- [ ] `.with(SNAPSHOT_MODE, INITIAL)`
-- [ ] More Types: bigint, bigserial
-- [ ] `update clause`
-
-## 11. decimal handling mode
+## 6. Decimal handling mode
 
 If we set "decimal.handling.mode=percision", which is the default option, it will cause the following exception:
 
@@ -109,6 +45,3 @@ Caused by: org.apache.kafka.connect.errors.DataException: BigDecimal has mismatc
 	at org.apache.kafka.connect.runtime.errors.RetryWithToleranceOperator.execAndHandleError(RetryWithToleranceOperator.java:162)
 	... 11 more
 ```
-
-## 12. `transaction.total_order` is always same as `data_collection_order`, when enabled connector option `provide.transaction.metadata`
-
