@@ -1,36 +1,27 @@
 /*
- * Copyright Debezium-Informix-Connector Authors.
+ * Copyright Debezium Authors.
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-
 package io.debezium.connector.informix;
 
 import java.sql.Types;
 import java.time.ZoneOffset;
 
-import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.SchemaBuilder;
 
-import io.debezium.data.SpecialValueDecimal;
+import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.Column;
-import io.debezium.relational.ValueConverter;
-import io.debezium.time.MicroTimestamp;
-import io.debezium.time.NanoTimestamp;
-import io.debezium.time.Timestamp;
 
 /**
  * Conversion of Informix specific datatypes.
  *
- * @author Xiaolin Zhang, laoflch Luo
+ * @author Xiaolin Zhang, Laoflch Luo, Lars M Johansson
  *
  */
 public class InformixValueConverters extends JdbcValueConverters {
-
-    public InformixValueConverters() {
-    }
 
     /**
      * Create a new instance that always uses UTC for the default time zone when
@@ -38,16 +29,15 @@ public class InformixValueConverters extends JdbcValueConverters {
      * timezones.
      * <p>
      *
-     * @param decimalMode
-     *            how {@code DECIMAL} and {@code NUMERIC} values should be
+     * @param decimalMode           how {@code DECIMAL} and {@code NUMERIC} values should be
      *            treated; may be null if
-     *            {@link io.debezium.jdbc.JdbcValueConverters.DecimalMode#PRECISE}
+     *                              {@link DecimalMode#PRECISE}
      *            is to be used
-     * @param temporalPrecisionMode
-     *            date/time value will be represented either as Connect datatypes or Debezium specific datatypes
+     * @param temporalPrecisionMode date/time value will be represented either as Connect datatypes or Debezium specific datatypes
+     * @param binaryHandlingMode    ?
      */
-    public InformixValueConverters(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode) {
-        super(decimalMode, temporalPrecisionMode, ZoneOffset.UTC, null, null, null);
+    public InformixValueConverters(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode, BinaryHandlingMode binaryHandlingMode) {
+        super(decimalMode, temporalPrecisionMode, ZoneOffset.UTC, null, null, binaryHandlingMode);
     }
 
     @Override
@@ -57,67 +47,17 @@ public class InformixValueConverters extends JdbcValueConverters {
             case Types.TINYINT:
                 // values are an 8-bit unsigned integer value between 0 and 255, we thus need to store it in short int
                 return SchemaBuilder.int16();
-            case Types.DECIMAL:
-                return SpecialValueDecimal.builder(this.decimalMode, column.length(), column.scale().get());
-            case Types.TIMESTAMP: // TODO: Remove this block
-                if (!this.adaptiveTimePrecisionMode && !this.adaptiveTimeMicrosecondsPrecisionMode) {
-                    if (this.getTimePrecision(column) <= 3) {
-                        return io.debezium.time.Timestamp.builder();
-                    }
-                    else if (this.getTimePrecision(column) <= 6) {
-                        return MicroTimestamp.builder();
-                    }
-                    else {
-                        return NanoTimestamp.builder();
-                    }
-                }
-                else {
-                    return Timestamp.builder();
-                }
             default:
                 return super.schemaBuilder(column);
         }
     }
 
-    @Override
-    public ValueConverter converter(Column column, Field fieldDefn) {
-        switch (column.jdbcType()) {
-            // Numeric integers
-            case Types.TINYINT:
-                // values are an 8-bit unsigned integer value between 0 and 255, we thus need to store it in short int
-                return (data) -> convertSmallInt(column, fieldDefn, data);
-            case Types.DECIMAL:
-                return (data) -> convertDecimal(column, fieldDefn, data);
-            case Types.TIMESTAMP: // TODO: remove this block for 1.6
-                return (data) -> {
-                    if (!adaptiveTimePrecisionMode && !adaptiveTimeMicrosecondsPrecisionMode) {
-                        if (getTimePrecision(column) <= 3) {
-                            return convertTimestampToEpochMillis(column, fieldDefn, data);
-                        }
-                        else if (getTimePrecision(column) <= 6) {
-                            return convertTimestampToEpochMicros(column, fieldDefn, data);
-                        }
-                        else {
-                            return convertTimestampToEpochNanos(column, fieldDefn, data);
-                        }
-                    }
-                    else {
-                        return convertTimestampToEpochMillisAsDate(column, fieldDefn, data);
-                    }
-                };
-            default:
-                return super.converter(column, fieldDefn);
-        }
-    }
-
+    /**
+     * Time precision in Informix is defined in scale, the default one is 3
+     */
     @Override
     protected int getTimePrecision(Column column) {
-        return column.scale().get();
-    }
-
-    protected Object convertTimestampWithZone(Column column, Field fieldDefn, Object data) {
-        // dummy return
-        return super.convertTimestampWithZone(column, fieldDefn, data);
+        return column.scale().orElse(3);
     }
 
 }

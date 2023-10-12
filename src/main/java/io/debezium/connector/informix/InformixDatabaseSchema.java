@@ -1,9 +1,8 @@
 /*
- * Copyright Debezium-Informix-Connector Authors.
+ * Copyright Debezium Authors.
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-
 package io.debezium.connector.informix;
 
 import org.slf4j.Logger;
@@ -17,30 +16,41 @@ import io.debezium.relational.ddl.DdlParser;
 import io.debezium.relational.history.TableChanges;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.schema.SchemaChangeEvent.SchemaChangeEventType;
-import io.debezium.schema.TopicSelector;
-import io.debezium.util.SchemaNameAdjuster;
+import io.debezium.schema.SchemaNameAdjuster;
+import io.debezium.spi.topic.TopicNamingStrategy;
 
+/**
+ * Logical representation of Informix schema.
+ *
+ * @author Jiri Pechanec, Laoflch Luo, Lars M Johansson
+ *
+ */
 public class InformixDatabaseSchema extends HistorizedRelationalDatabaseSchema {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(InformixDatabaseSchema.class);
 
-    public InformixDatabaseSchema(InformixConnectorConfig connectorConfig, SchemaNameAdjuster schemaNameAdjuster, TopicSelector<TableId> topicSelector,
-                                  InformixConnection connection) {
-        super(connectorConfig, topicSelector, connectorConfig.getTableFilters().dataCollectionFilter(), connectorConfig.getColumnFilter(),
+    public InformixDatabaseSchema(InformixConnectorConfig connectorConfig, TopicNamingStrategy<TableId> topicNamingStrategy, InformixValueConverters valueConverters,
+                                  SchemaNameAdjuster schemaNameAdjuster, InformixConnection connection) {
+        super(
+                connectorConfig,
+                topicNamingStrategy,
+                connectorConfig.getTableFilters().dataCollectionFilter(),
+                connectorConfig.getColumnFilter(),
                 new TableSchemaBuilder(
-                        new InformixValueConverters(connectorConfig.getDecimalMode(), connectorConfig.getTemporalPrecisionMode()),
+                        valueConverters,
                         schemaNameAdjuster,
                         connectorConfig.customConverterRegistry(),
                         connectorConfig.getSourceInfoStructMaker().schema(),
-                        connectorConfig.getSanitizeFieldNames()),
-                false, connectorConfig.getKeyMapper());
+                        connectorConfig.getFieldNamer(),
+                        connectorConfig.multiPartitionMode()),
+                true, connectorConfig.getKeyMapper());
     }
 
     @Override
     public void applySchemaChange(SchemaChangeEvent schemaChange) {
         LOGGER.debug("Applying schema change event {}", schemaChange);
 
-        // just a single table per DDL event for DB2
+        // just a single table per DDL event for Informix
         Table table = schemaChange.getTables().iterator().next();
         buildAndRegisterSchema(table);
         tables().overwriteTable(table);

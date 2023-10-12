@@ -1,40 +1,44 @@
 /*
- * Copyright Debezium-Informix-Connector Authors.
+ * Copyright Debezium Authors.
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-
 package io.debezium.connector.informix;
 
-import java.util.Objects;
+import io.debezium.connector.Nullable;
 
 /**
  * A logical representation of LSN (log sequence number) position. When LSN is not available
  * it is replaced with {@link Lsn#NULL} constant.
  *
- * @author laoflch Luo, Xiaolin Zhang
+ * @author Laoflch Luo, Xiaolin Zhang, Lars M Johansson
  *
  */
 public class Lsn implements Comparable<Lsn>, Nullable {
-    private static final String NULL_STRING = "NULL";
-    private static final String NEGATIVE_ONE = "-1";
 
-    public static final Lsn NULL = new Lsn(null);
+    public static final Lsn NULL = new Lsn(-1L);
 
-    private static long LO_MASK = Long.parseUnsignedLong("ffffffff", 16);
-    private static long HI_MASK = Long.parseUnsignedLong("ffffffff00000000", 16);
+    private static final long LO_MASK = Long.parseUnsignedLong("00000000ffffffff", 16);
+    private static final long HI_MASK = Long.parseUnsignedLong("ffffffff00000000", 16);
 
-    private Long lsn;
-    private boolean isInitialized;
+    private final Long lsn;
 
-    public Lsn() {
-        lsn = -2L;
-        isInitialized = false;
+    Lsn(Long lsn) {
+        this.lsn = lsn;
     }
 
-    public Lsn(Long lsn) {
-        this.lsn = lsn == null ? -1 : lsn;
-        this.isInitialized = true;
+    /**
+     * @param lsn - signed long integer string. We consider "NULL" and "-1L"
+     *            as same as "new Lsn(-1)".
+     * @return LSN converted from its textual representation
+     */
+    public static Lsn valueOf(String lsn) {
+        return (lsn == null || lsn.equalsIgnoreCase("NULL")) ? NULL : Lsn.valueOf(Long.parseLong(lsn));
+
+    }
+
+    public static Lsn valueOf(Long lsn) {
+        return lsn == null ? NULL : new Lsn(lsn);
     }
 
     /**
@@ -42,7 +46,7 @@ public class Lsn implements Comparable<Lsn>, Nullable {
      */
     @Override
     public boolean isAvailable() {
-        return isInitialized;
+        return lsn != null && lsn >= 0;
     }
 
     /**
@@ -60,26 +64,21 @@ public class Lsn implements Comparable<Lsn>, Nullable {
      * @return official textual representation of LSN.
      */
     public String toLongString() {
-        long lo = LO_MASK & lsn;
-        long hi = lsn >> 32;
-        return String.format("LSN(%d:0x%x)", hi, lo);
+        return String.format("LSN(%d:0x%x)", loguniq(), logpos());
     }
 
-    /**
-     * @param lsnString - signed long integer string. We consider "NULL" and "-1L"
-     *                  as same as "new Lsn(-1)".
-     * @return LSN converted from its textual representation
-     */
-    public static Lsn valueOf(String lsnString) {
-        if (lsnString == null || Objects.equals(lsnString.toUpperCase(), Lsn.NULL_STRING)) {
-            return Lsn.valueOf(-1L);
+    /** 32bit position within the current log page */
+    public long logpos() {
+        return LO_MASK & lsn;
         }
 
-        return Lsn.valueOf(Long.parseLong(lsnString));
+    /** 32bit log page unique identifier */
+    public long loguniq() {
+        return lsn >> 32;
     }
 
-    public static Lsn valueOf(Long val) {
-        return new Lsn(val);
+    public long longValue() {
+        return lsn != null ? lsn : -1L;
     }
 
     @Override
@@ -89,17 +88,7 @@ public class Lsn implements Comparable<Lsn>, Nullable {
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-        if (obj == null) {
-            return false;
-        }
-        if (getClass() != obj.getClass()) {
-            return false;
-        }
-        Lsn other = (Lsn) obj;
-        return lsn.equals(other.lsn);
+        return this == obj || obj != null && this.getClass().equals(obj.getClass()) && lsn.equals(((Lsn) obj).lsn);
     }
 
     /**
@@ -138,7 +127,6 @@ public class Lsn implements Comparable<Lsn>, Nullable {
      * Return the next LSN in sequence
      */
     public Lsn increment() {
-        lsn = lsn + 1;
-        return Lsn.valueOf(lsn);
+        return Lsn.valueOf(lsn + 1);
     }
 }

@@ -1,13 +1,11 @@
 /*
- * Copyright Debezium-Informix-Connector Authors.
+ * Copyright Debezium Authors.
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-
 package io.debezium.connector.informix;
 
 import java.sql.SQLException;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -17,31 +15,44 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.common.BaseSourceTask;
+import io.debezium.document.DocumentReader;
+import io.debezium.jdbc.DefaultMainConnectionProvidingConnectionFactory;
+import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.metrics.DefaultChangeEventSourceMetricsFactory;
-import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.pipeline.notification.NotificationService;
+import io.debezium.pipeline.signal.SignalProcessor;
+import io.debezium.pipeline.spi.Offsets;
 import io.debezium.relational.TableId;
-import io.debezium.relational.history.DatabaseHistory;
-import io.debezium.schema.TopicSelector;
+import io.debezium.schema.SchemaNameAdjuster;
+import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Clock;
-import io.debezium.util.SchemaNameAdjuster;
 
-public class InformixConnectorTask extends BaseSourceTask {
+/**
+ * The main task executing streaming from Informix.
+ * Responsible for lifecycle management the streaming code.
+ *
+ * @author Jiri Pechanec, Laoflch Luo, Lars M Johansson
+ *
+ */
+public class InformixConnectorTask extends BaseSourceTask<InformixPartition, InformixOffsetContext> {
 
-    private static Logger LOGGER = LoggerFactory.getLogger(InformixConnectorTask.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(InformixConnectorTask.class);
 
-    private static String CONTEXT_NAME = "informix-server-connector-task";
+    private static final String CONTEXT_NAME = "informix-server-connector-task";
 
+    private volatile InformixTaskContext taskContext;
     private volatile ChangeEventQueue<DataChangeEvent> queue;
     private volatile InformixConnection dataConnection;
-    private volatile InformixConnection metadataConnection;
+    private volatile InformixConnection cdcConnection;
     private volatile ErrorHandler errorHandler;
     private volatile InformixDatabaseSchema schema;
 
@@ -51,24 +62,17 @@ public class InformixConnectorTask extends BaseSourceTask {
     }
 
     @Override
-    protected ChangeEventSourceCoordinator start(Configuration config) {
+    protected ChangeEventSourceCoordinator<InformixPartition, InformixOffsetContext> start(Configuration config) {
         final InformixConnectorConfig connectorConfig = new InformixConnectorConfig(config);
-        final TopicSelector<TableId> topicSelector = InformixTopicSelector.defaultSelector(connectorConfig);
-        final SchemaNameAdjuster schemaNameAdjuster = SchemaNameAdjuster.create();
+        final TopicNamingStrategy<TableId> topicNamingStrategy = connectorConfig.getTopicNamingStrategy(CommonConnectorConfig.TOPIC_NAMING_STRATEGY);
+        final SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjuster();
 
-        // By default do not load whole result sets into memory
-        config = config.edit()
-                .withDefault("database.responseBuffering", "adaptive")
-                .withDefault("database.fetchSize", 10_000)
-                .build();
-
-        final Configuration jdbcConfig = config.filter(
-                x -> !(x.startsWith(DatabaseHistory.CONFIGURATION_FIELD_PREFIX_STRING) || x.equals(InformixConnectorConfig.DATABASE_HISTORY.name())))
-                .subset("database.", true);
-
-        dataConnection = new InformixConnection(jdbcConfig);
-        metadataConnection = new InformixConnection(jdbcConfig);
-
+        MainConnectionProvidingConnectionFactory<InformixConnection> connectionFactory = new DefaultMainConnectionProvidingConnectionFactory<>(
+                () -> new InformixConnection(connectorConfig.getJdbcConfig()));
+        MainConnectionProvidingConnectionFactory<InformixConnection> cdcConnectionFactory = new DefaultMainConnectionProvidingConnectionFactory<>(
+                () -> new InformixConnection(connectorConfig.getCdcJdbcConfig()));
+        dataConnection = connectionFactory.mainConnection();
+        cdcConnection = cdcConnectionFactory.mainConnection();
         try {
             dataConnection.setAutoCommit(false);
         }
@@ -76,15 +80,21 @@ public class InformixConnectorTask extends BaseSourceTask {
             throw new ConnectException(e);
         }
 
-        this.schema = new InformixDatabaseSchema(connectorConfig, schemaNameAdjuster, topicSelector, dataConnection);
-        this.schema.initializeStorage();
+        final InformixValueConverters valueConverters = new InformixValueConverters(connectorConfig.getDecimalMode(), connectorConfig.getTemporalPrecisionMode(),
+                connectorConfig.binaryHandlingMode());
+        schema = new InformixDatabaseSchema(connectorConfig, topicNamingStrategy, valueConverters, schemaNameAdjuster, dataConnection);
+        schema.initializeStorage();
 
-        final OffsetContext previousOffset = getPreviousOffset(new InformixOffsetContext.Loader(connectorConfig));
+        Offsets<InformixPartition, InformixOffsetContext> previousOffsets = getPreviousOffsets(new InformixPartition.Provider(connectorConfig),
+                new InformixOffsetContext.Loader(connectorConfig));
+        final InformixPartition partition = previousOffsets.getTheOnlyPartition();
+        final InformixOffsetContext previousOffset = previousOffsets.getTheOnlyOffset();
+
         if (previousOffset != null) {
-            schema.recover(previousOffset);
+            schema.recover(partition, previousOffset);
         }
 
-        InformixTaskContext taskContext = new InformixTaskContext(connectorConfig, schema);
+        taskContext = new InformixTaskContext(connectorConfig, schema);
 
         final Clock clock = Clock.system();
 
@@ -96,29 +106,45 @@ public class InformixConnectorTask extends BaseSourceTask {
                 .loggingContextSupplier(() -> taskContext.configureLoggingContext(CONTEXT_NAME))
                 .build();
 
-        errorHandler = new ErrorHandler(InformixConnector.class, connectorConfig.getLogicalName(), queue);
+        errorHandler = new ErrorHandler(InformixConnector.class, connectorConfig, queue, errorHandler);
 
         final InformixEventMetadataProvider metadataProvider = new InformixEventMetadataProvider();
 
-        final EventDispatcher<TableId> dispatcher = new EventDispatcher<TableId>(
+        final SignalProcessor<InformixPartition, InformixOffsetContext> signalProcessor = new SignalProcessor<>(
+                InformixConnector.class,
                 connectorConfig,
-                topicSelector,
+                Map.of(),
+                getAvailableSignalChannels(),
+                DocumentReader.defaultReader(),
+                previousOffsets);
+
+        final EventDispatcher<InformixPartition, TableId> dispatcher = new EventDispatcher<>(
+                connectorConfig,
+                topicNamingStrategy,
                 schema,
                 queue,
                 connectorConfig.getTableFilters().dataCollectionFilter(),
                 DataChangeEvent::new,
                 metadataProvider,
-                schemaNameAdjuster);
+                schemaNameAdjuster,
+                signalProcessor);
 
-        ChangeEventSourceCoordinator coordinator = new ChangeEventSourceCoordinator(
-                previousOffset,
+        final NotificationService<InformixPartition, InformixOffsetContext> notificationService = new NotificationService<>(
+                getNotificationChannels(),
+                connectorConfig,
+                InformixSchemaFactory.get(),
+                dispatcher::enqueueNotification);
+
+        final ChangeEventSourceCoordinator<InformixPartition, InformixOffsetContext> coordinator = new ChangeEventSourceCoordinator<>(
+                previousOffsets,
                 errorHandler,
                 InformixConnector.class,
                 connectorConfig,
-                new InformixChangeEventSourceFactory(connectorConfig, dataConnection, metadataConnection, errorHandler, dispatcher, clock, schema),
-                new DefaultChangeEventSourceMetricsFactory(),
-                dispatcher,
-                schema);
+                new InformixChangeEventSourceFactory(connectorConfig, connectionFactory, cdcConnectionFactory, errorHandler, dispatcher, clock, schema),
+                new DefaultChangeEventSourceMetricsFactory<>(),
+                dispatcher, schema,
+                signalProcessor,
+                notificationService);
 
         coordinator.start(taskContext, this.queue, metadataProvider);
 
@@ -126,38 +152,28 @@ public class InformixConnectorTask extends BaseSourceTask {
     }
 
     @Override
-    protected OffsetContext getPreviousOffset(OffsetContext.Loader loader) {
-        Map<String, ?> partition = loader.getPartition();
-
-        Map<String, Object> previousOffset = context.offsetStorageReader()
-                .offsets(Collections.singleton(partition))
-                .get(partition);
-
-        if (previousOffset != null) {
-            OffsetContext offsetContext = loader.load(previousOffset);
-            LOGGER.info("Found previous offset {}", offsetContext);
-            return offsetContext;
-        }
-        else {
-            return null;
-        }
-    }
-
-    @Override
     protected List<SourceRecord> doPoll() throws InterruptedException {
-        final List<DataChangeEvent> records = queue.poll();
 
-        final List<SourceRecord> sourceRecords = records.stream()
+        return queue.poll().stream()
                 .map(DataChangeEvent::getRecord)
                 .collect(Collectors.toList());
-
-        return sourceRecords;
     }
 
     @Override
     protected void doStop() {
         try {
             if (dataConnection != null) {
+                // Informix may have an active in-progress transaction associated with the connection and if so,
+                // it will throw an exception during shutdown because the active transaction exists. This
+                // is meant to help avoid this by rolling back the current active transaction, if exists.
+                if (dataConnection.isConnected()) {
+                    try {
+                        dataConnection.rollback();
+                    }
+                    catch (SQLException e) {
+                        // ignore
+                    }
+                }
                 dataConnection.close();
             }
         }
@@ -166,12 +182,12 @@ public class InformixConnectorTask extends BaseSourceTask {
         }
 
         try {
-            if (metadataConnection != null) {
-                metadataConnection.close();
+            if (cdcConnection != null) {
+                cdcConnection.close();
             }
         }
         catch (SQLException e) {
-            LOGGER.error("Exception while closing JDBC metadata connection", e);
+            LOGGER.error("Exception while closing CDC JDBC connection", e);
         }
 
         if (schema != null) {

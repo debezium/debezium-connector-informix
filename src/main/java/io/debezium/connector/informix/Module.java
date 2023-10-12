@@ -1,5 +1,5 @@
 /*
- * Copyright Debezium-Informix-Connector Authors.
+ * Copyright Debezium Authors.
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
@@ -10,7 +10,14 @@ import java.util.Properties;
 
 import io.debezium.util.IoUtil;
 
-public class Module {
+/**
+ * Information about this module.
+ *
+ * @author Laoflch Luo, Xiaolin Zhang, Lars M Johansson
+ *
+ */
+public final class Module {
+
     private static final Properties INFO = IoUtil.loadProperties(Module.class, "io/debezium/connector/informix/build.version");
 
     public static String version() {
@@ -21,7 +28,7 @@ public class Module {
      * @return symbolic name of the connector plugin
      */
     public static String name() {
-        return "Informix";
+        return "informix";
     }
 
     /**

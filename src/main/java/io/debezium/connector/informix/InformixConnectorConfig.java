@@ -1,81 +1,75 @@
 /*
- * Copyright Debezium-Informix-Connector Authors.
+ * Copyright Debezium Authors.
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
 package io.debezium.connector.informix;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.function.Predicate;
-
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
-import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
 
 import io.debezium.config.CommonConnectorConfig;
+import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.document.Document;
-import io.debezium.function.Predicates;
-import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.relational.ColumnFilterMode;
-import io.debezium.relational.ColumnId;
 import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
-import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.history.HistoryRecordComparator;
-import io.debezium.relational.history.KafkaDatabaseHistory;
+import io.debezium.spi.schema.DataCollectionId;
+import io.debezium.storage.kafka.history.KafkaSchemaHistory;
 
 /**
  * The list of configuration options for Informix connector
  *
- * @author laoflch Luo
+ * @author Laoflch Luo, Lars M Johansson
  */
 public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnectorConfig {
+
+    protected static final String CDC_DATABASE = "syscdcv1";
+
+    protected static final int DEFAULT_PORT = 9088;
+
+    protected static final int DEFAULT_CDC_BUFFERSIZE = 0x100000;
+
+    protected static final int DEFAULT_CDC_TIMEOUT = 5;
 
     /**
      * The set of predefined SnapshotMode options or aliases.
      */
-    public static enum SnapshotMode implements EnumeratedValue {
+    public enum SnapshotMode implements EnumeratedValue {
 
         /**
          * Perform a snapshot of data and schema upon initial startup of a connector.
          */
-        INITIAL("initial", true),
+        INITIAL("initial", true, true),
+
+        /**
+         * Perform a snapshot of data and schema upon initial startup of a connector and stop after initial consistent snapshot.
+         */
+        INITIAL_ONLY("initial_only", true, false),
 
         /**
          * Perform a snapshot of the schema but no data upon initial startup of a connector.
          */
-        INITIAL_SCHEMA_ONLY("initial_schema_only", false);
+        SCHEMA_ONLY("schema_only", false, true);
 
         private final String value;
         private final boolean includeData;
+        private final boolean shouldStream;
 
-        private SnapshotMode(String value, boolean includeData) {
+        SnapshotMode(String value, boolean includeData, boolean shouldStream) {
             this.value = value;
             this.includeData = includeData;
-        }
-
-        @Override
-        public String getValue() {
-            return value;
-        }
-
-        /**
-         * Whether this snapshotting mode should include the actual data or just the
-         * schema of captured tables.
-         */
-        public boolean includeData() {
-            return includeData;
+            this.shouldStream = shouldStream;
         }
 
         /**
@@ -115,20 +109,40 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
 
             return mode;
         }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Whether this snapshotting mode should include the actual data or just the
+         * schema of captured tables.
+         */
+        public boolean includeData() {
+            return includeData;
+        }
+
+        /**
+         * Whether the snapshot mode is followed by streaming.
+         */
+        public boolean shouldStream() {
+            return shouldStream;
+        }
     }
 
     /**
      * The set of predefined snapshot isolation mode options.
      */
-    public static enum SnapshotIsolationMode implements EnumeratedValue {
+    public enum SnapshotIsolationMode implements EnumeratedValue {
 
         /**
          * This mode will block all reads and writes for the entire duration of the snapshot.
          *
          * The connector will execute {@code SELECT * FROM .. WITH (TABLOCKX)}
          */
-        // EXCLUSIVE("exclusive"),
-        // informix 使用标准的jdbc隔离级别，由于在informix中SERIALIZABLE的隔离级别和TRANSACTION_REPEATABLE_READ一样，所以不单独设置
+        EXCLUSIVE("exclusive"),
+
         /**
          * This mode uses REPEATABLE READ isolation level. This mode will avoid taking any table
          * locks during the snapshot process, except schema snapshot phase where exclusive table
@@ -153,13 +167,8 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
 
         private final String value;
 
-        private SnapshotIsolationMode(String value) {
+        SnapshotIsolationMode(String value) {
             this.value = value;
-        }
-
-        @Override
-        public String getValue() {
-            return value;
         }
 
         /**
@@ -195,173 +204,148 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
             }
             return mode;
         }
+
+        @Override
+        public String getValue() {
+            return value;
+    }
     }
 
-    public static final Field SERVER_NAME = RelationalDatabaseConnectorConfig.SERVER_NAME
-            .withValidation(CommonConnectorConfig::validateServerNameIsDifferentFromHistoryTopicName);
-
-    public static final Field DATABASE_NAME = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.DATABASE)
-            .withDisplayName("Database name")
-            .withType(Type.STRING)
-            .withWidth(Width.MEDIUM)
-            .withImportance(Importance.HIGH)
-            .withValidation(Field::isRequired)
-            .withDescription("The name of the database the connector should be monitoring.");
+    public static final Field PORT = RelationalDatabaseConnectorConfig.PORT.withDefault(DEFAULT_PORT);
 
     public static final Field SNAPSHOT_MODE = Field.create("snapshot.mode")
             .withDisplayName("Snapshot mode")
             .withEnum(SnapshotMode.class, SnapshotMode.INITIAL)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 0))
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDescription("The criteria for running a snapshot upon startup of the connector. "
                     + "Options include: "
                     + "'initial' (the default) to specify the connector should run a snapshot only when no offsets are available for the logical server name; "
-                    + "'initial_schema_only' to specify the connector should run a snapshot of the schema when no offsets are available for the logical server name. ");
+                    + "'schema_only' to specify the connector should run a snapshot of the schema when no offsets are available for the logical server name. ");
 
     public static final Field SNAPSHOT_ISOLATION_MODE = Field.create("snapshot.isolation.mode")
             .withDisplayName("Snapshot isolation mode")
             .withEnum(SnapshotIsolationMode.class, SnapshotIsolationMode.REPEATABLE_READ)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 1))
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDescription("Controls which transaction isolation level is used and how long the connector locks the monitored tables. "
                     + "The default is '" + SnapshotIsolationMode.REPEATABLE_READ.getValue()
                     + "', which means that repeatable read isolation level is used. In addition, exclusive locks are taken only during schema snapshot. "
-                    // + "Using a value of '" + SnapshotIsolationMode.EXCLUSIVE.getValue()
+                    + "Using a value of '" + SnapshotIsolationMode.EXCLUSIVE.getValue()
                     + "' ensures that the connector holds the exclusive lock (and thus prevents any reads and updates) for all monitored tables during the entire snapshot duration. "
                     + "In '" + SnapshotIsolationMode.READ_COMMITTED.getValue()
                     + "' mode no table locks or any *long-lasting* row-level locks are acquired, but connector does not guarantee snapshot consistency."
                     + "In '" + SnapshotIsolationMode.READ_UNCOMMITTED.getValue()
                     + "' mode neither table nor row-level locks are acquired, but connector does not guarantee snapshot consistency.");
 
+    public static final Field CDC_BUFFERSIZE = Field.create("cdc.buffersize")
+            .withDisplayName("CDC Engine buffer size")
+            .withType(ConfigDef.Type.INT)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 0))
+            .withWidth(Width.MEDIUM).withImportance(Importance.MEDIUM)
+            .withDescription("Size of the read buffer for receiving events from the server, in bytes.")
+            .withValidation(Field::isNonNegativeInteger)
+            .withDefault(DEFAULT_CDC_BUFFERSIZE);
+
+    public static final Field CDC_TIMEOUT = Field.create("cdc.timeout")
+            .withDisplayName("CDC Engine timeout")
+            .withType(ConfigDef.Type.INT)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 0))
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("Specifies a timeout to interrupt blocking to wait on an event, in seconds. "
+                    + "The timeout allows the CDC API to periodically break to receive a timeout event. "
+                    + "This in turns allows the CDC engine to close cleanly as well as indicate to the running program the connection is alive and active.")
+            .withValidation(Field::isNonNegativeInteger)
+            .withDefault(DEFAULT_CDC_TIMEOUT);
+
+    public static final Field SOURCE_INFO_STRUCT_MAKER = CommonConnectorConfig.SOURCE_INFO_STRUCT_MAKER
+            .withDefault(InformixSourceInfoStructMaker.class.getName());
+
+    private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
+            .name("Informix")
+            .type(
+                    HOSTNAME,
+                    PORT,
+                    USER,
+                    PASSWORD,
+                    DATABASE_NAME)
+            .connector(
+                    SNAPSHOT_MODE,
+                    SNAPSHOT_ISOLATION_MODE,
+                    INCREMENTAL_SNAPSHOT_CHUNK_SIZE,
+                    CDC_BUFFERSIZE,
+                    CDC_TIMEOUT)
+            .events(SOURCE_INFO_STRUCT_MAKER)
+            .history(
+                    KafkaSchemaHistory.TOPIC,
+                    KafkaSchemaHistory.BOOTSTRAP_SERVERS)
+            // .excluding()
+            .create();
+
+    protected static ConfigDef configDef() {
+        return CONFIG_DEFINITION.configDef();
+    }
+
     /**
      * The set of {@link Field}s defined as part of this configuration.
      */
-    public static Field.Set ALL_FIELDS = Field.setOf(
-            SERVER_NAME,
-            DATABASE_NAME,
-            SNAPSHOT_MODE,
-            RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
-            HistorizedRelationalDatabaseConnectorConfig.DATABASE_HISTORY,
-            RelationalDatabaseConnectorConfig.TABLE_WHITELIST,
-            RelationalDatabaseConnectorConfig.TABLE_BLACKLIST,
-            RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN,
-            RelationalDatabaseConnectorConfig.COLUMN_BLACKLIST,
-            RelationalDatabaseConnectorConfig.DECIMAL_HANDLING_MODE,
-            RelationalDatabaseConnectorConfig.TIME_PRECISION_MODE,
-            RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS,
-            CommonConnectorConfig.POLL_INTERVAL_MS,
-            CommonConnectorConfig.MAX_BATCH_SIZE,
-            CommonConnectorConfig.MAX_QUEUE_SIZE,
-            CommonConnectorConfig.SNAPSHOT_DELAY_MS,
-            CommonConnectorConfig.SNAPSHOT_FETCH_SIZE,
-            Heartbeat.HEARTBEAT_INTERVAL,
-            Heartbeat.HEARTBEAT_TOPICS_PREFIX,
-            CommonConnectorConfig.SOURCE_STRUCT_MAKER_VERSION,
-            CommonConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE);
-
-    public static ConfigDef configDef() {
-        ConfigDef config = new ConfigDef();
-
-        Field.group(config, "Informix Server",
-                SERVER_NAME, DATABASE_NAME, SNAPSHOT_MODE);
-        Field.group(config, "History Storage",
-                KafkaDatabaseHistory.BOOTSTRAP_SERVERS,
-                KafkaDatabaseHistory.TOPIC,
-                KafkaDatabaseHistory.RECOVERY_POLL_ATTEMPTS,
-                KafkaDatabaseHistory.RECOVERY_POLL_INTERVAL_MS,
-                HistorizedRelationalDatabaseConnectorConfig.DATABASE_HISTORY);
-        Field.group(config, "Events",
-                RelationalDatabaseConnectorConfig.TABLE_WHITELIST,
-                RelationalDatabaseConnectorConfig.TABLE_BLACKLIST,
-                RelationalDatabaseConnectorConfig.COLUMN_BLACKLIST,
-                RelationalDatabaseConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE,
-                RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN,
-                Heartbeat.HEARTBEAT_INTERVAL,
-                Heartbeat.HEARTBEAT_TOPICS_PREFIX,
-                CommonConnectorConfig.SOURCE_STRUCT_MAKER_VERSION,
-                CommonConnectorConfig.EVENT_PROCESSING_FAILURE_HANDLING_MODE);
-        Field.group(config, "Connector",
-                CommonConnectorConfig.POLL_INTERVAL_MS,
-                CommonConnectorConfig.MAX_BATCH_SIZE,
-                CommonConnectorConfig.MAX_QUEUE_SIZE,
-                CommonConnectorConfig.SNAPSHOT_DELAY_MS,
-                CommonConnectorConfig.SNAPSHOT_FETCH_SIZE,
-                RelationalDatabaseConnectorConfig.DECIMAL_HANDLING_MODE,
-                RelationalDatabaseConnectorConfig.TIME_PRECISION_MODE);
-
-        return config;
-    }
+    public static final Field.Set ALL_FIELDS = Field.setOf(CONFIG_DEFINITION.all());
 
     private final String databaseName;
     private final SnapshotMode snapshotMode;
     private final SnapshotIsolationMode snapshotIsolationMode;
-    private final ColumnNameFilter columnFilter;
+    private final JdbcConfiguration cdcJdbcConfig;
+    private final int cdcBuffersize;
+    private final int cdcTimeout;
 
     public InformixConnectorConfig(Configuration config) {
-        super(InformixConnector.class, config, config.getString(SERVER_NAME), new SystemTablesPredicate(), x -> x.schema() + "." + x.table(), false,
-                ColumnFilterMode.SCHEMA);
+        super(
+                InformixConnector.class,
+                config,
+                new SystemTablesPredicate(),
+                t -> t.catalog() + '.' + t.schema() + '.' + t.table(),
+                false,
+                ColumnFilterMode.SCHEMA,
+                false);
 
         this.databaseName = config.getString(DATABASE_NAME);
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE), SNAPSHOT_MODE.defaultValueAsString());
         this.snapshotIsolationMode = SnapshotIsolationMode.parse(config.getString(SNAPSHOT_ISOLATION_MODE), SNAPSHOT_ISOLATION_MODE.defaultValueAsString());
-        this.columnFilter = getColumnNameFilter(config.getString(RelationalDatabaseConnectorConfig.COLUMN_BLACKLIST));
-    }
-
-    private static ColumnNameFilter getColumnNameFilter(String excludedColumnPatterns) {
-        return new ColumnNameFilter() {
-
-            Predicate<ColumnId> delegate = Predicates.excludes(excludedColumnPatterns, ColumnId::toString);
-
-            @Override
-            public boolean matches(String catalogName, String schemaName, String tableName, String columnName) {
-                // ignore database name as it's not relevant here
-                return delegate.test(new ColumnId(new TableId(null, schemaName, tableName), columnName));
-            }
-        };
+        this.cdcJdbcConfig = JdbcConfiguration.adapt(getJdbcConfig().edit().with(JdbcConfiguration.DATABASE, CDC_DATABASE).build());
+        this.cdcBuffersize = config.getInteger(CDC_BUFFERSIZE);
+        this.cdcTimeout = config.getInteger(CDC_TIMEOUT);
     }
 
     public String getDatabaseName() {
         return databaseName;
     }
 
-    public SnapshotIsolationMode getSnapshotIsolationMode() {
-        return this.snapshotIsolationMode;
-    }
-
     public SnapshotMode getSnapshotMode() {
         return snapshotMode;
     }
 
-    public ColumnNameFilter getColumnFilter() {
-        return columnFilter;
+    public SnapshotIsolationMode getSnapshotIsolationMode() {
+        return this.snapshotIsolationMode;
+    }
+
+    public JdbcConfiguration getCdcJdbcConfig() {
+        return cdcJdbcConfig;
+    }
+
+    public int getCdcBuffersize() {
+        return cdcBuffersize;
+    }
+
+    public int getCdcTimeout() {
+        return cdcTimeout;
     }
 
     @Override
-    public SourceInfoStructMaker<? extends AbstractSourceInfo> getSourceInfoStructMaker(Version version) {
-
-        try {
-            InformixSourceInfoStructMaker informixSourceInfoStructMaker;
-
-            String moduleName = Module.name();
-            String moduleVersion = Module.version();
-
-            informixSourceInfoStructMaker = new InformixSourceInfoStructMaker(moduleName, moduleVersion, this);
-            return informixSourceInfoStructMaker;
-        }
-        catch (Exception ex) {
-            ex.printStackTrace();
-        }
-
-        return null;
-    }
-
-    private static class SystemTablesPredicate implements TableFilter {
-
-        @Override
-        public boolean isIncluded(TableId t) {
-            // 过滤库中的系统表，informix的系统表以sys开头
-            return !(t.table().toLowerCase().startsWith("sys"));
-        }
+    protected SourceInfoStructMaker<? extends AbstractSourceInfo> getSourceInfoStructMaker(Version version) {
+        return getSourceInfoStructMaker(SOURCE_INFO_STRUCT_MAKER, Module.name(), Module.version(), this);
     }
 
     @Override
@@ -380,30 +364,22 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
         return Module.contextName();
     }
 
-    /**
-     * Returns any SELECT overrides, if present.
-     */
     @Override
-    public Map<TableId, String> getSnapshotSelectOverridesByTable() {
-        String tableList = getConfig().getString(SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE);
-
-        if (tableList == null) {
-            return Collections.emptyMap();
-        }
-
-        Map<TableId, String> snapshotSelectOverridesByTable = new HashMap<>();
-
-        for (String table : tableList.split(",")) {
-            snapshotSelectOverridesByTable.put(
-                    TableId.parse(table, false),
-                    getConfig().getString(SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + "." + table));
-        }
-
-        return Collections.unmodifiableMap(snapshotSelectOverridesByTable);
+    public boolean isSignalDataCollection(DataCollectionId dataCollectionId) {
+        String signalingDataCollection = getSignalingDataCollectionId();
+        return signalingDataCollection != null && !signalingDataCollection.isEmpty() && dataCollectionId.identifier().endsWith(signalingDataCollection);
     }
 
     @Override
     public String getConnectorName() {
         return Module.name();
+    }
+
+    private static class SystemTablesPredicate implements TableFilter {
+
+        @Override
+        public boolean isIncluded(TableId t) {
+            return !(t.table().toLowerCase().startsWith("sys"));
+        }
     }
 }

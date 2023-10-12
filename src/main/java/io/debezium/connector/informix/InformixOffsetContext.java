@@ -1,50 +1,42 @@
 /*
- * Copyright Debezium-Informix-Connector Authors.
+ * Copyright Debezium Authors.
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-
 package io.debezium.connector.informix;
 
 import java.time.Instant;
-import java.util.Collections;
 import java.util.Map;
 
 import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.connector.SnapshotRecord;
+import io.debezium.pipeline.CommonOffsetContext;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
+import io.debezium.pipeline.source.snapshot.incremental.SignalBasedIncrementalSnapshotContext;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.relational.TableId;
-import io.debezium.schema.DataCollectionId;
+import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Collect;
 
-public class InformixOffsetContext implements OffsetContext {
+public class InformixOffsetContext extends CommonOffsetContext<SourceInfo> {
 
     private static final String SERVER_PARTITION_KEY = "server";
     private static final String SNAPSHOT_COMPLETED_KEY = "snapshot_completed";
-    private static final String EVENT_SERIAL_NO_KEY = "event_serial_no";
 
-    private final SourceInfo sourceInfo;
     private final Schema sourceInfoSchema;
-    private final Map<String, String> partition;
-    private boolean snapshotCompleted;
-
     private final TransactionContext transactionContext;
     private final IncrementalSnapshotContext<TableId> incrementalSnapshotContext;
+    private boolean snapshotCompleted;
 
-    private final InformixTransactionCache transactionCache;
-
-    public InformixOffsetContext(InformixConnectorConfig connectorConfig, TxLogPosition position, boolean snapshot,
-                                 boolean snapshotCompleted, TransactionContext transactionContext,
-                                 IncrementalSnapshotContext<TableId> incrementalSnapshotContext) {
-        partition = Collections.singletonMap(SERVER_PARTITION_KEY, connectorConfig.getLogicalName());
-        sourceInfo = new SourceInfo(connectorConfig);
+    public InformixOffsetContext(InformixConnectorConfig connectorConfig, TxLogPosition position, boolean snapshot, boolean snapshotCompleted,
+                                 TransactionContext transactionContext, IncrementalSnapshotContext<TableId> incrementalSnapshotContext) {
+        super(new SourceInfo(connectorConfig));
 
         sourceInfo.setCommitLsn(position.getCommitLsn());
         sourceInfo.setChangeLsn(position.getChangeLsn());
+        sourceInfo.setBeginLsn(position.getBeginLsn());
         sourceInfoSchema = sourceInfo.schema();
 
         this.snapshotCompleted = snapshotCompleted;
@@ -57,17 +49,11 @@ public class InformixOffsetContext implements OffsetContext {
 
         this.transactionContext = transactionContext;
 
-        this.transactionCache = new InformixTransactionCache();
         this.incrementalSnapshotContext = incrementalSnapshotContext;
     }
 
     public InformixOffsetContext(InformixConnectorConfig connectorConfig, TxLogPosition position, boolean snapshot, boolean snapshotCompleted) {
-        this(connectorConfig, position, snapshot, snapshotCompleted, new TransactionContext(), new IncrementalSnapshotContext<>(false));
-    }
-
-    @Override
-    public Map<String, ?> getPartition() {
-        return partition;
+        this(connectorConfig, position, snapshot, snapshotCompleted, new TransactionContext(), new SignalBasedIncrementalSnapshotContext<>(false));
     }
 
     @Override
@@ -81,19 +67,14 @@ public class InformixOffsetContext implements OffsetContext {
         else {
             return incrementalSnapshotContext.store(transactionContext.store(Collect.hashMapOf(
                     SourceInfo.COMMIT_LSN_KEY, sourceInfo.getCommitLsn().toString(),
-                    SourceInfo.CHANGE_LSN_KEY,
-                    sourceInfo.getChangeLsn() == null ? null : sourceInfo.getChangeLsn().toString())));
+                    SourceInfo.CHANGE_LSN_KEY, sourceInfo.getChangeLsn() == null ? null : sourceInfo.getChangeLsn().toString(),
+                    SourceInfo.BEGIN_LSN_KEY, sourceInfo.getBeginLsn() == null ? null : sourceInfo.getBeginLsn().toString())));
         }
     }
 
     @Override
     public Schema getSourceInfoSchema() {
         return sourceInfoSchema;
-    }
-
-    @Override
-    public Struct getSourceInfo() {
-        return sourceInfo.struct();
     }
 
     public TxLogPosition getChangePosition() {
@@ -125,56 +106,7 @@ public class InformixOffsetContext implements OffsetContext {
 
     @Override
     public void preSnapshotCompletion() {
-        // TODO: scala version comment the following assignment, why?
         snapshotCompleted = true;
-    }
-
-    @Override
-    public void postSnapshotCompletion() {
-        sourceInfo.setSnapshot(SnapshotRecord.FALSE);
-    }
-
-    public static class Loader implements OffsetContext.Loader<InformixOffsetContext> {
-
-        private final InformixConnectorConfig connectorConfig;
-
-        public Loader(InformixConnectorConfig connectorConfig) {
-            this.connectorConfig = connectorConfig;
-        }
-
-        @Override
-        public Map<String, ?> getPartition() {
-            return Collections.singletonMap(SERVER_PARTITION_KEY, connectorConfig.getLogicalName());
-        }
-
-        @Override
-        public InformixOffsetContext load(Map<String, ?> offset) {
-            // TODO: Is this a special case for Informix?
-            Map<String, String> offset_map = (Map<String, String>) offset;
-            final Long changeLsn = Long.parseLong(offset_map.getOrDefault(SourceInfo.CHANGE_LSN_KEY, "-1"));
-            final Long commitLsn = Long.parseLong(offset_map.getOrDefault(SourceInfo.COMMIT_LSN_KEY, "-1"));
-
-            boolean snapshot = Boolean.TRUE.equals(offset.get(SourceInfo.SNAPSHOT_KEY));
-            boolean snapshotCompleted = Boolean.TRUE.equals(offset.get(SNAPSHOT_COMPLETED_KEY));
-
-            return new InformixOffsetContext(connectorConfig, TxLogPosition.valueOf(commitLsn, changeLsn), snapshot, snapshotCompleted,
-                    TransactionContext.load(offset), IncrementalSnapshotContext.load(offset, false, TableId.class));
-        }
-    }
-
-    @Override
-    public String toString() {
-        return "InformixOffsetContext [" +
-                "sourceInfoSchema=" + sourceInfoSchema +
-                ", sourceInfo=" + sourceInfo +
-                ", partition=" + partition +
-                ", snapshotCompleted=" + snapshotCompleted +
-                "]";
-    }
-
-    @Override
-    public void markLastSnapshotRecord() {
-        sourceInfo.setSnapshot(SnapshotRecord.LAST);
     }
 
     @Override
@@ -188,17 +120,38 @@ public class InformixOffsetContext implements OffsetContext {
         return transactionContext;
     }
 
-    InformixTransactionCache getInformixTransactionCache() {
-        return transactionCache;
-    }
-
-    @Override
-    public void incrementalSnapshotEvents() {
-        sourceInfo.setSnapshot(SnapshotRecord.INCREMENTAL);
-    }
-
     @Override
     public IncrementalSnapshotContext<?> getIncrementalSnapshotContext() {
         return incrementalSnapshotContext;
+    }
+
+    @Override
+    public String toString() {
+        return "InformixOffsetContext [" +
+                "sourceInfoSchema=" + sourceInfoSchema +
+                ", sourceInfo=" + sourceInfo +
+                ", snapshotCompleted=" + snapshotCompleted + "]";
+    }
+
+    public static class Loader implements OffsetContext.Loader<InformixOffsetContext> {
+
+        private final InformixConnectorConfig connectorConfig;
+
+        public Loader(InformixConnectorConfig connectorConfig) {
+            this.connectorConfig = connectorConfig;
+        }
+
+        @Override
+        public InformixOffsetContext load(Map<String, ?> offset) {
+            final Lsn commitLsn = Lsn.valueOf((String) offset.get(SourceInfo.COMMIT_LSN_KEY));
+            final Lsn changeLsn = Lsn.valueOf((String) offset.get(SourceInfo.CHANGE_LSN_KEY));
+            final Lsn beginLsn = Lsn.valueOf((String) offset.get(SourceInfo.BEGIN_LSN_KEY));
+
+            boolean snapshot = Boolean.TRUE.equals(offset.get(SourceInfo.SNAPSHOT_KEY));
+            boolean snapshotCompleted = Boolean.TRUE.equals(offset.get(SNAPSHOT_COMPLETED_KEY));
+
+            return new InformixOffsetContext(connectorConfig, TxLogPosition.valueOf(commitLsn, changeLsn, beginLsn), snapshot, snapshotCompleted,
+                    TransactionContext.load(offset), SignalBasedIncrementalSnapshotContext.load(offset, false));
+        }
     }
 }

@@ -1,15 +1,16 @@
 /*
- * Copyright Debezium-Informix-Connector Authors.
+ * Copyright Debezium Authors.
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-
 package io.debezium.connector.informix;
 
 import java.util.Optional;
 
+import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.snapshot.incremental.SignalBasedIncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.ChangeEventSourceFactory;
@@ -18,24 +19,27 @@ import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.relational.TableId;
-import io.debezium.schema.DataCollectionId;
+import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
 
-public class InformixChangeEventSourceFactory implements ChangeEventSourceFactory<InformixOffsetContext> {
+public class InformixChangeEventSourceFactory implements ChangeEventSourceFactory<InformixPartition, InformixOffsetContext> {
 
     private final InformixConnectorConfig configuration;
-    private final InformixConnection dataConnection;
-    private final InformixConnection metadataConnection;
+    private final MainConnectionProvidingConnectionFactory<InformixConnection> connectionFactory;
+    private final MainConnectionProvidingConnectionFactory<InformixConnection> cdcConnectionFactory;
     private final ErrorHandler errorHandler;
-    private final EventDispatcher<TableId> dispatcher;
+    private final EventDispatcher<InformixPartition, TableId> dispatcher;
     private final Clock clock;
     private final InformixDatabaseSchema schema;
 
-    public InformixChangeEventSourceFactory(InformixConnectorConfig configuration, InformixConnection dataConnection, InformixConnection metadataConnection,
-                                            ErrorHandler errorHandler, EventDispatcher<TableId> dispatcher, Clock clock, InformixDatabaseSchema schema) {
+    public InformixChangeEventSourceFactory(InformixConnectorConfig configuration,
+                                            MainConnectionProvidingConnectionFactory<InformixConnection> connectionFactory,
+                                            MainConnectionProvidingConnectionFactory<InformixConnection> cdcConnectionFactory,
+                                            ErrorHandler errorHandler, EventDispatcher<InformixPartition, TableId> dispatcher,
+                                            Clock clock, InformixDatabaseSchema schema) {
         this.configuration = configuration;
-        this.dataConnection = dataConnection;
-        this.metadataConnection = metadataConnection;
+        this.connectionFactory = connectionFactory;
+        this.cdcConnectionFactory = cdcConnectionFactory;
         this.errorHandler = errorHandler;
         this.dispatcher = dispatcher;
         this.clock = clock;
@@ -43,15 +47,23 @@ public class InformixChangeEventSourceFactory implements ChangeEventSourceFactor
     }
 
     @Override
-    public SnapshotChangeEventSource<InformixOffsetContext> getSnapshotChangeEventSource(SnapshotProgressListener snapshotProgressListener) {
-        return new InformixSnapshotChangeEventSource(configuration, dataConnection, schema, dispatcher, clock, snapshotProgressListener);
+    public SnapshotChangeEventSource<InformixPartition, InformixOffsetContext> getSnapshotChangeEventSource(SnapshotProgressListener<InformixPartition> snapshotProgressListener,
+                                                                                                            NotificationService<InformixPartition, InformixOffsetContext> notificationService) {
+        return new InformixSnapshotChangeEventSource(
+                configuration,
+                connectionFactory,
+                schema,
+                dispatcher,
+                clock,
+                snapshotProgressListener,
+                notificationService);
     }
 
     @Override
-    public StreamingChangeEventSource<InformixOffsetContext> getStreamingChangeEventSource() {
+    public StreamingChangeEventSource<InformixPartition, InformixOffsetContext> getStreamingChangeEventSource() {
         return new InformixStreamingChangeEventSource(
                 configuration,
-                dataConnection,
+                cdcConnectionFactory.mainConnection(),
                 dispatcher,
                 errorHandler,
                 clock,
@@ -59,17 +71,20 @@ public class InformixChangeEventSourceFactory implements ChangeEventSourceFactor
     }
 
     @Override
-    public Optional<IncrementalSnapshotChangeEventSource<? extends DataCollectionId>> getIncrementalSnapshotChangeEventSource(
-                                                                                                                              InformixOffsetContext offsetContext,
-                                                                                                                              SnapshotProgressListener snapshotProgressListener,
-                                                                                                                              DataChangeEventListener dataChangeEventListener) {
-        final SignalBasedIncrementalSnapshotChangeEventSource<TableId> incrementalSnapshotChangeEventSource = new SignalBasedIncrementalSnapshotChangeEventSource<TableId>(
+    public Optional<IncrementalSnapshotChangeEventSource<InformixPartition, ? extends DataCollectionId>> getIncrementalSnapshotChangeEventSource(InformixOffsetContext offsetContext,
+                                                                                                                                                 SnapshotProgressListener<InformixPartition> snapshotProgressListener,
+                                                                                                                                                 DataChangeEventListener<InformixPartition> dataChangeEventListener,
+                                                                                                                                                 NotificationService<InformixPartition, InformixOffsetContext> notificationService) {
+
+        // If no data collection id is provided, don't return an instance as the implementation requires
+        // that a signal data collection id be provided to work.
+        return Optional.ofNullable(configuration.getSignalingDataCollectionId())
+                .map(s -> new SignalBasedIncrementalSnapshotChangeEventSource<>(
                 configuration,
-                dataConnection,
-                schema,
-                clock,
+                        connectionFactory.mainConnection(),
+                        dispatcher, schema, clock,
                 snapshotProgressListener,
-                dataChangeEventListener);
-        return Optional.of(incrementalSnapshotChangeEventSource);
+                        dataChangeEventListener,
+                        notificationService));
     }
 }

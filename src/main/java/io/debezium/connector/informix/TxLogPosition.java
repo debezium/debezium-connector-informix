@@ -1,40 +1,95 @@
 /*
- * Copyright Debezium-Informix-Connector Authors.
+ * Copyright Debezium Authors.
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
 
 package io.debezium.connector.informix;
 
+import java.util.Objects;
+
+import io.debezium.connector.Nullable;
+
+/**
+ * Defines a position of change in the transaction log. The position is defined as a combination of commit LSN
+ * and sequence number of the change in the given transaction.
+ * The sequence number is monotonically increasing in transaction but it is not guaranteed across multiple
+ * transactions so the combination is necessary to get total order.
+ *
+ * @author Laoflch Luo, Xiaolin Zhang, Lars M Johansson
+ *
+ */
 public class TxLogPosition implements Nullable, Comparable<TxLogPosition> {
-    public static TxLogPosition NULL = new TxLogPosition(-1L, -1L, -1L, -1L);
-    public static Long LSN_NULL = -1L;
 
-    private final Long commitLsn;
-    private final Long changeLsn;
-    private final Long txId;
-    private final Long beginLsn;
+    public static final TxLogPosition NULL = new TxLogPosition(Lsn.NULL, Lsn.NULL, -1, Lsn.NULL);
 
-    public TxLogPosition(Long commitLsn, Long changeLsn, Long txId, Long beginLsn) {
+    private final Lsn commitLsn;
+    private final Lsn changeLsn;
+    private final Integer txId;
+    private final Lsn beginLsn;
+
+    public TxLogPosition(Lsn commitLsn, Lsn changeLsn, Integer txId, Lsn beginLsn) {
         this.commitLsn = commitLsn;
         this.changeLsn = changeLsn;
         this.txId = txId;
         this.beginLsn = beginLsn;
     }
 
-    public Long getCommitLsn() {
+    public static TxLogPosition valueOf(Lsn commitLsn) {
+        if (commitLsn == null || commitLsn.equals(Lsn.NULL)) {
+            return NULL;
+        }
+        return valueOf(commitLsn, Lsn.valueOf(0x00L));
+    }
+
+    public static TxLogPosition valueOf(Lsn commitLsn, Lsn changeLsn) {
+        if ((commitLsn == null || commitLsn.equals(Lsn.NULL) && (changeLsn == null || changeLsn.equals(Lsn.NULL)))) {
+            return NULL;
+        }
+        else {
+            return valueOf(commitLsn, changeLsn, Lsn.valueOf(0x00L));
+        }
+    }
+
+    public static TxLogPosition valueOf(Lsn commitLsn, Lsn changeLsn, Lsn beginLsn) {
+        if ((commitLsn == null || commitLsn.equals(Lsn.NULL) && (changeLsn == null || changeLsn.equals(Lsn.NULL)))) {
+            return NULL;
+        }
+        else {
+            return valueOf(commitLsn, changeLsn, 0x00, beginLsn);
+        }
+    }
+
+    public static TxLogPosition valueOf(Lsn commitLsn, Lsn changeLsn, Integer txId, Lsn beginLsn) {
+        return new TxLogPosition(commitLsn, changeLsn, txId, beginLsn);
+    }
+
+    public static TxLogPosition cloneAndSet(TxLogPosition position, Lsn commitLsn, Lsn changeLsn, Integer txId, Lsn beginLsn) {
+
+        return valueOf(
+                commitLsn.compareTo(position.commitLsn) > 0 ? commitLsn : position.commitLsn,
+                changeLsn.compareTo(position.changeLsn) > 0 ? changeLsn : position.changeLsn,
+                txId >= 0 ? txId : position.txId,
+                beginLsn.compareTo(position.beginLsn) > 0 ? beginLsn : position.beginLsn);
+    }
+
+    public static TxLogPosition clone(TxLogPosition position) {
+        return valueOf(position.commitLsn, position.changeLsn, position.txId, position.beginLsn);
+    }
+
+    public Lsn getCommitLsn() {
         return commitLsn;
     }
 
-    public Long getChangeLsn() {
+    public Lsn getChangeLsn() {
         return changeLsn;
     }
 
-    public Long getTxId() {
+    public Integer getTxId() {
         return txId;
     }
 
-    public Long getBeginLsn() {
+    public Lsn getBeginLsn() {
         return beginLsn;
     }
 
@@ -54,25 +109,15 @@ public class TxLogPosition implements Nullable, Comparable<TxLogPosition> {
 
         TxLogPosition that = (TxLogPosition) o;
 
-        if (commitLsn != null ? !commitLsn.equals(that.commitLsn) : that.commitLsn != null) {
-            return false;
-        }
-        if (changeLsn != null ? !changeLsn.equals(that.changeLsn) : that.changeLsn != null) {
-            return false;
-        }
-        if (txId != null ? !txId.equals(that.txId) : that.txId != null) {
-            return false;
-        }
-        return beginLsn != null ? beginLsn.equals(that.beginLsn) : that.beginLsn == null;
+        return Objects.equals(commitLsn, that.commitLsn)
+                && Objects.equals(changeLsn, that.changeLsn)
+                && Objects.equals(txId, that.txId)
+                && Objects.equals(beginLsn, that.beginLsn);
     }
 
     @Override
     public int hashCode() {
-        int result = commitLsn != null ? commitLsn.hashCode() : 0;
-        result = 31 * result + (changeLsn != null ? changeLsn.hashCode() : 0);
-        result = 31 * result + (txId != null ? txId.hashCode() : 0);
-        result = 31 * result + (beginLsn != null ? beginLsn.hashCode() : 0);
-        return result;
+        return Objects.hash(commitLsn, changeLsn, txId, beginLsn);
     }
 
     @Override
@@ -84,63 +129,5 @@ public class TxLogPosition implements Nullable, Comparable<TxLogPosition> {
     @Override
     public boolean isAvailable() {
         return changeLsn != null && commitLsn != null && beginLsn != null && txId != null;
-    }
-
-    public static TxLogPosition valueOf(Long commitLsn) {
-        return valueOf(commitLsn, 0x00L);
-    }
-
-    public static TxLogPosition valueOf(Long commitLsn, Long changeLsn) {
-        if (commitLsn == null && changeLsn == null) {
-            return NULL;
-        }
-        else {
-            return new TxLogPosition(commitLsn, changeLsn, 0x00L, 0x00L);
-        }
-    }
-
-    public static TxLogPosition valueOf(Long commitLsn, Long changeLsn, Long beginLsn) {
-        return valueOf(commitLsn, changeLsn, 0x00L, beginLsn);
-    }
-
-    public static TxLogPosition valueOf(Long commitLsn, Long changeLsn, Long txId, Long beginLsn) {
-        return new TxLogPosition(commitLsn, changeLsn, txId, beginLsn);
-    }
-
-    public static TxLogPosition cloneAndSet(TxLogPosition position, Long commitLsn, Long changeLsn, Long txId, Long beginLsn) {
-        Long _commitLsn;
-        Long _changeLsn;
-        Long _txId;
-        Long _beginLsn;
-
-        if (commitLsn > LSN_NULL) {
-            _commitLsn = commitLsn;
-        }
-        else {
-            _commitLsn = position.getCommitLsn();
-        }
-
-        if (changeLsn > LSN_NULL) {
-            _changeLsn = changeLsn;
-        }
-        else {
-            _changeLsn = position.getChangeLsn();
-        }
-
-        if (txId > LSN_NULL) {
-            _txId = txId;
-        }
-        else {
-            _txId = position.getTxId();
-        }
-
-        if (beginLsn > LSN_NULL) {
-            _beginLsn = beginLsn;
-        }
-        else {
-            _beginLsn = position.getBeginLsn();
-        }
-
-        return valueOf(_commitLsn, _changeLsn, _txId, _beginLsn);
     }
 }
