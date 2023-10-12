@@ -208,7 +208,7 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
         @Override
         public String getValue() {
             return value;
-    }
+        }
     }
 
     public static final Field PORT = RelationalDatabaseConnectorConfig.PORT.withDefault(DEFAULT_PORT);

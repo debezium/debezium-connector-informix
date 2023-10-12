@@ -51,7 +51,7 @@ public class InformixChangeRecordEmitter extends RelationalChangeRecordEmitter<I
     @Override
     protected Object[] getNewColumnValues() {
         return after;
-        }
+    }
 
     @Override
     protected void emitTruncateRecord(Receiver<InformixPartition> receiver, TableSchema tableSchema) throws InterruptedException {
@@ -73,7 +73,7 @@ public class InformixChangeRecordEmitter extends RelationalChangeRecordEmitter<I
                         .map(Field::name)
                         .map(data::get)
                         .map(irt -> propagate(irt::toObject)).toArray();
-        }
+    }
 
     private static <X> X propagate(Callable<X> callable) {
         try {
@@ -81,6 +81,6 @@ public class InformixChangeRecordEmitter extends RelationalChangeRecordEmitter<I
         }
         catch (Exception e) {
             throw (e instanceof RuntimeException) ? (RuntimeException) e : new RuntimeException(e);
-    }
+        }
     }
 }

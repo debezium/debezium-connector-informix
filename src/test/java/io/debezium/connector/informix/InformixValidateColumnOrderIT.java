@@ -219,6 +219,6 @@ public class InformixValidateColumnOrderIT extends AbstractConnectorTest {
 
         // assert in order
         assertRecordInRightOrder((Struct) deletedOneValue.get("before"), recordToBeDelete);
-        }
+    }
 
 }

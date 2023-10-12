@@ -7,7 +7,7 @@ package io.debezium.connector.informix;
 
 import io.debezium.relational.TableId;
 
-public class ChangeTable {
+public class InformixChangeTable {
 
     private static final String CDC_SCHEMA = "syscdcsv1";
 
@@ -30,16 +30,16 @@ public class ChangeTable {
     private TableId sourceTableId;
     private TableId changeTableId;
 
-    public ChangeTable(TableId sourceTableId, String captureInstance, int changeTableObjectId, Lsn startLsn, Lsn stopLsn) {
+    public InformixChangeTable(TableId sourceTableId, String captureInstance, int changeTableObjectId, Lsn startLsn, Lsn stopLsn) {
         this.sourceTableId = sourceTableId;
         this.changeTableObjectId = changeTableObjectId;
         this.startLsn = startLsn;
         this.stopLsn = stopLsn;
         this.captureInstance = captureInstance;
-        this.changeTableId = (sourceTableId != null) ? new TableId(sourceTableId.catalog(), ChangeTable.CDC_SCHEMA, captureInstance) : null;
+        this.changeTableId = (sourceTableId != null) ? new TableId(sourceTableId.catalog(), InformixChangeTable.CDC_SCHEMA, captureInstance) : null;
     }
 
-    public ChangeTable(String captureInstance, int changeTableObjectId, Lsn startLsn, Lsn stopLsn) {
+    public InformixChangeTable(String captureInstance, int changeTableObjectId, Lsn startLsn, Lsn stopLsn) {
         this(null, captureInstance, changeTableObjectId, startLsn, stopLsn);
     }
 

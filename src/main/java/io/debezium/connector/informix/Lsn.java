@@ -70,7 +70,7 @@ public class Lsn implements Comparable<Lsn>, Nullable {
     /** 32bit position within the current log page */
     public long logpos() {
         return LO_MASK & lsn;
-        }
+    }
 
     /** 32bit log page unique identifier */
     public long loguniq() {
