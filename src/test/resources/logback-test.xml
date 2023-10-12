@@ -1,7 +1,5 @@
 <configuration>
-
-    <appender name="CONSOLE"
-              class="ch.qos.logback.core.ConsoleAppender">
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
             <pattern>%d{ISO8601} %-5p %X{dbz.connectorType}|%X{dbz.connectorName}|%X{dbz.connectorContext} %m [%c]%n</pattern>
         </encoder>
@@ -11,19 +9,16 @@
         <appender-ref ref="CONSOLE"/>
     </root>
 
-    <!-- Set up the default logging to be INFO level, then override specific
-        units -->
+    <!-- Set up the default logging to be INFO level, then override specific units -->
     <logger name="io.debezium" level="info" additivity="false">
         <appender-ref ref="CONSOLE"/>
     </logger>
-    <logger
-            name="io.debezium.embedded.EmbeddedEngine$EmbeddedConfig"
+    <logger name="io.debezium.embedded.EmbeddedEngine$EmbeddedConfig"
             level="warn" additivity="false">
         <appender-ref ref="CONSOLE"/>
     </logger>
-    <logger
-            name="com.informix.stream"
-            level="debug" additivity="false">
+    <logger name="com.informix.stream"
+            level="info" additivity="false">
         <appender-ref ref="CONSOLE"/>
     </logger>
 </configuration>
