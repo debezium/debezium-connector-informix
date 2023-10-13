@@ -101,6 +101,14 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
             if (lastBeginLsn.compareTo(lastCommitLsn) < 0) {
                 LOGGER.info("Begin recover: from lastBeginLsn='{}' to lastCommitLsn='{}'", lastBeginLsn, lastCommitLsn);
                 while (context.isRunning()) {
+
+                    if (context.isPaused()) {
+                        LOGGER.info("Streaming will now pause");
+                        context.streamingPaused();
+                        context.waitSnapshotCompletion();
+                        LOGGER.info("Streaming resumed");
+                    }
+
                     Lsn commitLsn = Lsn.valueOf(transactionRecord.getEndRecord().getSequenceId());
                     if (commitLsn.compareTo(lastCommitLsn) < 0) {
                         LOGGER.info("Skipping transaction with id: '{}' since commitLsn='{}' < lastCommitLsn='{}'",
@@ -123,7 +131,13 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
              * Main Handler Loop
              */
             while (context.isRunning()) {
-                long start = System.nanoTime();
+
+                if (context.isPaused()) {
+                    LOGGER.info("Streaming will now pause");
+                    context.streamingPaused();
+                    context.waitSnapshotCompletion();
+                    LOGGER.info("Streaming resumed");
+                }
 
                 switch (streamRecord.getType()) {
                     case TRANSACTION_GROUP:
@@ -133,11 +147,12 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
                     case METADATA:
                     case TIMEOUT:
                     case ERROR:
-                        LOGGER.debug(RECEIVED_GENERIC_RECORD, streamRecord, (System.nanoTime() - start) / 1000000d);
+                        LOGGER.debug(RECEIVED_GENERIC_RECORD, streamRecord, 0);
                         break;
                     default:
-                        LOGGER.debug(RECEIVED_UNKNOWN_RECORD_TYPE, streamRecord, (System.nanoTime() - start) / 1000000d);
+                        LOGGER.debug(RECEIVED_UNKNOWN_RECORD_TYPE, streamRecord, 0);
                 }
+
                 streamRecord = transactionEngine.getRecord();
             }
         }
