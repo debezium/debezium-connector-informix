@@ -43,7 +43,8 @@ public class InformixDatabaseSchema extends HistorizedRelationalDatabaseSchema {
                         connectorConfig.getSourceInfoStructMaker().schema(),
                         connectorConfig.getFieldNamer(),
                         connectorConfig.multiPartitionMode()),
-                true, connectorConfig.getKeyMapper());
+                true,
+                connectorConfig.getKeyMapper());
     }
 
     @Override

@@ -5,24 +5,20 @@
  */
 package io.debezium.connector.informix;
 
-import java.sql.SQLException;
 import java.util.List;
 import java.util.stream.Collectors;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
-import org.junit.Rule;
 import org.junit.Test;
 
 import io.debezium.config.Configuration.Builder;
 import io.debezium.connector.informix.InformixConnectorConfig.SnapshotMode;
 import io.debezium.connector.informix.util.TestHelper;
 import io.debezium.jdbc.JdbcConnection;
-import io.debezium.junit.SkipTestRule;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotTest;
 import io.debezium.relational.history.SchemaHistory;
-import io.debezium.util.Testing;
 
 import lombok.SneakyThrows;
 
@@ -30,22 +26,22 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Infor
 
     private InformixConnection connection;
 
-    @Rule
-    public SkipTestRule skipRule = new SkipTestRule();
-
     @Before
-    public void before() throws SQLException {
+    @SneakyThrows
+    public void before() {
         connection = TestHelper.testConnection();
-        connection.execute("CREATE TABLE a (pk int not null, aa int, primary key (pk))",
+        connection.execute(
+                "CREATE TABLE a (pk int not null, aa int, primary key (pk))",
                 "CREATE TABLE b (pk int not null, aa int, primary key (pk))",
                 "CREATE TABLE debezium_signal (id varchar(64), type varchar(32), data varchar(255))");
         initializeConnectorTestFramework();
         Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
-        Testing.Print.enable();
+        Print.disable();
     }
 
     @After
-    public void after() throws SQLException {
+    @SneakyThrows
+    public void after() {
         /*
          * Since all DDL operations are forbidden during Informix CDC,
          * we have to ensure the connector is properly shut down before dropping tables.
@@ -93,6 +89,10 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Infor
         return tableNames().stream().map(name -> TestHelper.TEST_DATABASE + '.' + name).collect(Collectors.toList());
     }
 
+    protected String tableIncludeList() {
+        return String.join(",", tableDataCollectionIds());
+    }
+
     @Override
     protected String tableName() {
         return "informix.a";
@@ -105,42 +105,35 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Infor
 
     @Override
     protected String signalTableName() {
-        return "debezium_signal";
+        return "informix.debezium_signal";
+    }
+
+    @Override
+    protected String signalTableNameSanitized() {
+        return TestHelper.TEST_DATABASE + '.' + signalTableName();
     }
 
     @Override
     protected Builder config() {
         return TestHelper.defaultConfig()
                 .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
-                .with(InformixConnectorConfig.SIGNAL_DATA_COLLECTION, "testdb.informix.debezium_signal")
-                .with(InformixConnectorConfig.TABLE_INCLUDE_LIST, "testdb.informix.a,testdb.informix.b")
+                .with(InformixConnectorConfig.SIGNAL_DATA_COLLECTION, this::signalTableNameSanitized)
                 .with(InformixConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 250);
     }
 
     @Override
     protected Builder mutableConfig(boolean signalTableOnly, boolean storeOnlyCapturedDdl) {
-        final String tableIncludeList;
-        if (signalTableOnly) {
-            tableIncludeList = "testdb.informix.b";
-        }
-        else {
-            tableIncludeList = "testdb.informix.a,testdb.informix.b";
-        }
-        return TestHelper.defaultConfig()
+        Builder config = config()
                 .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
-                .with(InformixConnectorConfig.SIGNAL_DATA_COLLECTION, "testdb.informix.debezium_signal")
-                .with(InformixConnectorConfig.TABLE_INCLUDE_LIST, tableIncludeList)
                 .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, storeOnlyCapturedDdl);
-    }
-
-    @Override
-    protected int defaultIncrementalSnapshotChunkSize() {
-        return 250;
+        return signalTableOnly
+                ? config.with(InformixConnectorConfig.TABLE_EXCLUDE_LIST, this::tableDataCollectionId)
+                : config.with(InformixConnectorConfig.TABLE_INCLUDE_LIST, this::tableIncludeList);
     }
 
     @Override
     protected String connector() {
-        return "informix_server";
+        return TestHelper.TEST_CONNECTOR;
     }
 
     @Override
@@ -155,5 +148,4 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Infor
     public void snapshotPreceededBySchemaChange() {
         super.snapshotPreceededBySchemaChange();
     }
-
 }

@@ -15,9 +15,9 @@
     <packaging>jar</packaging>
 
     <scm>
-        <connection>scm:git:git@github.com:nrkljo/debezium-connector-informix.git</connection>
-        <developerConnection>scm:git:git@github.com:nrkljo/debezium-connector-informix.git</developerConnection>
-        <url>https://github.com/nrkljo/debezium-connector-informix</url>
+        <connection>scm:git:git@github.com:debezium/debezium-connector-informix.git</connection>
+        <developerConnection>scm:git:git@github.com:debezium/debezium-connector-informix.git</developerConnection>
+        <url>https://github.com/debezium/debezium-connector-informix</url>
         <tag>HEAD</tag>
     </scm>
 
@@ -226,6 +226,18 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <groupId>org.awaitility</groupId>
+            <artifactId>awaitility</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Required by VerifyRecord -->
+        <dependency>
             <groupId>io.confluent</groupId>
             <artifactId>kafka-connect-avro-converter</artifactId>
             <scope>test</scope>
@@ -234,11 +246,12 @@
             <groupId>io.apicurio</groupId>
             <artifactId>apicurio-registry-utils-converter</artifactId>
             <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.awaitility</groupId>
-            <artifactId>awaitility</artifactId>
-            <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <artifactId>slf4j-jboss-logmanager</artifactId>
+                    <groupId>org.jboss.slf4j</groupId>
+                </exclusion>
+            </exclusions>
         </dependency>
     </dependencies>
 
@@ -251,15 +264,17 @@
                     <watchInterval>500</watchInterval>
                     <logDate>default</logDate>
                     <verbose>true</verbose>
+                    <imagePullPolicy>IfNotPresent</imagePullPolicy>
                     <images>
+                        <!-- Images based on "${informix.image}" Docker image -->
                         <image>
-                            <!-- A Docker image using the Informix Server -->
+                            <!-- A Docker image using the Informix Server 12 -->
                             <name>${docker.dbs}:12</name>
                             <run>
                                 <namingStrategy>none</namingStrategy>
-                                <privileged>true</privileged>
                                 <env>
-                                    <SIZE>small</SIZE>
+                                    <TYPE>oltp</TYPE>
+                                    <SIZE>medium</SIZE>
                                     <LICENSE>accept</LICENSE>
                                     <RUN_FILE_POST_INIT>informix_post_init.sh</RUN_FILE_POST_INIT>
                                 </env>
@@ -272,7 +287,7 @@
                                     <color>yellow</color>
                                 </log>
                                 <wait>
-                                    <time>60000</time> <!-- 60 seconds max -->
+                                    <time>600000</time> <!-- 600 seconds max -->
                                     <log>Informix container login Information</log>
                                 </wait>
                             </run>
@@ -296,13 +311,13 @@
                             </external>
                         </image>
                         <image>
-                            <!-- A Docker image using the Informix Server -->
+                            <!-- A Docker image using the Informix Server 14 -->
                             <name>${docker.dbs}:14</name>
                             <run>
                                 <namingStrategy>none</namingStrategy>
-                                <privileged>true</privileged>
                                 <env>
-                                    <SIZE>small</SIZE>
+                                    <TYPE>oltp</TYPE>
+                                    <SIZE>medium</SIZE>
                                     <LICENSE>accept</LICENSE>
                                     <RUN_FILE_POST_INIT>informix_post_init.sh</RUN_FILE_POST_INIT>
                                 </env>
@@ -315,7 +330,7 @@
                                     <color>yellow</color>
                                 </log>
                                 <wait>
-                                    <time>60000</time> <!-- 60 seconds max -->
+                                    <time>600000</time> <!-- 600 seconds max -->
                                     <log>IBM Informix Dynamic Server Initialized</log>
                                 </wait>
                             </run>
@@ -420,6 +435,7 @@
                         <database.password>${informix.password}</database.password>
                         <skipLongRunningTests>${skipLongRunningTests}</skipLongRunningTests>
                     </systemPropertyVariables>
+                    <runOrder>${runOrder}</runOrder>
                 </configuration>
             </plugin>
         </plugins>

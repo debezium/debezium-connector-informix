@@ -29,8 +29,8 @@ public class InformixChangeRecordEmitter extends RelationalChangeRecordEmitter<I
     private final Object[] before;
     private final Object[] after;
 
-    public InformixChangeRecordEmitter(InformixPartition partition, InformixOffsetContext offsetContext, Clock clock, Operation operation, Object[] before,
-                                       Object[] after, InformixConnectorConfig connectorConfig) {
+    public InformixChangeRecordEmitter(InformixPartition partition, InformixOffsetContext offsetContext, Operation operation,
+                                       Object[] before, Object[] after, Clock clock, InformixConnectorConfig connectorConfig) {
         super(partition, offsetContext, clock, connectorConfig);
 
         this.operation = operation;

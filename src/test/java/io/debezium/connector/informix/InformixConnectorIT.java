@@ -98,7 +98,8 @@ public class InformixConnectorIT extends AbstractConnectorTest {
         final int ID_START = 10;
         final Configuration config = TestHelper.defaultConfig()
                 .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
-                .with(InformixConnectorConfig.TOMBSTONES_ON_DELETE, false).build();
+                .with(InformixConnectorConfig.TOMBSTONES_ON_DELETE, false)
+                .build();
 
         start(InformixConnector.class, config);
 
@@ -149,7 +150,8 @@ public class InformixConnectorIT extends AbstractConnectorTest {
         final int ID_START = 20;
         final Configuration config = TestHelper.defaultConfig()
                 .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
-                .with(InformixConnectorConfig.TOMBSTONES_ON_DELETE, true).build();
+                .with(InformixConnectorConfig.TOMBSTONES_ON_DELETE, true)
+                .build();
 
         start(InformixConnector.class, config);
 
@@ -203,7 +205,8 @@ public class InformixConnectorIT extends AbstractConnectorTest {
         final int ID_START = 30;
         final Configuration config = TestHelper.defaultConfig()
                 .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
-                .with(CommonConnectorConfig.SKIPPED_OPERATIONS, "none").build();
+                .with(CommonConnectorConfig.SKIPPED_OPERATIONS, "none")
+                .build();
 
         start(InformixConnector.class, config);
 
@@ -237,7 +240,8 @@ public class InformixConnectorIT extends AbstractConnectorTest {
     public void updatePrimaryKey() {
 
         final Configuration config = TestHelper.defaultConfig()
-                .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL).build();
+                .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .build();
 
         start(InformixConnector.class, config);
 
@@ -333,7 +337,8 @@ public class InformixConnectorIT extends AbstractConnectorTest {
     public void updatePrimaryKeyWithRestartInMiddle() {
 
         final Configuration config = TestHelper.defaultConfig()
-                .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL).build();
+                .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .build();
 
         start(InformixConnector.class, config);
 
@@ -449,7 +454,8 @@ public class InformixConnectorIT extends AbstractConnectorTest {
         final int ID_START = 40;
         final int ID_RESTART = 100;
         final Configuration config = TestHelper.defaultConfig()
-                .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL).build();
+                .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .build();
 
         for (int i = 0; i < RECORDS_PER_TABLE; i++) {
             final int id = ID_START + i;
@@ -548,7 +554,9 @@ public class InformixConnectorIT extends AbstractConnectorTest {
         final int ID_START = 50;
         final Configuration config = TestHelper.defaultConfig()
                 .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
-                .with(InformixConnectorConfig.TABLE_INCLUDE_LIST, "testdb.informix.tableb").build();
+                .with(InformixConnectorConfig.TABLE_INCLUDE_LIST, "testdb.informix.tableb")
+                .build();
+
         connection.execute("INSERT INTO tableb VALUES(1, 'b')");
 
         start(InformixConnector.class, config);
@@ -583,7 +591,9 @@ public class InformixConnectorIT extends AbstractConnectorTest {
         final int ID_START = 60;
         final Configuration config = TestHelper.defaultConfig()
                 .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
-                .with(InformixConnectorConfig.TABLE_EXCLUDE_LIST, "testdb.informix.tablea").build();
+                .with(InformixConnectorConfig.TABLE_EXCLUDE_LIST, "testdb.informix.tablea")
+                .build();
+
         connection.execute("INSERT INTO tableb VALUES(1, 'b')");
 
         start(InformixConnector.class, config);
@@ -619,7 +629,8 @@ public class InformixConnectorIT extends AbstractConnectorTest {
         final int ID_RESTART = 1000;
         final int HALF_ID = ID_START + RECORDS_PER_TABLE / 2;
         final Configuration config = TestHelper.defaultConfig()
-                .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL).build();
+                .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .build();
 
         if (restartJustAfterSnapshot) {
             start(InformixConnector.class, config);
@@ -800,7 +811,8 @@ public class InformixConnectorIT extends AbstractConnectorTest {
 
         Configuration config = TestHelper.defaultConfig()
                 .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
-                .with(InformixConnectorConfig.TABLE_INCLUDE_LIST, "my_products").build();
+                .with(InformixConnectorConfig.TABLE_INCLUDE_LIST, "my_products")
+                .build();
 
         start(InformixConnector.class, config);
 
@@ -822,7 +834,8 @@ public class InformixConnectorIT extends AbstractConnectorTest {
                 .with("column.mask.with.12.chars", "testdb.informix.masked_hashed_column_table.name")
                 .with("column.mask.hash.SHA-256.with.salt.CzQMA0cB5K",
                         "testdb.informix.masked_hashed_column_table.name2,testdb.informix.masked_hashed_column_table.name3")
-                .with("column.truncate.to.4.chars", "testdb.informix.truncated_column_table.name").build();
+                .with("column.truncate.to.4.chars", "testdb.informix.truncated_column_table.name")
+                .build();
 
         start(InformixConnector.class, config);
 
@@ -871,7 +884,8 @@ public class InformixConnectorIT extends AbstractConnectorTest {
     public void shouldRewriteIdentityKey() {
         final Configuration config = TestHelper.defaultConfig()
                 .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
-                .with(InformixConnectorConfig.MSG_KEY_COLUMNS, "(.*).tablea:id,cola").build();
+                .with(InformixConnectorConfig.MSG_KEY_COLUMNS, "(.*).tablea:id,cola")
+                .build();
 
         start(InformixConnector.class, config);
 
@@ -902,7 +916,8 @@ public class InformixConnectorIT extends AbstractConnectorTest {
     public void shouldPropagateSourceTypeByDatatype() {
         final Configuration config = TestHelper.defaultConfig()
                 .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
-                .with("datatype.propagate.source.type", ".+\\.NUMERIC,.+\\.VARCHAR,.+\\.DECIMAL,.+\\.FLOAT").build();
+                .with("datatype.propagate.source.type", ".+\\.NUMERIC,.+\\.VARCHAR,.+\\.DECIMAL,.+\\.FLOAT")
+                .build();
 
         start(InformixConnector.class, config);
 
@@ -954,7 +969,8 @@ public class InformixConnectorIT extends AbstractConnectorTest {
     @SneakyThrows
     public void shouldOutputRecordsInCloudEventsFormat() {
         final Configuration config = TestHelper.defaultConfig()
-                .with(InformixConnectorConfig.TABLE_INCLUDE_LIST, "testdb.informix.tablea").build();
+                .with(InformixConnectorConfig.TABLE_INCLUDE_LIST, "testdb.informix.tablea")
+                .build();
 
         connection.execute("INSERT INTO tablea (id,cola) values (1001, 'DBZ3668')");
 
@@ -993,11 +1009,9 @@ public class InformixConnectorIT extends AbstractConnectorTest {
             CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithDataAsAvro(record, false);
             CloudEventsConverterTest.shouldConvertToCloudEventsInAvro(record, "informix", TestHelper.TEST_DATABASE, false);
         }
-
     }
 
     private void assertRecord(Struct record, List<SchemaAndValueField> expected) {
         expected.forEach(schemaAndValueField -> schemaAndValueField.assertFor(record));
     }
-
 }

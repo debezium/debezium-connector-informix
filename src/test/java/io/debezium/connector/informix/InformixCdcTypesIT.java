@@ -86,7 +86,8 @@ public class InformixCdcTypesIT extends AbstractConnectorTest {
 
         final Configuration config = TestHelper.defaultConfig()
                 .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
-                .with(RelationalDatabaseConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.STRING).build();
+                .with(RelationalDatabaseConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.STRING)
+                .build();
 
         start(InformixConnector.class, config);
 
@@ -183,7 +184,9 @@ public class InformixCdcTypesIT extends AbstractConnectorTest {
         List<SourceRecord> records = consumeRecordsByTopic(1).recordsForTopic(topicName);
         assertThat(records).isNotNull().hasSize(1);
 
-        Schema aSchema = SchemaBuilder.struct().optional().name(String.format("%s.Value", topicName)).field("a", valueSchema).build();
+        Schema aSchema = SchemaBuilder.struct()
+                .optional().name(String.format("%s.Value", topicName)).field("a", valueSchema)
+                .build();
         Struct aStruct = new Struct(aSchema).put("a", expectValue);
 
         SourceRecordAssert.assertThat(records.get(0)).valueAfterFieldIsEqualTo(aStruct);

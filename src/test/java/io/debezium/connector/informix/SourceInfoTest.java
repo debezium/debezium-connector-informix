@@ -27,7 +27,10 @@ public class SourceInfoTest {
     @Before
     public void beforeEach() {
         final InformixConnectorConfig connectorConfig = new InformixConnectorConfig(
-                Configuration.create().with(CommonConnectorConfig.TOPIC_PREFIX, "serverX").with(InformixConnectorConfig.DATABASE_NAME, "c").build());
+                Configuration.create()
+                        .with(CommonConnectorConfig.TOPIC_PREFIX, "serverX")
+                        .with(InformixConnectorConfig.DATABASE_NAME, "c")
+                        .build());
         source = new SourceInfo(connectorConfig);
         source.setChangeLsn(Lsn.valueOf(0x01L));
         source.setCommitLsn(Lsn.valueOf(0x02L));

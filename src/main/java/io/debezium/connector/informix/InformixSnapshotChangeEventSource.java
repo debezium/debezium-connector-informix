@@ -10,6 +10,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Savepoint;
 import java.sql.Statement;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -54,7 +55,7 @@ public class InformixSnapshotChangeEventSource extends RelationalSnapshotChangeE
     @Override
     public SnapshottingTask getSnapshottingTask(InformixPartition partition, InformixOffsetContext previousOffset) {
         boolean snapshotSchema = true;
-        boolean snapshotData = true;
+        boolean snapshotData;
 
         List<String> dataCollectionsToBeSnapshotted = connectorConfig.getDataCollectionsToBeSnapshotted();
         Map<String, String> snapshotSelectOverridesByTable = connectorConfig.getSnapshotSelectOverridesByTable().entrySet().stream()
@@ -62,17 +63,17 @@ public class InformixSnapshotChangeEventSource extends RelationalSnapshotChangeE
 
         // found a previous offset and the earlier snapshot has completed
         if (previousOffset != null && !previousOffset.isSnapshotRunning()) {
-            LOGGER.info("A previous offset indicating a completed snapshot has been found. Neither schema nor data will be snapshotted.");
+            LOGGER.info("A previous offset indicating a completed snapshot has been found. Neither schema nor data will be snapshot.");
             snapshotSchema = false;
             snapshotData = false;
         }
         else {
             LOGGER.info("No previous offset has been found");
             if (connectorConfig.getSnapshotMode().includeData()) {
-                LOGGER.info("According to the connector configuration both schema and data will be snapshotted");
+                LOGGER.info("According to the connector configuration both schema and data will be snapshot");
             }
             else {
-                LOGGER.info("According to the connector configuration only schema will be snapshotted");
+                LOGGER.info("According to the connector configuration only schema will be snapshot");
             }
             snapshotData = connectorConfig.getSnapshotMode().includeData();
         }
@@ -164,13 +165,12 @@ public class InformixSnapshotChangeEventSource extends RelationalSnapshotChangeE
                                       RelationalSnapshotContext<InformixPartition, InformixOffsetContext> snapshotContext,
                                       InformixOffsetContext offsetContext, SnapshottingTask snapshottingTask)
             throws SQLException, InterruptedException {
-        Set<String> schemas = snapshotContext.capturedTables.stream()
-                .map(TableId::schema)
-                .collect(Collectors.toSet());
+        Set<String> schemas = getTablesForSchemaChange(snapshotContext).stream().map(TableId::schema).collect(Collectors.toSet());
 
         // reading info only for the schemas we're interested in as per the set of captured tables,
         // while the passed table name filter alone would skip all non-included tables, reading the schema
         // would take much longer that way
+        // however, for users interested only in captured tables, we need to pass also table filter
         for (String schema : schemas) {
             if (!sourceContext.isRunning()) {
                 throw new InterruptedException("Interrupted while reading structure of schema " + schema);
@@ -178,9 +178,13 @@ public class InformixSnapshotChangeEventSource extends RelationalSnapshotChangeE
 
             LOGGER.info("Reading structure of schema '{}'", schema);
 
-            TableFilter tableFilter = snapshottingTask.isBlocking()
-                    ? TableFilter.fromPredicate(snapshotContext.capturedTables::contains)
-                    : connectorConfig.getTableFilters().dataCollectionFilter();
+            TableFilter tableFilter = null;
+            if (snapshottingTask.isBlocking()) {
+                tableFilter = TableFilter.fromPredicate(snapshotContext.capturedTables::contains);
+            }
+            else if (connectorConfig.storeOnlyCapturedTables()) {
+                tableFilter = connectorConfig.getTableFilters().dataCollectionFilter();
+            }
 
             jdbcConnection.readSchema(
                     snapshotContext.tables,
@@ -190,6 +194,11 @@ public class InformixSnapshotChangeEventSource extends RelationalSnapshotChangeE
                     null,
                     false);
         }
+    }
+
+    @Override
+    protected Collection<TableId> getTablesForSchemaChange(RelationalSnapshotContext<InformixPartition, InformixOffsetContext> snapshotContext) {
+        return connectorConfig.storeOnlyCapturedTables() ? snapshotContext.capturedTables : snapshotContext.capturedSchemaTables;
     }
 
     @Override
