@@ -80,7 +80,8 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
         final int ID_START_1 = 10;
         final Configuration config = TestHelper.defaultConfig()
                 .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
-                .with(InformixConnectorConfig.INCLUDE_SCHEMA_CHANGES, true).build();
+                .with(InformixConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                .build();
 
         for (int i = 0; i < RECORDS_PER_TABLE; i++) {
             final int id = ID_START_1 + i;
@@ -116,8 +117,13 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
         records = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
         assertThat(records.recordsForTopic("testdb.informix.tablea")).hasSize(RECORDS_PER_TABLE);
         assertThat(records.recordsForTopic("testdb.informix.tableb")).hasSize(RECORDS_PER_TABLE);
-        records.recordsForTopic("testdb.informix.tableb").forEach(record -> assertSchemaMatchesStruct((Struct) ((Struct) record.value()).get("after"), SchemaBuilder
-                .struct().optional().name("testdb.informix.tableb.Value").field("id", Schema.INT32_SCHEMA).field("colb", Schema.OPTIONAL_STRING_SCHEMA).build()));
+        records.recordsForTopic("testdb.informix.tableb").forEach(record -> assertSchemaMatchesStruct(
+                (Struct) ((Struct) record.value()).get("after"),
+                SchemaBuilder.struct()
+                        .optional()
+                        .name("testdb.informix.tableb.Value")
+                        .field("id", Schema.INT32_SCHEMA)
+                        .field("colb", Schema.OPTIONAL_STRING_SCHEMA)
+                        .build()));
     }
-
 }

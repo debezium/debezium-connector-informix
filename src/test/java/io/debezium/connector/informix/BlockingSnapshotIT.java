@@ -5,23 +5,20 @@
  */
 package io.debezium.connector.informix;
 
-import java.sql.SQLException;
 import java.util.List;
 import java.util.stream.Collectors;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
-import org.junit.Rule;
 import org.junit.Test;
 
 import io.debezium.config.Configuration.Builder;
 import io.debezium.connector.informix.InformixConnectorConfig.SnapshotMode;
 import io.debezium.connector.informix.util.TestHelper;
 import io.debezium.jdbc.JdbcConnection;
-import io.debezium.junit.SkipTestRule;
 import io.debezium.pipeline.AbstractBlockingSnapshotTest;
-import io.debezium.util.Testing;
+import io.debezium.relational.history.SchemaHistory;
 
 import lombok.SneakyThrows;
 
@@ -29,11 +26,9 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
 
     private InformixConnection connection;
 
-    @Rule
-    public SkipTestRule skipRule = new SkipTestRule();
-
     @Before
-    public void before() throws SQLException {
+    @SneakyThrows
+    public void before() {
         connection = TestHelper.testConnection();
         connection.execute(
                 "CREATE TABLE a (pk int not null, aa int, primary key (pk))",
@@ -41,11 +36,12 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
                 "CREATE TABLE debezium_signal (id varchar(64), type varchar(32), data varchar(255))");
         initializeConnectorTestFramework();
         Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
-        Testing.Print.enable();
+        Print.disable();
     }
 
     @After
-    public void after() throws SQLException {
+    @SneakyThrows
+    public void after() {
         /*
          * Since all DDL operations are forbidden during Informix CDC,
          * we have to ensure the connector is properly shut down before dropping tables.
@@ -105,27 +101,32 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
 
     @Override
     protected String signalTableName() {
-        return "debezium_signal";
+        return "informix.debezium_signal";
+    }
+
+    @Override
+    protected String signalTableNameSanitized() {
+        return TestHelper.TEST_DATABASE + '.' + signalTableName();
     }
 
     @Override
     protected Builder config() {
         return TestHelper.defaultConfig()
                 .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
-                .with(InformixConnectorConfig.SIGNAL_DATA_COLLECTION, "testdb.informix.debezium_signal")
-                .with(InformixConnectorConfig.TABLE_INCLUDE_LIST, "testdb.informix.a,testdb.informix.b")
-                .with(InformixConnectorConfig.SNAPSHOT_MODE_TABLES, "testdb.informix.a")
-                .with(InformixConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 250);
+                .with(InformixConnectorConfig.SIGNAL_DATA_COLLECTION, this::signalTableNameSanitized)
+                .with(InformixConnectorConfig.SNAPSHOT_MODE_TABLES, this::tableDataCollectionId)
+                .with(InformixConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 100);
     }
 
     @Override
     protected Builder mutableConfig(boolean signalTableOnly, boolean storeOnlyCapturedDdl) {
-        return config();
+        return config()
+                .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, storeOnlyCapturedDdl);
     }
 
     @Override
     protected String connector() {
-        return "informix_server";
+        return TestHelper.TEST_CONNECTOR;
     }
 
     @Override

@@ -379,10 +379,10 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
         offsetContext.event(tableId, clock.currentTime());
 
         dispatcher.dispatchDataChangeEvent(partition, tableId,
-                new InformixChangeRecordEmitter(partition, offsetContext, clock, operation,
+                new InformixChangeRecordEmitter(partition, offsetContext, operation,
                         InformixChangeRecordEmitter.convertIfxData2Array(before, schema.schemaFor(tableId)),
                         InformixChangeRecordEmitter.convertIfxData2Array(after, schema.schemaFor(tableId)),
-                        connectorConfig));
+                        clock, connectorConfig));
     }
 
 }

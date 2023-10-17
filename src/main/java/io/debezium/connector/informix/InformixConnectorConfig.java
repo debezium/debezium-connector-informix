@@ -17,6 +17,7 @@ import io.debezium.config.Field;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.document.Document;
+import io.debezium.heartbeat.DatabaseHeartbeatImpl;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.relational.ColumnFilterMode;
 import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
@@ -25,7 +26,6 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.relational.history.HistoryRecordComparator;
 import io.debezium.spi.schema.DataCollectionId;
-import io.debezium.storage.kafka.history.KafkaSchemaHistory;
 
 /**
  * The list of configuration options for Informix connector
@@ -279,10 +279,13 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
                     CDC_BUFFERSIZE,
                     CDC_TIMEOUT)
             .events(SOURCE_INFO_STRUCT_MAKER)
-            .history(
-                    KafkaSchemaHistory.TOPIC,
-                    KafkaSchemaHistory.BOOTSTRAP_SERVERS)
-            // .excluding()
+            .excluding(
+                    SCHEMA_INCLUDE_LIST,
+                    SCHEMA_EXCLUDE_LIST,
+                    INCLUDE_SCHEMA_COMMENTS,
+                    INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES,
+                    SNAPSHOT_MAX_THREADS,
+                    DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY)
             .create();
 
     protected static ConfigDef configDef() {

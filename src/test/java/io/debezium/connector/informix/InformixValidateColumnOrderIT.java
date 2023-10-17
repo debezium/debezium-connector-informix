@@ -193,7 +193,8 @@ public class InformixValidateColumnOrderIT extends AbstractConnectorTest {
 
         final Configuration config = TestHelper.defaultConfig()
                 .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
-                .with(CommonConnectorConfig.TOMBSTONES_ON_DELETE, false).build();
+                .with(CommonConnectorConfig.TOMBSTONES_ON_DELETE, false)
+                .build();
 
         start(InformixConnector.class, config);
         assertConnectorIsRunning();

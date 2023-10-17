@@ -7,7 +7,6 @@ package io.debezium.connector.informix;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.sql.SQLException;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -22,6 +21,8 @@ import io.debezium.connector.informix.util.TestHelper;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.util.Collect;
 
+import lombok.SneakyThrows;
+
 /**
  * Transaction metadata test for the Debezium Informix Server connector.
  *
@@ -31,12 +32,13 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
     private InformixConnection connection;
 
     @Before
-    public void before() throws SQLException {
+    @SneakyThrows
+    public void before() {
         connection = TestHelper.testConnection();
         connection.execute(
                 "CREATE TABLE tablea (id int not null, cola varchar(30), primary key (id))",
-                "CREATE TABLE tableb (id int not null, colb varchar(30), primary key (id))")
-                .execute("INSERT INTO tablea VALUES(1, 'a')");
+                "CREATE TABLE tableb (id int not null, colb varchar(30), primary key (id))",
+                "INSERT INTO tablea VALUES(1, 'a')");
 
         initializeConnectorTestFramework();
         Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
@@ -44,7 +46,8 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
     }
 
     @After
-    public void after() throws SQLException {
+    @SneakyThrows
+    public void after() {
         /*
          * Since all DDL operations are forbidden during Informix CDC,
          * we have to ensure the connector is properly shut down before dropping tables.
@@ -62,11 +65,14 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
     }
 
     @Test
-    public void transactionMetadata() throws Exception {
+    @SneakyThrows
+    public void transactionMetadata() {
         final int RECORDS_PER_TABLE = 5;
         final int ID_START = 10;
-        final Configuration config = TestHelper.defaultConfig().with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
-                .with(InformixConnectorConfig.PROVIDE_TRANSACTION_METADATA, true).build();
+        final Configuration config = TestHelper.defaultConfig()
+                .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(InformixConnectorConfig.PROVIDE_TRANSACTION_METADATA, true)
+                .build();
 
         start(InformixConnector.class, config);
 
@@ -79,7 +85,9 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
 
         connection.setAutoCommit(false);
         for (int i = ID_START; i < RECORDS_PER_TABLE + ID_START; i++) {
-            connection.executeWithoutCommitting("INSERT INTO tablea VALUES(" + i + ", 'a')", "INSERT INTO tableb VALUES(" + i + ", 'b')");
+            connection.executeWithoutCommitting(
+                    "INSERT INTO tablea VALUES(" + i + ", 'a')",
+                    "INSERT INTO tableb VALUES(" + i + ", 'b')");
         }
         connection.commit();
 
