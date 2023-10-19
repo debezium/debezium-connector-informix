@@ -7,6 +7,7 @@ package io.debezium.connector.informix;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.LinkedHashMap;
@@ -33,15 +34,12 @@ import io.debezium.relational.RelationalDatabaseConnectorConfig.DecimalHandlingM
 import io.debezium.time.Date;
 import io.debezium.util.Testing;
 
-import lombok.SneakyThrows;
-
 public class InformixCdcTypesIT extends AbstractConnectorTest {
 
     private InformixConnection connection;
 
     @Before
-    @SneakyThrows
-    public void before() {
+    public void before() throws SQLException {
         connection = TestHelper.testConnection();
         connection.execute(
                 "create table test_bigint(a bigint)",
@@ -58,8 +56,7 @@ public class InformixCdcTypesIT extends AbstractConnectorTest {
     }
 
     @After
-    @SneakyThrows
-    public void after() {
+    public void after() throws SQLException {
         /*
          * Since all DDL operations are forbidden during Informix CDC,
          * we have to ensure the connector is properly shut down before dropping tables.
@@ -81,8 +78,7 @@ public class InformixCdcTypesIT extends AbstractConnectorTest {
     }
 
     @Test
-    @SneakyThrows
-    public void testTypes() {
+    public void testTypes() throws Exception {
 
         final Configuration config = TestHelper.defaultConfig()
                 .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
@@ -174,8 +170,7 @@ public class InformixCdcTypesIT extends AbstractConnectorTest {
         }
     }
 
-    @SneakyThrows
-    private void insertOneAndValidate(String tableName, Schema valueSchema, String insertValue, Object expectValue) {
+    private void insertOneAndValidate(String tableName, Schema valueSchema, String insertValue, Object expectValue) throws Exception {
         String topicName = String.format("testdb.informix.%s", tableName);
         connection.execute(String.format("insert into %s values(%s)", tableName, insertValue));
 

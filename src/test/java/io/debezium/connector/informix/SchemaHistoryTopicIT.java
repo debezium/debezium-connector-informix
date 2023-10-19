@@ -7,6 +7,7 @@ package io.debezium.connector.informix;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.sql.SQLException;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -24,8 +25,6 @@ import io.debezium.connector.informix.util.TestHelper;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 
-import lombok.SneakyThrows;
-
 /**
  * Integration test for the user-facing history topic of the Debezium Informix Server connector.
  * <p>
@@ -38,8 +37,7 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
     private InformixConnection connection;
 
     @Before
-    @SneakyThrows
-    public void before() {
+    public void before() throws SQLException {
         connection = TestHelper.testConnection();
         connection.execute(
                 "CREATE TABLE tablea (id int not null, cola varchar(30), primary key(id))",
@@ -52,8 +50,7 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
     }
 
     @After
-    @SneakyThrows
-    public void after() {
+    public void after() throws SQLException {
         /*
          * Since all DDL operations are forbidden during Informix CDC,
          * we have to ensure the connector is properly shut down before dropping tables.
@@ -73,8 +70,7 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-1904")
-    @SneakyThrows
-    public void snapshotSchemaChanges() {
+    public void snapshotSchemaChanges() throws Exception {
         final int RECORDS_PER_TABLE = 5;
         final int TABLES = 2;
         final int ID_START_1 = 10;

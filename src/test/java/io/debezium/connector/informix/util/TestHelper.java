@@ -29,8 +29,6 @@ import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
 import io.debezium.util.Testing;
 
-import lombok.SneakyThrows;
-
 public class TestHelper {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(TestHelper.class);
@@ -129,8 +127,7 @@ public class TestHelper {
         expected.forEach(schemaAndValueField -> schemaAndValueField.assertFor(record));
     }
 
-    @SneakyThrows
-    public static void waitForCDC() {
+    public static void waitForCDC() throws InterruptedException {
         Metronome.parker(Durations.TEN_SECONDS, Clock.SYSTEM).pause();
     }
 

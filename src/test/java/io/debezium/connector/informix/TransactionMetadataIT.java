@@ -7,6 +7,7 @@ package io.debezium.connector.informix;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.sql.SQLException;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -21,8 +22,6 @@ import io.debezium.connector.informix.util.TestHelper;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.util.Collect;
 
-import lombok.SneakyThrows;
-
 /**
  * Transaction metadata test for the Debezium Informix Server connector.
  *
@@ -32,8 +31,7 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
     private InformixConnection connection;
 
     @Before
-    @SneakyThrows
-    public void before() {
+    public void before() throws SQLException {
         connection = TestHelper.testConnection();
         connection.execute(
                 "CREATE TABLE tablea (id int not null, cola varchar(30), primary key (id))",
@@ -46,8 +44,7 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
     }
 
     @After
-    @SneakyThrows
-    public void after() {
+    public void after() throws SQLException {
         /*
          * Since all DDL operations are forbidden during Informix CDC,
          * we have to ensure the connector is properly shut down before dropping tables.
@@ -65,8 +62,7 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
     }
 
     @Test
-    @SneakyThrows
-    public void transactionMetadata() {
+    public void transactionMetadata() throws Exception {
         final int RECORDS_PER_TABLE = 5;
         final int ID_START = 10;
         final Configuration config = TestHelper.defaultConfig()

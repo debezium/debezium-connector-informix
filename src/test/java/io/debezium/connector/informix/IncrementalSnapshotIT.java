@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.informix;
 
+import java.sql.SQLException;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -20,15 +21,12 @@ import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotTest;
 import io.debezium.relational.history.SchemaHistory;
 
-import lombok.SneakyThrows;
-
 public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<InformixConnector> {
 
     private InformixConnection connection;
 
     @Before
-    @SneakyThrows
-    public void before() {
+    public void before() throws SQLException {
         connection = TestHelper.testConnection();
         connection.execute(
                 "CREATE TABLE a (pk int not null, aa int, primary key (pk))",
@@ -40,8 +38,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Infor
     }
 
     @After
-    @SneakyThrows
-    public void after() {
+    public void after() throws SQLException {
         /*
          * Since all DDL operations are forbidden during Informix CDC,
          * we have to ensure the connector is properly shut down before dropping tables.
@@ -144,8 +141,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Infor
     @Test
     @Ignore // Cannot perform this operation on a table defined for replication
     @Override
-    @SneakyThrows
-    public void snapshotPreceededBySchemaChange() {
+    public void snapshotPreceededBySchemaChange() throws Exception {
         super.snapshotPreceededBySchemaChange();
     }
 }
