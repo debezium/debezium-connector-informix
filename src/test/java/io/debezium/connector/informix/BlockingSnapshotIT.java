@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.informix;
 
+import java.sql.SQLException;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -20,15 +21,12 @@ import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.AbstractBlockingSnapshotTest;
 import io.debezium.relational.history.SchemaHistory;
 
-import lombok.SneakyThrows;
-
 public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
 
     private InformixConnection connection;
 
     @Before
-    @SneakyThrows
-    public void before() {
+    public void before() throws SQLException {
         connection = TestHelper.testConnection();
         connection.execute(
                 "CREATE TABLE a (pk int not null, aa int, primary key (pk))",
@@ -40,8 +38,7 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
     }
 
     @After
-    @SneakyThrows
-    public void after() {
+    public void after() throws SQLException {
         /*
          * Since all DDL operations are forbidden during Informix CDC,
          * we have to ensure the connector is properly shut down before dropping tables.
@@ -142,8 +139,7 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
     @Test
     @Ignore
     @Override
-    @SneakyThrows
-    public void readsSchemaOnlyForSignaledTables() {
+    public void readsSchemaOnlyForSignaledTables() throws Exception {
         super.readsSchemaOnlyForSignaledTables();
     }
 }

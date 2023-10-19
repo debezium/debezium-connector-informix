@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.informix;
 
+import java.sql.SQLException;
+
 import org.junit.After;
 import org.junit.Before;
 
@@ -13,14 +15,11 @@ import io.debezium.connector.informix.InformixConnectorConfig.SnapshotMode;
 import io.debezium.connector.informix.util.TestHelper;
 import io.debezium.pipeline.notification.AbstractNotificationsIT;
 
-import lombok.SneakyThrows;
-
 public class NotificationsIT extends AbstractNotificationsIT<InformixConnector> {
 
     private InformixConnection connection;
 
     @Before
-    @SneakyThrows
     public void before() {
         connection = TestHelper.testConnection();
         initializeConnectorTestFramework();
@@ -29,8 +28,7 @@ public class NotificationsIT extends AbstractNotificationsIT<InformixConnector> 
     }
 
     @After
-    @SneakyThrows
-    public void after() {
+    public void after() throws SQLException {
         if (connection != null) {
             connection.rollback().close();
         }

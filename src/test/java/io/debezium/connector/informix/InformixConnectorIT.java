@@ -12,6 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 import static org.junit.Assert.assertNull;
 
+import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
@@ -40,8 +41,6 @@ import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.RelationalDatabaseSchema;
 import io.debezium.schema.DatabaseSchema;
 
-import lombok.SneakyThrows;
-
 /**
  * Integration test for the Debezium Informix connector.
  *
@@ -51,8 +50,7 @@ public class InformixConnectorIT extends AbstractConnectorTest {
     private InformixConnection connection;
 
     @Before
-    @SneakyThrows
-    public void before() {
+    public void before() throws SQLException {
         connection = TestHelper.testConnection();
         connection.execute(
                 "CREATE TABLE tablea (id int not null, cola varchar(30), primary key (id))",
@@ -68,8 +66,7 @@ public class InformixConnectorIT extends AbstractConnectorTest {
     }
 
     @After
-    @SneakyThrows
-    public void after() {
+    public void after() throws SQLException {
         /*
          * Since all DDL operations are forbidden during Informix CDC,
          * we have to ensure the connector is properly shut down before dropping tables.
@@ -91,8 +88,7 @@ public class InformixConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
-    @SneakyThrows
-    public void deleteWithoutTombstone() {
+    public void deleteWithoutTombstone() throws Exception {
         final int RECORDS_PER_TABLE = 5;
         final int TABLES = 2;
         final int ID_START = 10;
@@ -143,8 +139,7 @@ public class InformixConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
-    @SneakyThrows
-    public void deleteWithTombstone() {
+    public void deleteWithTombstone() throws Exception {
         final int RECORDS_PER_TABLE = 5;
         final int TABLES = 2;
         final int ID_START = 20;
@@ -199,8 +194,7 @@ public class InformixConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
-    @SneakyThrows
-    public void testTruncateTable() {
+    public void testTruncateTable() throws Exception {
         final int RECORDS_PER_TABLE = 5;
         final int ID_START = 30;
         final Configuration config = TestHelper.defaultConfig()
@@ -236,8 +230,7 @@ public class InformixConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
-    @SneakyThrows
-    public void updatePrimaryKey() {
+    public void updatePrimaryKey() throws Exception {
 
         final Configuration config = TestHelper.defaultConfig()
                 .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
@@ -333,8 +326,7 @@ public class InformixConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-1152")
-    @SneakyThrows
-    public void updatePrimaryKeyWithRestartInMiddle() {
+    public void updatePrimaryKeyWithRestartInMiddle() throws Exception {
 
         final Configuration config = TestHelper.defaultConfig()
                 .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
@@ -447,8 +439,7 @@ public class InformixConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-1069")
-    @SneakyThrows
-    public void verifyOffsets() {
+    public void verifyOffsets() throws Exception {
         final int RECORDS_PER_TABLE = 5;
         final int TABLES = 2;
         final int ID_START = 40;
@@ -548,8 +539,7 @@ public class InformixConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
-    @SneakyThrows
-    public void testTableIncludeList() {
+    public void testTableIncludeList() throws Exception {
         final int RECORDS_PER_TABLE = 5;
         final int ID_START = 50;
         final Configuration config = TestHelper.defaultConfig()
@@ -585,8 +575,7 @@ public class InformixConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
-    @SneakyThrows
-    public void testTableExcludeList() {
+    public void testTableExcludeList() throws Exception {
         final int RECORDS_PER_TABLE = 5;
         final int ID_START = 60;
         final Configuration config = TestHelper.defaultConfig()
@@ -621,8 +610,7 @@ public class InformixConnectorIT extends AbstractConnectorTest {
         assertThat(tableB).hasSize(RECORDS_PER_TABLE);
     }
 
-    @SneakyThrows
-    private void restartInTheMiddleOfTx(boolean restartJustAfterSnapshot, boolean afterStreaming) {
+    private void restartInTheMiddleOfTx(boolean restartJustAfterSnapshot, boolean afterStreaming) throws Exception {
         final int RECORDS_PER_TABLE = 30;
         final int TABLES = 2;
         final int ID_START = 200;
@@ -783,29 +771,25 @@ public class InformixConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-1128")
-    @SneakyThrows
-    public void restartInTheMiddleOfTxAfterSnapshot() {
+    public void restartInTheMiddleOfTxAfterSnapshot() throws Exception {
         restartInTheMiddleOfTx(true, false);
     }
 
     @Test
     @FixFor("DBZ-1128")
-    @SneakyThrows
-    public void restartInTheMiddleOfTxAfterCompletedTx() {
+    public void restartInTheMiddleOfTxAfterCompletedTx() throws Exception {
         restartInTheMiddleOfTx(false, true);
     }
 
     @Test
     @FixFor("DBZ-1128")
-    @SneakyThrows
-    public void restartInTheMiddleOfTx() {
+    public void restartInTheMiddleOfTx() throws Exception {
         restartInTheMiddleOfTx(false, false);
     }
 
     @Test
     @FixFor("DBZ-1242")
-    @SneakyThrows
-    public void testEmptySchemaWarningAfterApplyingFilters() {
+    public void testEmptySchemaWarningAfterApplyingFilters() throws Exception {
         // This captures all logged messages, allowing us to verify log message was written.
         final LogInterceptor logInterceptor = new LogInterceptor(RelationalDatabaseSchema.class);
 
@@ -827,8 +811,7 @@ public class InformixConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-775")
-    @SneakyThrows
-    public void shouldConsumeEventsWithMaskedAndTruncatedColumns() {
+    public void shouldConsumeEventsWithMaskedAndTruncatedColumns() throws Exception {
         final Configuration config = TestHelper.defaultConfig()
                 .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
                 .with("column.mask.with.12.chars", "testdb.informix.masked_hashed_column_table.name")
@@ -880,8 +863,7 @@ public class InformixConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-775")
-    @SneakyThrows
-    public void shouldRewriteIdentityKey() {
+    public void shouldRewriteIdentityKey() throws Exception {
         final Configuration config = TestHelper.defaultConfig()
                 .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
                 .with(InformixConnectorConfig.MSG_KEY_COLUMNS, "(.*).tablea:id,cola")
@@ -912,8 +894,7 @@ public class InformixConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor({ "DBZ-1916", "DBZ-1830" })
-    @SneakyThrows
-    public void shouldPropagateSourceTypeByDatatype() {
+    public void shouldPropagateSourceTypeByDatatype() throws Exception {
         final Configuration config = TestHelper.defaultConfig()
                 .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
                 .with("datatype.propagate.source.type", ".+\\.NUMERIC,.+\\.VARCHAR,.+\\.DECIMAL,.+\\.FLOAT")
@@ -966,8 +947,7 @@ public class InformixConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-3668")
-    @SneakyThrows
-    public void shouldOutputRecordsInCloudEventsFormat() {
+    public void shouldOutputRecordsInCloudEventsFormat() throws Exception {
         final Configuration config = TestHelper.defaultConfig()
                 .with(InformixConnectorConfig.TABLE_INCLUDE_LIST, "testdb.informix.tablea")
                 .build();

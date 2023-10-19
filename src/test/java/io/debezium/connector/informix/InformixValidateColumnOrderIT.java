@@ -7,6 +7,7 @@ package io.debezium.connector.informix;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.sql.SQLException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,8 +28,6 @@ import io.debezium.data.VerifyRecord;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.util.Strings;
 
-import lombok.SneakyThrows;
-
 public class InformixValidateColumnOrderIT extends AbstractConnectorTest {
 
     private static final String testTableName = "test_column_order";
@@ -48,8 +47,7 @@ public class InformixValidateColumnOrderIT extends AbstractConnectorTest {
     }
 
     @Before
-    @SneakyThrows
-    public void before() {
+    public void before() throws SQLException {
         connection = TestHelper.testConnection();
 
         String columns = testTableColumns.entrySet().stream().map(e -> e.getKey() + ' ' + e.getValue()).collect(Collectors.joining(", "));
@@ -61,8 +59,7 @@ public class InformixValidateColumnOrderIT extends AbstractConnectorTest {
     }
 
     @After
-    @SneakyThrows
-    public void after() {
+    public void after() throws SQLException {
         /*
          * Since all DDL operations are forbidden during Informix CDC,
          * we have to ensure the connector is properly shut down before dropping tables.
@@ -78,8 +75,7 @@ public class InformixValidateColumnOrderIT extends AbstractConnectorTest {
     }
 
     @Test
-    @SneakyThrows
-    public void testColumnOrderWhileInsert() {
+    public void testColumnOrderWhileInsert() throws Exception {
 
         final Configuration config = TestHelper.defaultConfig()
                 .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
@@ -121,8 +117,7 @@ public class InformixValidateColumnOrderIT extends AbstractConnectorTest {
     }
 
     @Test
-    @SneakyThrows
-    public void testColumnOrderWhileUpdate() {
+    public void testColumnOrderWhileUpdate() throws Exception {
 
         // insert a record for testing update
         Map<String, String> recordToBeUpdate = new LinkedHashMap<>() {
@@ -175,8 +170,7 @@ public class InformixValidateColumnOrderIT extends AbstractConnectorTest {
     }
 
     @Test
-    @SneakyThrows
-    public void testColumnOrderWhileDelete() {
+    public void testColumnOrderWhileDelete() throws Exception {
 
         // insert a record to delete
         Map<String, String> recordToBeDelete = new LinkedHashMap<>() {
