@@ -22,7 +22,8 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
+
     steps:
       - name: Checkout informix repository
         uses: actions/checkout@v4
@@ -58,7 +59,7 @@ jobs:
       - name: Set up JDK
         uses: actions/setup-java@v3
         with:
-          distribution: 'semeru'
+          distribution: 'temurin'
           java-version: 17
       - name: Cache Maven packages
         uses: actions/cache@v3
@@ -68,7 +69,5 @@ jobs:
           restore-keys: ${{ runner.os }}-m2
       - name: Maven build core
         run: ./informix/mvnw clean install -f core/pom.xml -pl debezium-bom,debezium-core,debezium-embedded,debezium-storage -am -DskipTests -DskipITs -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
-      - name: Maven build docker
-        run: ./informix/mvnw docker:build -f informix/pom.xml -B
       - name: Maven build Informix
-        run: ./informix/mvnw clean install -f informix/pom.xml -B -T 8 -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        run: ./informix/mvnw clean install -f informix/pom.xml -Passembly -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
