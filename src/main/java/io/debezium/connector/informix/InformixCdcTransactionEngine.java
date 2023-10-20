@@ -42,9 +42,9 @@ import io.debezium.relational.TableId;
  * @author Lars M Johansson
  *
  */
-public class InformixCDCTransactionEngine implements IfxTransactionEngine {
+public class InformixCdcTransactionEngine implements IfxTransactionEngine {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(InformixCDCTransactionEngine.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(InformixCdcTransactionEngine.class);
     private static final String PROCESSING_RECORD = "Processing {} record";
     private static final String MISSING_TRANSACTION_START_FOR_RECORD = "Missing transaction start for record: {}";
     protected final Map<Integer, TransactionHolder> transactionMap;
@@ -55,7 +55,7 @@ public class InformixCDCTransactionEngine implements IfxTransactionEngine {
     protected boolean returnEmptyTransactions;
     private Map<String, TableId> tableIdByLabelId;
 
-    public InformixCDCTransactionEngine(ChangeEventSourceContext context, IfxCDCEngine engine) {
+    public InformixCdcTransactionEngine(ChangeEventSourceContext context, IfxCDCEngine engine) {
         this.context = context;
         this.operationFilters = EnumSet.of(INSERT, DELETE, BEFORE_UPDATE, AFTER_UPDATE, TRUNCATE);
         this.transactionFilters = EnumSet.of(COMMIT, ROLLBACK);
@@ -146,19 +146,19 @@ public class InformixCDCTransactionEngine implements IfxTransactionEngine {
     }
 
     @Override
-    public InformixCDCTransactionEngine setOperationFilters(IfmxStreamRecordType... recordTypes) {
+    public InformixCdcTransactionEngine setOperationFilters(IfmxStreamRecordType... recordTypes) {
         operationFilters = EnumSet.copyOf(Set.of(recordTypes));
         return this;
     }
 
     @Override
-    public InformixCDCTransactionEngine setTransactionFilters(IfmxStreamRecordType... recordTypes) {
+    public InformixCdcTransactionEngine setTransactionFilters(IfmxStreamRecordType... recordTypes) {
         transactionFilters = EnumSet.copyOf(Set.of(recordTypes));
         return this;
     }
 
     @Override
-    public InformixCDCTransactionEngine returnEmptyTransactions(boolean returnEmptyTransactions) {
+    public InformixCdcTransactionEngine returnEmptyTransactions(boolean returnEmptyTransactions) {
         this.returnEmptyTransactions = returnEmptyTransactions;
         return this;
     }
