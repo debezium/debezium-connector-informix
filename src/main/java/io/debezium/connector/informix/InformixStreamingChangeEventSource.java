@@ -91,7 +91,7 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
         Lsn lastCommitLsn = lastPosition.getCommitLsn();
         Lsn lastBeginLsn = lastPosition.getBeginLsn();
 
-        try (InformixCDCTransactionEngine transactionEngine = getTransactionEngine(context, schema, lastBeginLsn)) {
+        try (InformixCdcTransactionEngine transactionEngine = getTransactionEngine(context, schema, lastBeginLsn)) {
             transactionEngine.init();
 
             InformixStreamTransactionRecord transactionRecord = transactionEngine.getTransaction();
@@ -177,11 +177,11 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
         return effectiveOffsetContext;
     }
 
-    public InformixCDCTransactionEngine getTransactionEngine(ChangeEventSourceContext context,
+    public InformixCdcTransactionEngine getTransactionEngine(ChangeEventSourceContext context,
                                                              InformixDatabaseSchema schema,
                                                              Lsn startLsn)
             throws SQLException {
-        return new InformixCDCTransactionEngine(context, getCDCEngine(schema, startLsn));
+        return new InformixCdcTransactionEngine(context, getCDCEngine(schema, startLsn));
     }
 
     private IfxCDCEngine getCDCEngine(InformixDatabaseSchema schema, Lsn startLsn) throws SQLException {
@@ -206,7 +206,7 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
         return builder.build();
     }
 
-    private void handleTransaction(InformixCDCTransactionEngine engine, InformixPartition partition,
+    private void handleTransaction(InformixCdcTransactionEngine engine, InformixPartition partition,
                                    InformixOffsetContext offsetContext, InformixStreamTransactionRecord transactionRecord,
                                    boolean recover)
             throws InterruptedException, IfxStreamException {
