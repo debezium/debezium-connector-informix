@@ -53,6 +53,12 @@ public class InformixConnectorIT extends AbstractConnectorTest {
     public void before() throws SQLException {
         connection = TestHelper.testConnection();
         connection.execute(
+                "DROP TABLE IF EXISTS tablea",
+                "DROP TABLE IF EXISTS tableb",
+                "DROP TABLE IF EXISTS masked_hashed_column_table",
+                "DROP TABLE IF EXISTS truncated_column_table",
+                "DROP TABLE IF EXISTS truncate_table",
+                "DROP TABLE IF EXISTS dt_table",
                 "CREATE TABLE tablea (id int not null, cola varchar(30), primary key (id))",
                 "CREATE TABLE tableb (id int not null, colb varchar(30), primary key (id))",
                 "CREATE TABLE masked_hashed_column_table (id int not null, name varchar(255), name2 varchar(255), name3 varchar(20), primary key (id))",
