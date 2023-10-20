@@ -255,4 +255,10 @@ public class InformixSnapshotChangeEventSource extends RelationalSnapshotChangeE
     protected InformixOffsetContext copyOffset(RelationalSnapshotContext<InformixPartition, InformixOffsetContext> snapshotContext) {
         return new Loader(connectorConfig).load(snapshotContext.offset.getOffset());
     }
+
+    @Override
+    protected ResultSet resultSetForDataEvents(String selectStatement, Statement statement)
+            throws SQLException {
+        return statement.executeQuery(selectStatement);
+    }
 }
