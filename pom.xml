@@ -25,9 +25,6 @@
         <!-- Debezium parent -->
         <version.debezium>${project.version}</version.debezium>
 
-        <version.informix.changestream.client>1.1.3</version.informix.changestream.client>
-        <version.informix.driver>4.50.10</version.informix.driver>
-
         <!--
           Specify the properties that will be used for setting up the integration tests' Docker container.
           Note that the `dockerhost.ip` property is computed from the IP address of DOCKER_HOST, which will
@@ -150,13 +147,12 @@
         <dependency>
             <groupId>com.ibm.informix</groupId>
             <artifactId>ifx-changestream-client</artifactId>
-            <version>${version.informix.changestream.client}</version>
+            <scope>provided</scope>
         </dependency>
         <!-- Informix JDBC driver -->
         <dependency>
             <groupId>com.ibm.informix</groupId>
             <artifactId>jdbc</artifactId>
-            <version>${version.informix.driver}</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
