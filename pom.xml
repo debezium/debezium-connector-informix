@@ -298,6 +298,7 @@
                                     </inline>
                                     <targetDir>/opt/ibm/scripts</targetDir>
                                     <user>informix:informix</user>
+                                    <mode>tar</mode>
                                 </assembly>
                             </build>
                             <external>
@@ -345,8 +346,9 @@
                                             </file>
                                         </files>
                                     </inline>
-                                    <user>informix:informix</user>
                                     <targetDir>/opt/ibm</targetDir>
+                                    <user>informix:informix</user>
+                                    <mode>tar</mode>
                                 </assembly>
                             </build>
                             <external>
