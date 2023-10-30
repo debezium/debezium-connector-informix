@@ -93,7 +93,9 @@ public class TestHelper {
         return builder.with(CommonConnectorConfig.TOPIC_PREFIX, TEST_DATABASE)
                 .with(InformixConnectorConfig.SCHEMA_HISTORY, FileSchemaHistory.class)
                 .with(FileSchemaHistory.FILE_PATH, SCHEMA_HISTORY_PATH)
-                .with(InformixConnectorConfig.INCLUDE_SCHEMA_CHANGES, false);
+                .with(InformixConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                .with(InformixConnectorConfig.CDC_TIMEOUT, 0)
+                .with(InformixConnectorConfig.CDC_BUFFERSIZE, 0x200);
     }
 
     public static InformixConnection adminConnection() {
