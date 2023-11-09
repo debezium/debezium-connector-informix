@@ -21,8 +21,6 @@ import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Collect;
 
 public class InformixOffsetContext extends CommonOffsetContext<SourceInfo> {
-
-    private static final String SERVER_PARTITION_KEY = "server";
     private static final String SNAPSHOT_COMPLETED_KEY = "snapshot_completed";
 
     private final Schema sourceInfoSchema;
@@ -111,7 +109,7 @@ public class InformixOffsetContext extends CommonOffsetContext<SourceInfo> {
 
     @Override
     public void event(DataCollectionId tableId, Instant timestamp) {
-        sourceInfo.setSourceTime(timestamp);
+        sourceInfo.setTimestamp(timestamp);
         sourceInfo.setTableId((TableId) tableId);
     }
 

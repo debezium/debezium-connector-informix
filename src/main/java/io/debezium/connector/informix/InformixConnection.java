@@ -30,11 +30,11 @@ public class InformixConnection extends JdbcConnection {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(InformixConnection.class);
 
-    private static final String GET_DATABASE_NAME = "select dbinfo('dbname') from systables where tabid = 1";
+    private static final String GET_DATABASE_NAME = "select dbinfo('dbname') as dbname from systables where tabid = 1";
 
     private static final String GET_MAX_LSN = "select max(seqnum) as seqnum from syscdcv1:informix.syscdctabs where dbname = '%s'";
 
-    private static final String GET_CURRENT_TIMESTAMP = "SELECT CURRENT YEAR TO FRACTION(5)";
+    private static final String GET_CURRENT_TIMESTAMP = "select sysdate as sysdate from sysmaster:sysdual";
 
     private static final String QUOTED_CHARACTER = ""; // TODO: Unless DELIMIDENT is set, column names cannot be quoted
 
