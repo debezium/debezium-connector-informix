@@ -268,10 +268,8 @@
                             <run>
                                 <namingStrategy>none</namingStrategy>
                                 <env>
-                                    <TYPE>oltp</TYPE>
-                                    <SIZE>medium</SIZE>
+                                    <SIZE>small</SIZE>
                                     <LICENSE>accept</LICENSE>
-                                    <RUN_FILE_POST_INIT>informix_post_init.sh</RUN_FILE_POST_INIT>
                                 </env>
                                 <ports>
                                     <port>${informix.port}:9088</port>
@@ -287,7 +285,7 @@
                                 </wait>
                             </run>
                             <build>
-                                <from>${informix.image}:12.10.FC12W1DE</from>
+                                <from>ibmcom/informix-developer-database:12.10.FC12W1DE</from>
                                 <assembly>
                                     <inline>
                                         <files>
@@ -312,8 +310,7 @@
                             <run>
                                 <namingStrategy>none</namingStrategy>
                                 <env>
-                                    <TYPE>oltp</TYPE>
-                                    <SIZE>medium</SIZE>
+                                    <SIZE>small</SIZE>
                                     <LICENSE>accept</LICENSE>
                                     <RUN_FILE_POST_INIT>informix_post_init.sh</RUN_FILE_POST_INIT>
                                 </env>
@@ -331,7 +328,7 @@
                                 </wait>
                             </run>
                             <build>
-                                <from>${informix.image}:14.10.FC9W1DE</from>
+                                <from>icr.io/informix/informix-developer-database:14.10.FC9W1DE</from>
                                 <assembly>
                                     <inline>
                                         <includeBaseDirectory>false</includeBaseDirectory>
