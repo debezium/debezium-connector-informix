@@ -20,39 +20,29 @@ public class InformixEventMetadataProvider implements EventMetadataProvider {
 
     @Override
     public Instant getEventTimestamp(DataCollectionId source, OffsetContext offset, Object key, Struct value) {
-        if (value == null) {
+        if (value == null || source == null) {
             return null;
         }
-        final Struct sourceInfo = value.getStruct(Envelope.FieldName.SOURCE);
-        if (source == null) {
-            return null;
-        }
-        final Long timestamp = sourceInfo.getInt64(SourceInfo.TIMESTAMP_KEY);
+        final Long timestamp = value.getStruct(Envelope.FieldName.SOURCE).getInt64(SourceInfo.TIMESTAMP_KEY);
         return timestamp == null ? null : Instant.ofEpochMilli(timestamp);
     }
 
     @Override
     public Map<String, String> getEventSourcePosition(DataCollectionId source, OffsetContext offset, Object key, Struct value) {
-        if (value == null) {
+        if (value == null || source == null) {
             return null;
         }
         final Struct sourceInfo = value.getStruct(Envelope.FieldName.SOURCE);
-        if (source == null) {
-            return null;
-        }
-        return Collect.hashMapOf(SourceInfo.COMMIT_LSN_KEY, sourceInfo.getString(SourceInfo.COMMIT_LSN_KEY), SourceInfo.CHANGE_LSN_KEY,
-                sourceInfo.getString(SourceInfo.CHANGE_LSN_KEY));
+        return Collect.hashMapOf(
+                SourceInfo.COMMIT_LSN_KEY, sourceInfo.getString(SourceInfo.COMMIT_LSN_KEY),
+                SourceInfo.CHANGE_LSN_KEY, sourceInfo.getString(SourceInfo.CHANGE_LSN_KEY),
+                SourceInfo.BEGIN_LSN_KEY, sourceInfo.getString(SourceInfo.BEGIN_LSN_KEY));
     }
 
     @Override
     public String getTransactionId(DataCollectionId source, OffsetContext offset, Object key, Struct value) {
-        if (value == null) {
-            return null;
-        }
-        final Struct sourceInfo = value.getStruct(Envelope.FieldName.SOURCE);
-        if (source == null) {
-            return null;
-        }
-        return sourceInfo.getString(SourceInfo.TX_ID);
+        return value == null || source == null ? null : value
+                .getStruct(Envelope.FieldName.SOURCE)
+                .getString(SourceInfo.TX_ID_KEY);
     }
 }

@@ -24,7 +24,7 @@ public class InformixSourceInfoStructMaker extends AbstractSourceInfoStructMaker
                 .field(SourceInfo.TABLE_NAME_KEY, Schema.STRING_SCHEMA)
                 .field(SourceInfo.COMMIT_LSN_KEY, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(SourceInfo.CHANGE_LSN_KEY, Schema.OPTIONAL_STRING_SCHEMA)
-                .field(SourceInfo.TX_ID, Schema.OPTIONAL_STRING_SCHEMA)
+                .field(SourceInfo.TX_ID_KEY, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(SourceInfo.BEGIN_LSN_KEY, Schema.OPTIONAL_STRING_SCHEMA)
                 .build();
     }
@@ -39,7 +39,9 @@ public class InformixSourceInfoStructMaker extends AbstractSourceInfoStructMaker
         final Struct ret = super.commonStruct(sourceInfo);
 
         if (sourceInfo.getTableId() != null) {
-            ret.put(SourceInfo.SCHEMA_NAME_KEY, sourceInfo.getTableId().schema()).put(SourceInfo.TABLE_NAME_KEY, sourceInfo.getTableId().table());
+            ret
+                    .put(SourceInfo.SCHEMA_NAME_KEY, sourceInfo.getTableId().schema())
+                    .put(SourceInfo.TABLE_NAME_KEY, sourceInfo.getTableId().table());
         }
         if (sourceInfo.getCommitLsn() != null && sourceInfo.getCommitLsn().isAvailable()) {
             ret.put(SourceInfo.COMMIT_LSN_KEY, sourceInfo.getCommitLsn().toString());
@@ -48,7 +50,7 @@ public class InformixSourceInfoStructMaker extends AbstractSourceInfoStructMaker
             ret.put(SourceInfo.CHANGE_LSN_KEY, sourceInfo.getChangeLsn().toString());
         }
         if (sourceInfo.getTxId() >= 0x00) {
-            ret.put(SourceInfo.TX_ID, sourceInfo.getTxId().toString());
+            ret.put(SourceInfo.TX_ID_KEY, sourceInfo.getTxId().toString());
         }
         if (sourceInfo.getBeginLsn() != null && sourceInfo.getBeginLsn().isAvailable()) {
             ret.put(SourceInfo.BEGIN_LSN_KEY, sourceInfo.getBeginLsn().toString());

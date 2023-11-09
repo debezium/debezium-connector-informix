@@ -35,7 +35,7 @@ public class SourceInfoTest {
         source.setChangeLsn(Lsn.valueOf(0x01L));
         source.setCommitLsn(Lsn.valueOf(0x02L));
         source.setSnapshot(SnapshotRecord.TRUE);
-        source.setSourceTime(Instant.ofEpochMilli(3000));
+        source.setTimestamp(Instant.ofEpochMilli(3000));
         source.setTableId(new TableId("c", "s", "t"));
     }
 

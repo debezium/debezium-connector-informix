@@ -6,12 +6,8 @@
 package io.debezium.connector.informix;
 
 import java.time.Instant;
-import java.util.List;
-
-import com.informix.jdbc.IfxColumnInfo;
 
 import io.debezium.annotation.NotThreadSafe;
-import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.common.BaseSourceInfo;
 import io.debezium.relational.TableId;
 
@@ -27,29 +23,20 @@ public class SourceInfo extends BaseSourceInfo {
     public static final String CHANGE_LSN_KEY = "change_lsn";
     public static final String COMMIT_LSN_KEY = "commit_lsn";
     public static final String BEGIN_LSN_KEY = "begin_lsn";
-    public static final String TX_ID = "txId"; // Schema name mapping collision
-    public static final String DEBEZIUM_VERSION_KEY = AbstractSourceInfo.DEBEZIUM_VERSION_KEY;
-    public static final String DEBEZIUM_CONNECTOR_KEY = AbstractSourceInfo.DEBEZIUM_CONNECTOR_KEY;
-    public static final String SERVER_NAME_KEY = AbstractSourceInfo.SERVER_NAME_KEY;
-    public static final String TIMESTAMP_KEY = AbstractSourceInfo.TIMESTAMP_KEY;
-    public static final String SNAPSHOT_KEY = AbstractSourceInfo.SNAPSHOT_KEY;
-    public static final String DATABASE_NAME_KEY = AbstractSourceInfo.DATABASE_NAME_KEY;
-    public static final String SCHEMA_NAME_KEY = AbstractSourceInfo.SCHEMA_NAME_KEY;
-    public static final String TABLE_NAME_KEY = AbstractSourceInfo.TABLE_NAME_KEY;
-    public static final String COLLECTION_NAME_KEY = AbstractSourceInfo.COLLECTION_NAME_KEY;
+    public static final String TX_ID_KEY = "txId"; // Schema name mapping collision
 
     private Lsn commitLsn = Lsn.NULL;
     private Lsn changeLsn = Lsn.NULL;
     private Integer txId = -1;
     private Lsn beginLsn = Lsn.NULL;
-    private Instant sourceTime;
+    private Instant timestamp;
     private TableId tableId;
-    private final String databaseName;
-    private List<IfxColumnInfo> streamMetadata;
+
+    private final InformixConnectorConfig config;
 
     public SourceInfo(InformixConnectorConfig config) {
         super(config);
-        this.databaseName = config.getDatabaseName();
+        this.config = config;
     }
 
     public Lsn getCommitLsn() {
@@ -97,10 +84,10 @@ public class SourceInfo extends BaseSourceInfo {
     }
 
     /**
-     * @param instant a time at which the transaction commit was executed
+     * @param timestamp a time at which the transaction commit was executed
      */
-    public void setSourceTime(Instant instant) {
-        this.sourceTime = instant;
+    public void setTimestamp(Instant timestamp) {
+        this.timestamp = timestamp;
     }
 
     public TableId getTableId() {
@@ -118,13 +105,13 @@ public class SourceInfo extends BaseSourceInfo {
     public String toString() {
         return "SourceInfo [" +
                 "serverName=" + serverName() +
+                ", timestamp=" + timestamp +
+                ", db=" + database() +
+                ", snapshot=" + snapshotRecord +
                 ", commitLsn=" + commitLsn +
                 ", changeLsn=" + changeLsn +
                 ", txId=" + txId +
-                ", beginLsn=" + beginLsn +
-                ", snapshot=" + snapshotRecord +
-                ", sourceTime=" + sourceTime +
-                "]";
+                ", beginLsn=" + beginLsn + "]";
     }
 
     /**
@@ -132,7 +119,7 @@ public class SourceInfo extends BaseSourceInfo {
      */
     @Override
     protected Instant timestamp() {
-        return sourceTime;
+        return timestamp;
     }
 
     /**
@@ -140,6 +127,6 @@ public class SourceInfo extends BaseSourceInfo {
      */
     @Override
     protected String database() {
-        return databaseName;
+        return config.getDatabaseName();
     }
 }
