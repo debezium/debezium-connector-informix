@@ -41,8 +41,9 @@ public class InformixEventMetadataProvider implements EventMetadataProvider {
 
     @Override
     public String getTransactionId(DataCollectionId source, OffsetContext offset, Object key, Struct value) {
-        return value == null || source == null ? null : value
-                .getStruct(Envelope.FieldName.SOURCE)
-                .getString(SourceInfo.TX_ID_KEY);
+        return value == null || source == null ? null
+                : value
+                        .getStruct(Envelope.FieldName.SOURCE)
+                        .getString(SourceInfo.TX_ID_KEY);
     }
 }
