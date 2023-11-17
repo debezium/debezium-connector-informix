@@ -109,6 +109,8 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
                         LOGGER.info("Streaming resumed");
                     }
 
+                    dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
+
                     Lsn commitLsn = Lsn.valueOf(transactionRecord.getEndRecord().getSequenceId());
                     if (commitLsn.compareTo(lastCommitLsn) < 0) {
                         LOGGER.info("Skipping transaction with id: '{}' since commitLsn='{}' < lastCommitLsn='{}'",
@@ -138,6 +140,8 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
                     context.waitSnapshotCompletion();
                     LOGGER.info("Streaming resumed");
                 }
+
+                dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
 
                 switch (streamRecord.getType()) {
                     case TRANSACTION_GROUP:

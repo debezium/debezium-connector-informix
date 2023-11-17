@@ -21,13 +21,9 @@ on:
       - '*.md'
 
 jobs:
-  build:
+  build-core:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout informix repository
-        uses: actions/checkout@v4
-        with:
-          path: informix
       - name: Check if pull request branch exists in debezium main repository
         id: branch
         env:
@@ -58,7 +54,7 @@ jobs:
       - name: Set up JDK
         uses: actions/setup-java@v3
         with:
-          distribution: 'temurin'
+          distribution: temurin
           java-version: 17
       - name: Cache Maven packages
         uses: actions/cache@v3
@@ -67,8 +63,42 @@ jobs:
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
       - name: Maven build core
-        run: ./informix/mvnw clean install -f core/pom.xml -pl debezium-bom,debezium-core,debezium-embedded,debezium-storage -am -DskipTests -DskipITs -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
-      - name: Maven build and verify Informix 14.10
-        run: ./informix/mvnw clean install -f informix/pom.xml -Passembly,informix14 -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
-      - name: Maven verify Informix 12.10
-        run: ./informix/mvnw verify -f informix/pom.xml -Pinformix12 -Dformat.formatter.goal=validate -Dformat.imports.goal=check -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        run: >
+          ./core/mvnw clean install -B -f core/pom.xml 
+          -pl debezium-bom,debezium-core,debezium-embedded,debezium-storage -am 
+          -DskipTests=true 
+          -DskipITs=true
+          -Dcheckstyle.skip=true
+          -Dformat.skip=true
+          -Drevapi.skip=true
+  build-ifx:
+    needs: build-core
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        informix-plugin: [ "assembly,informix12", "assembly,informix14" ]
+      fail-fast: false
+    steps:
+      - name: Checkout informix repository
+        uses: actions/checkout@v4
+        with:
+          path: informix
+      - name: Set up JDK
+        uses: actions/setup-java@v3
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Cache Maven packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+      - name: Maven build Informix (${{ matrix.informix-plugin }})
+        run: >
+          ./informix/mvnw clean install -B -f informix/pom.xml
+          -P${{ matrix.informix-plugin }}
+          -Dformat.formatter.goal=validate
+          -Dformat.imports.goal=check
+          -Ddebezium.test.records.waittime=5
+          -Ddebezium.test.records.waittime.after.nulls=5

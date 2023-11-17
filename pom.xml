@@ -280,6 +280,10 @@
                                     <enabled>true</enabled>
                                     <color>yellow</color>
                                 </log>
+                                <wait>
+                                    <time>600000</time> <!-- 600 seconds max -->
+                                    <log>SCHAPI: Started \d+ dbWorker threads</log>
+                                </wait>
                             </run>
                             <build>
                                 <from>${informix.image.registry}/${informix.image}:${informix.image.tag}</from>
@@ -481,12 +485,6 @@
                         <configuration>
                             <images>
                                 <image>
-                                    <run>
-                                        <wait>
-                                            <time>600000</time> <!-- 600 seconds max -->
-                                            <log>Informix container login Information</log>
-                                        </wait>
-                                    </run>
                                     <build>
                                         <assembly>
                                             <inline>
@@ -535,10 +533,6 @@
                                         <env>
                                             <RUN_FILE_POST_INIT>informix_post_init.sh</RUN_FILE_POST_INIT>
                                         </env>
-                                        <wait>
-                                            <time>600000</time> <!-- 600 seconds max -->
-                                            <log>IBM Informix Dynamic Server Initialized</log>
-                                        </wait>
                                     </run>
                                     <build>
                                         <assembly>

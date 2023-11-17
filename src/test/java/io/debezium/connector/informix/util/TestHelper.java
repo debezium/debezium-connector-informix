@@ -94,7 +94,7 @@ public class TestHelper {
                 .with(InformixConnectorConfig.SCHEMA_HISTORY, FileSchemaHistory.class)
                 .with(FileSchemaHistory.FILE_PATH, SCHEMA_HISTORY_PATH)
                 .with(InformixConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
-                .with(InformixConnectorConfig.CDC_TIMEOUT, 0)
+                .with(InformixConnectorConfig.CDC_TIMEOUT, 1)
                 .with(InformixConnectorConfig.CDC_BUFFERSIZE, 0x200);
     }
 
@@ -129,8 +129,13 @@ public class TestHelper {
         expected.forEach(schemaAndValueField -> schemaAndValueField.assertFor(record));
     }
 
-    public static void waitForCDC() throws InterruptedException {
-        Metronome.parker(Durations.TEN_SECONDS, Clock.SYSTEM).pause();
+    public static void waitForCDC() {
+        try {
+            Metronome.parker(Durations.TWO_SECONDS, Clock.SYSTEM).pause();
+        }
+        catch (InterruptedException e) {
+            // IGNORE
+        }
     }
 
 }
