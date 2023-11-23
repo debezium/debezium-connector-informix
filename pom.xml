@@ -271,6 +271,7 @@
                                 <env>
                                     <SIZE>small</SIZE>
                                     <LICENSE>accept</LICENSE>
+                                    <USEOSTIME>1</USEOSTIME>
                                 </env>
                                 <ports>
                                     <port>${informix.port}:9088</port>
@@ -287,6 +288,9 @@
                             </run>
                             <build>
                                 <from>${informix.image.registry}/${informix.image}:${informix.image.tag}</from>
+                                <runCmds>
+                                    <run>sed -Ei 's/^(USEOSTIME)\s+\S/\1 1/' /opt/ibm/informix/etc/onconfig.std</run>
+                                </runCmds>
                             </build>
                             <external>
                                 <type>properties</type>
