@@ -100,6 +100,6 @@ public class LsnTest {
     public void testLsnLongString() {
         Lsn lsn = Lsn.valueOf("30073823388");
 
-        assertThat(lsn.toLongString()).isEqualTo("LSN(7:0x8a209c)");
+        assertThat(lsn.toLongString()).isEqualTo("LSN(7,8a209c)");
     }
 }

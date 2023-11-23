@@ -138,6 +138,12 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Infor
         return TestHelper.TEST_DATABASE;
     }
 
+    @Override
+    protected void sendAdHocSnapshotSignal() throws SQLException {
+        super.sendAdHocSnapshotSignal();
+        TestHelper.waitForCDC();
+    }
+
     @Test
     @Ignore // Cannot perform this operation on a table defined for replication
     @Override
