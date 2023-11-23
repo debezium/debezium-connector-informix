@@ -29,8 +29,9 @@ public class InformixDatabaseSchema extends HistorizedRelationalDatabaseSchema {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(InformixDatabaseSchema.class);
 
-    public InformixDatabaseSchema(InformixConnectorConfig connectorConfig, TopicNamingStrategy<TableId> topicNamingStrategy, InformixValueConverters valueConverters,
-                                  SchemaNameAdjuster schemaNameAdjuster, InformixConnection connection) {
+    public InformixDatabaseSchema(InformixConnectorConfig connectorConfig, TopicNamingStrategy<TableId> topicNamingStrategy,
+                                  InformixValueConverters valueConverters, SchemaNameAdjuster schemaNameAdjuster,
+                                  InformixConnection connection) {
         super(
                 connectorConfig,
                 topicNamingStrategy,
@@ -38,6 +39,7 @@ public class InformixDatabaseSchema extends HistorizedRelationalDatabaseSchema {
                 connectorConfig.getColumnFilter(),
                 new TableSchemaBuilder(
                         valueConverters,
+                        new InformixDefaultValueConverter(valueConverters, connection),
                         schemaNameAdjuster,
                         connectorConfig.customConverterRegistry(),
                         connectorConfig.getSourceInfoStructMaker().schema(),
