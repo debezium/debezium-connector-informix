@@ -42,6 +42,13 @@ public class InformixCdcTypesIT extends AbstractConnectorTest {
     public void before() throws SQLException {
         connection = TestHelper.testConnection();
         connection.execute(
+                "drop table if exists test_bigint",
+                "drop table if exists test_bigserial",
+                "drop table if exists test_char",
+                "drop table if exists test_date",
+                "drop table if exists test_decimal",
+                "drop table if exists test_decimal_20",
+                "drop table if exists test_decimal_20_5",
                 "create table test_bigint(a bigint)",
                 "create table test_bigserial(a bigserial)",
                 "create table test_char(a char)",

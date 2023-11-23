@@ -36,7 +36,7 @@ public class InformixChangeTable {
         this.startLsn = startLsn;
         this.stopLsn = stopLsn;
         this.captureInstance = captureInstance;
-        this.changeTableId = (sourceTableId != null) ? new TableId(sourceTableId.catalog(), InformixChangeTable.CDC_SCHEMA, captureInstance) : null;
+        this.changeTableId = (sourceTableId != null) ? new TableId(InformixChangeTable.CDC_SCHEMA, sourceTableId.schema(), captureInstance) : null;
     }
 
     public InformixChangeTable(String captureInstance, int changeTableObjectId, Lsn startLsn, Lsn stopLsn) {

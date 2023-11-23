@@ -5,9 +5,11 @@
  */
 package io.debezium.connector.informix;
 
+import java.sql.DatabaseMetaData;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
-import java.util.Optional;
+import java.util.*;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,7 +19,7 @@ import com.informix.jdbc.IfxDriver;
 import io.debezium.config.Configuration;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
-import io.debezium.relational.TableId;
+import io.debezium.relational.*;
 import io.debezium.util.Strings;
 
 /**
@@ -135,5 +137,21 @@ public class InformixConnection extends JdbcConnection {
     public String quotedColumnIdString(String columnName) {
         // TODO: Unless DELIMIDENT is set, column names cannot be quoted
         return columnName;
+    }
+
+    public Table getTableSchemaFromTableId(TableId tableId) throws SQLException {
+        final TableEditor tableEditor = Table.editor().tableId(tableId);
+        final DatabaseMetaData metadata = connection().getMetaData();
+        final ResultSet columns = metadata.getColumns(
+                tableId.catalog(),
+                tableId.schema(),
+                tableId.table(),
+                null);
+        while (columns.next()) {
+            readTableColumn(columns, tableId, null).ifPresent(columnEditor -> tableEditor.addColumns(columnEditor.create()));
+        }
+        tableEditor.setPrimaryKeyNames(readPrimaryKeyNames(metadata, tableId));
+        return tableEditor.create();
+
     }
 }
