@@ -29,6 +29,9 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Infor
     public void before() throws SQLException {
         connection = TestHelper.testConnection();
         connection.execute(
+                "DROP TABLE IF EXISTS a",
+                "DROP TABLE IF EXISTS b",
+                "DROP TABLE IF EXISTS debezium_signal",
                 "CREATE TABLE a (pk int not null, aa int, primary key (pk))",
                 "CREATE TABLE b (pk int not null, aa int, primary key (pk))",
                 "CREATE TABLE debezium_signal (id varchar(64), type varchar(32), data varchar(255))");

@@ -68,6 +68,7 @@ public class InformixChangeEventSourceFactory implements ChangeEventSourceFactor
         return new InformixStreamingChangeEventSource(
                 configuration,
                 cdcConnectionFactory.mainConnection(),
+                cdcConnectionFactory.newConnection(),
                 dispatcher,
                 errorHandler,
                 clock,

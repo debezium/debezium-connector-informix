@@ -40,6 +40,9 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
     public void before() throws SQLException {
         connection = TestHelper.testConnection();
         connection.execute(
+                "DROP TABLE IF EXISTS tablea",
+                "DROP TABLE IF EXISTS tableb",
+                "DROP TABLE IF EXISTS tablec",
                 "CREATE TABLE tablea (id int not null, cola varchar(30), primary key(id))",
                 "CREATE TABLE tableb (id int not null, colb varchar(30), primary key(id))",
                 "CREATE TABLE tablec (id int not null, colc varchar(30), primary key(id))");

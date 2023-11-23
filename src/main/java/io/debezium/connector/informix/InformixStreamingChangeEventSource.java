@@ -23,6 +23,7 @@ import com.informix.stream.api.IfmxStreamRecordType;
 import com.informix.stream.cdc.IfxCDCEngine;
 import com.informix.stream.cdc.records.IfxCDCBeginTransactionRecord;
 import com.informix.stream.cdc.records.IfxCDCCommitTransactionRecord;
+import com.informix.stream.cdc.records.IfxCDCMetaDataRecord;
 import com.informix.stream.cdc.records.IfxCDCTruncateRecord;
 import com.informix.stream.impl.IfxStreamException;
 
@@ -30,7 +31,9 @@ import io.debezium.data.Envelope.Operation;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
+import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
+import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.util.Clock;
 
 public class InformixStreamingChangeEventSource implements StreamingChangeEventSource<InformixPartition, InformixOffsetContext> {
@@ -42,6 +45,7 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
 
     private final InformixConnectorConfig connectorConfig;
     private final InformixConnection dataConnection;
+    private final InformixConnection metadataConnection;
     private final EventDispatcher<InformixPartition, TableId> dispatcher;
     private final ErrorHandler errorHandler;
     private final Clock clock;
@@ -49,11 +53,12 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
     private InformixOffsetContext effectiveOffsetContext;
 
     public InformixStreamingChangeEventSource(InformixConnectorConfig connectorConfig,
-                                              InformixConnection dataConnection,
+                                              InformixConnection dataConnection, InformixConnection metadataConnection,
                                               EventDispatcher<InformixPartition, TableId> dispatcher, ErrorHandler errorHandler,
                                               Clock clock, InformixDatabaseSchema schema) {
         this.connectorConfig = connectorConfig;
         this.dataConnection = dataConnection;
+        this.metadataConnection = metadataConnection;
         this.dispatcher = dispatcher;
         this.errorHandler = errorHandler;
         this.clock = clock;
@@ -87,6 +92,18 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
             return;
         }
 
+        // Need to refresh schema before CDCEngine is started, to capture columns added in off-line schema evolution
+        try {
+            for (TableId tableId : schema.tableIds()) {
+                final Table table = metadataConnection.getTableSchemaFromTableId(tableId);
+                schema.refresh(table);
+            }
+        }
+        catch (SQLException e) {
+            LOGGER.error("Caught SQLException", e);
+            errorHandler.setProducerThrowable(e);
+        }
+
         TxLogPosition lastPosition = offsetContext.getChangePosition();
         Lsn lastCommitLsn = lastPosition.getCommitLsn();
         Lsn lastBeginLsn = lastPosition.getBeginLsn();
@@ -94,13 +111,14 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
         try (InformixCdcTransactionEngine transactionEngine = getTransactionEngine(context, schema, lastBeginLsn)) {
             transactionEngine.init();
 
-            InformixStreamTransactionRecord transactionRecord = transactionEngine.getTransaction();
+            IfmxStreamRecord streamRecord = transactionEngine.getRecord();
             /*
              * Recover Stage. In this stage, we replay event from 'beginLsn' to 'commitLsn', and rebuild the transactionCache.
              */
             if (lastBeginLsn.compareTo(lastCommitLsn) < 0) {
                 LOGGER.info("Begin recover: from lastBeginLsn='{}' to lastCommitLsn='{}'", lastBeginLsn, lastCommitLsn);
-                while (context.isRunning()) {
+                boolean recovering = true;
+                while (context.isRunning() && recovering) {
 
                     if (context.isPaused()) {
                         LOGGER.info("Streaming will now pause");
@@ -111,23 +129,36 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
 
                     dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
 
-                    Lsn commitLsn = Lsn.of(transactionRecord.getEndRecord().getSequenceId());
-                    if (commitLsn.compareTo(lastCommitLsn) < 0) {
-                        LOGGER.info("Skipping transaction with id: '{}' since commitLsn='{}' < lastCommitLsn='{}'",
-                                transactionRecord.getTransactionId(), commitLsn, lastCommitLsn);
+                    switch (streamRecord.getType()) {
+                        case TRANSACTION_GROUP:
+                            InformixStreamTransactionRecord transactionRecord = (InformixStreamTransactionRecord) streamRecord;
+
+                            Lsn commitLsn = Lsn.of(transactionRecord.getEndRecord().getSequenceId());
+                            if (commitLsn.compareTo(lastCommitLsn) < 0) {
+                                LOGGER.info("Skipping transaction with id: '{}' since commitLsn='{}' < lastCommitLsn='{}'",
+                                        transactionRecord.getTransactionId(), commitLsn, lastCommitLsn);
+                            } else if (commitLsn.compareTo(lastCommitLsn) > 0) {
+                                LOGGER.info("Recover finished: from lastBeginLsn='{}' to lastCommitLsn='{}', current Lsn='{}'",
+                                        lastBeginLsn, lastCommitLsn, commitLsn);
+                                recovering = false;
+                            } else {
+                                handleTransaction(transactionEngine, partition, offsetContext, transactionRecord, true);
+                            }
+                            break;
+                        case METADATA:
+                            handleMetadata(partition, offsetContext, transactionEngine, (IfxCDCMetaDataRecord) streamRecord);
+                            break;
+                        case TIMEOUT:
+                        case ERROR:
+                            LOGGER.debug(RECEIVED_GENERIC_RECORD, streamRecord, 0);
+                            break;
+                        default:
+                            LOGGER.debug(RECEIVED_UNKNOWN_RECORD_TYPE, streamRecord, 0);
                     }
-                    else if (commitLsn.compareTo(lastCommitLsn) > 0) {
-                        LOGGER.info("Recover finished: from lastBeginLsn='{}' to lastCommitLsn='{}', current Lsn='{}'",
-                                lastBeginLsn, lastCommitLsn, commitLsn);
-                        break;
-                    }
-                    else {
-                        handleTransaction(transactionEngine, partition, offsetContext, transactionRecord, true);
-                    }
-                    transactionRecord = transactionEngine.getTransaction();
+
+                    streamRecord = transactionEngine.getRecord();
                 }
             }
-            IfmxStreamRecord streamRecord = transactionRecord;
 
             /*
              * Main Handler Loop
@@ -145,10 +176,11 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
 
                 switch (streamRecord.getType()) {
                     case TRANSACTION_GROUP:
-                        transactionRecord = (InformixStreamTransactionRecord) streamRecord;
-                        handleTransaction(transactionEngine, partition, offsetContext, transactionRecord, false);
+                        handleTransaction(transactionEngine, partition, offsetContext, (InformixStreamTransactionRecord) streamRecord, false);
                         break;
                     case METADATA:
+                        handleMetadata(partition, offsetContext, transactionEngine, (IfxCDCMetaDataRecord) streamRecord);
+                        break;
                     case TIMEOUT:
                     case ERROR:
                         LOGGER.debug(RECEIVED_GENERIC_RECORD, streamRecord, 0);
@@ -364,6 +396,30 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
 
             LOGGER.debug(RECEIVED_GENERIC_RECORD, endRecord, (end - start) / 1000000d);
         }
+    }
+
+    private void handleMetadata(InformixPartition partition, InformixOffsetContext offsetContext, InformixCdcTransactionEngine engine,
+                                IfxCDCMetaDataRecord metaDataRecord)
+            throws InterruptedException {
+        long start = System.nanoTime();
+        TableId tableId = engine.getTableIdByLabelId().get(metaDataRecord.getLabel());
+
+        offsetContext.event(tableId, Instant.now());
+
+        dispatcher.dispatchSchemaChangeEvent(partition, offsetContext, null, receiver -> {
+            final SchemaChangeEvent event = SchemaChangeEvent.ofAlter(
+                    partition,
+                    offsetContext,
+                    tableId.catalog(),
+                    tableId.schema(),
+                    "n/a",
+                    schema.tableFor(tableId));
+            if (!schema.skipSchemaChangeEvent(event)) {
+                receiver.schemaChangeEvent(event);
+            }
+        });
+        long end = System.nanoTime();
+        LOGGER.debug(RECEIVED_GENERIC_RECORD, metaDataRecord, (end - start) / 1000000d);
     }
 
     private void updateChangePosition(InformixOffsetContext offsetContext,
