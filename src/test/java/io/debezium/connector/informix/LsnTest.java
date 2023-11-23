@@ -13,8 +13,8 @@ public class LsnTest {
 
     @Test
     public void testLsnMinusOne() {
-        Lsn recorded = Lsn.valueOf("1000");
-        Lsn desired = Lsn.valueOf("1046");
+        Lsn recorded = Lsn.of("1000");
+        Lsn desired = Lsn.of("1046");
         int ret = recorded.compareTo(desired);
         System.out.println(ret);
         // assertThat(ret).isEqualTo(-1);
@@ -29,19 +29,19 @@ public class LsnTest {
     @Test
     public void testLsnNULL() {
         Lsn recorded = Lsn.NULL;
-        Lsn desired = Lsn.valueOf("146031505564");
+        Lsn desired = Lsn.of("146031505564");
         assertThat(recorded).isLessThan(desired);
 
-        Lsn recorded1 = Lsn.valueOf("NULL");
-        Lsn desired1 = Lsn.valueOf("146031505564");
+        Lsn recorded1 = Lsn.of("NULL");
+        Lsn desired1 = Lsn.of("146031505564");
         assertThat(recorded1).isLessThan(desired1);
     }
 
     @Test
     public void testValueOf() {
         String lsnStr = "146039087264";
-        Lsn lsn1 = Lsn.valueOf(lsnStr);
-        Lsn lsn2 = Lsn.valueOf(146039087264L);
+        Lsn lsn1 = Lsn.of(lsnStr);
+        Lsn lsn2 = Lsn.of(146039087264L);
         Lsn lsn3 = new Lsn(146039087264L);
 
         assertThat(lsn1).isEqualTo(lsn2);
@@ -72,14 +72,14 @@ public class LsnTest {
 
     @Test
     public void testLsnValueOf() {
-        Lsn lsnNegativeOne = Lsn.valueOf(-1L);
-        Lsn lsnNegativeOneStr = Lsn.valueOf("-1");
-        Lsn lsnDigit1 = Lsn.valueOf("1");
-        Lsn lsnDigit2 = Lsn.valueOf("12");
-        Lsn lsnDigit3 = Lsn.valueOf("123");
-        Lsn lsnDigit4 = Lsn.valueOf("1234");
-        Lsn lsnDigit5 = Lsn.valueOf("12345");
-        Lsn lsnDigit6 = Lsn.valueOf("123456");
+        Lsn lsnNegativeOne = Lsn.of(-1L);
+        Lsn lsnNegativeOneStr = Lsn.of("-1");
+        Lsn lsnDigit1 = Lsn.of("1");
+        Lsn lsnDigit2 = Lsn.of("12");
+        Lsn lsnDigit3 = Lsn.of("123");
+        Lsn lsnDigit4 = Lsn.of("1234");
+        Lsn lsnDigit5 = Lsn.of("12345");
+        Lsn lsnDigit6 = Lsn.of("123456");
 
         assertThat(lsnNegativeOne).isEqualTo(lsnNegativeOneStr).isEqualByComparingTo(lsnNegativeOneStr);
 
@@ -98,7 +98,7 @@ public class LsnTest {
 
     @Test
     public void testLsnLongString() {
-        Lsn lsn = Lsn.valueOf("30073823388");
+        Lsn lsn = Lsn.of("30073823388");
 
         assertThat(lsn.toLongString()).isEqualTo("LSN(7,8a209c)");
     }

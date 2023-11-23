@@ -65,7 +65,7 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
         this.effectiveOffsetContext = offsetContext == null
                 ? new InformixOffsetContext(
                         connectorConfig,
-                        TxLogPosition.valueOf(Lsn.valueOf(0x00L)),
+                        TxLogPosition.current(),
                         false,
                         false)
                 : offsetContext;
@@ -111,7 +111,7 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
 
                     dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
 
-                    Lsn commitLsn = Lsn.valueOf(transactionRecord.getEndRecord().getSequenceId());
+                    Lsn commitLsn = Lsn.of(transactionRecord.getEndRecord().getSequenceId());
                     if (commitLsn.compareTo(lastCommitLsn) < 0) {
                         LOGGER.info("Skipping transaction with id: '{}' since commitLsn='{}' < lastCommitLsn='{}'",
                                 transactionRecord.getTransactionId(), commitLsn, lastCommitLsn);
@@ -200,11 +200,11 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
         });
 
         if (startLsn.isAvailable()) {
-            builder.sequenceId(startLsn.longValue());
+            builder.sequenceId(startLsn.sequence());
         }
         if (LOGGER.isInfoEnabled()) {
-            long seqId = builder.getSequenceId();
-            LOGGER.info("Set CDCEngine's LSN to '{}' aka {}", seqId, Lsn.valueOf(seqId).toLongString());
+            long sequence = builder.getSequenceId();
+            LOGGER.info("Set CDCEngine's LSN to '{}' aka {}", sequence, Lsn.of(sequence).toLongString());
         }
 
         return builder.build();
@@ -259,7 +259,7 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
 
                 long changeSeq = streamRecord.getSequenceId();
 
-                if (recover && Lsn.valueOf(changeSeq).compareTo(offsetContext.getChangePosition().getChangeLsn()) <= 0) {
+                if (recover && Lsn.of(changeSeq).compareTo(offsetContext.getChangePosition().getChangeLsn()) <= 0) {
                     LOGGER.info("Skipping already processed record {}", changeSeq);
                     continue;
                 }
@@ -371,10 +371,10 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
         offsetContext.setChangePosition(
                 TxLogPosition.cloneAndSet(
                         offsetContext.getChangePosition(),
-                        Lsn.valueOf(commitSeq),
-                        Lsn.valueOf(changeSeq),
+                        Lsn.of(commitSeq),
+                        Lsn.of(changeSeq),
                         transactionId,
-                        Lsn.valueOf(beginSeq)));
+                        Lsn.of(beginSeq)));
     }
 
     private void handleOperation(InformixPartition partition, InformixOffsetContext offsetContext, Operation operation,
