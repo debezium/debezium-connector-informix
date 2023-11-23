@@ -5,15 +5,16 @@
  */
 package io.debezium.connector.informix;
 
-import java.sql.Types;
 import java.time.ZoneOffset;
 
+import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.SchemaBuilder;
 
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.jdbc.JdbcValueConverters;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.Column;
+import io.debezium.relational.ValueConverter;
 
 /**
  * Conversion of Informix specific datatypes.
@@ -41,12 +42,16 @@ public class InformixValueConverters extends JdbcValueConverters {
     @Override
     public SchemaBuilder schemaBuilder(Column column) {
         switch (column.jdbcType()) {
-            // Numeric integers
-            case Types.TINYINT:
-                // values are an 8-bit unsigned integer value between 0 and 255, we thus need to store it in short int
-                return SchemaBuilder.int16();
             default:
                 return super.schemaBuilder(column);
+        }
+    }
+
+    @Override
+    public ValueConverter converter(Column column, Field fieldDefn) {
+        switch (column.jdbcType()) {
+            default:
+                return super.converter(column, fieldDefn);
         }
     }
 
