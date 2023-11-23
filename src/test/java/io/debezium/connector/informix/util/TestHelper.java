@@ -35,7 +35,7 @@ public class TestHelper {
 
     public static final String TEST_DATABASE = "testdb";
     public static final String TEST_CONNECTOR = "informix_server";
-    public static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-db-history-connect.txt").toAbsolutePath();
+    public static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history.txt").toAbsolutePath();
 
     /**
      * Key for schema parameter used to store a source column's type name.
@@ -60,7 +60,7 @@ public class TestHelper {
     public static final String IS_CDC_ENABLED = "select name, is_logging, is_buff_log, is_ansi from sysmaster:sysdatabases where name='%s'";
 
     public static JdbcConfiguration adminJdbcConfig() {
-        return JdbcConfiguration.copy(Configuration.fromSystemProperties("database."))
+        return JdbcConfiguration.copy(Configuration.fromSystemProperties(InformixConnectorConfig.DATABASE_CONFIG_PREFIX))
                 .withDefault(JdbcConfiguration.DATABASE, TEST_DATABASE)
                 .withDefault(JdbcConfiguration.HOSTNAME, "localhost")
                 .withDefault(JdbcConfiguration.PORT, 9088)
@@ -70,7 +70,7 @@ public class TestHelper {
     }
 
     public static JdbcConfiguration defaultJdbcConfig() {
-        return JdbcConfiguration.copy(Configuration.fromSystemProperties("database."))
+        return JdbcConfiguration.copy(Configuration.fromSystemProperties(InformixConnectorConfig.DATABASE_CONFIG_PREFIX))
                 .withDefault(JdbcConfiguration.DATABASE, TEST_DATABASE)
                 .withDefault(JdbcConfiguration.HOSTNAME, "localhost")
                 .withDefault(JdbcConfiguration.PORT, 9088)
@@ -84,18 +84,14 @@ public class TestHelper {
      * needed.
      */
     public static Configuration.Builder defaultConfig() {
-        JdbcConfiguration jdbcConfiguration = defaultJdbcConfig();
-        Configuration.Builder builder = Configuration.create();
 
-        jdbcConfiguration.forEach(
-                (field, value) -> builder.with(InformixConnectorConfig.DATABASE_CONFIG_PREFIX + field, value));
-
-        return builder.with(CommonConnectorConfig.TOPIC_PREFIX, TEST_DATABASE)
+        return Configuration.copy(defaultJdbcConfig().map(key -> InformixConnectorConfig.DATABASE_CONFIG_PREFIX + key))
+                .with(CommonConnectorConfig.TOPIC_PREFIX, TEST_DATABASE)
                 .with(InformixConnectorConfig.SCHEMA_HISTORY, FileSchemaHistory.class)
                 .with(FileSchemaHistory.FILE_PATH, SCHEMA_HISTORY_PATH)
                 .with(InformixConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
-                .with(InformixConnectorConfig.CDC_TIMEOUT, 1)
-                .with(InformixConnectorConfig.CDC_BUFFERSIZE, 0x200);
+                .with(InformixConnectorConfig.CDC_TIMEOUT, 0)
+                .with(InformixConnectorConfig.CDC_BUFFERSIZE, 0x800);
     }
 
     public static InformixConnection adminConnection() {
@@ -137,5 +133,4 @@ public class TestHelper {
             // IGNORE
         }
     }
-
 }

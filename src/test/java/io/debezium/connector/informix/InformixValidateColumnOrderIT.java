@@ -51,7 +51,9 @@ public class InformixValidateColumnOrderIT extends AbstractConnectorTest {
         connection = TestHelper.testConnection();
 
         String columns = testTableColumns.entrySet().stream().map(e -> e.getKey() + ' ' + e.getValue()).collect(Collectors.joining(", "));
-        connection.execute(String.format("create table %s(%s)", testTableName, columns));
+
+        connection.execute(String.format("drop table if exists %s", testTableName))
+                .execute(String.format("create table %s(%s)", testTableName, columns));
 
         initializeConnectorTestFramework();
         Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
