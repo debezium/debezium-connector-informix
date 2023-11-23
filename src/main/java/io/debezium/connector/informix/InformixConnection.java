@@ -32,7 +32,7 @@ public class InformixConnection extends JdbcConnection {
 
     private static final String GET_DATABASE_NAME = "select dbinfo('dbname') as dbname from systables where tabid = 1";
 
-    private static final String GET_MAX_LSN = "select max(seqnum) as seqnum from syscdcv1:informix.syscdctabs where dbname = '%s'";
+    private static final String GET_MAX_LSN = "select uniqid, used as logpage from sysmaster:syslogs where is_current = 1";
 
     private static final String GET_CURRENT_TIMESTAMP = "select sysdate as sysdate from sysmaster:sysdual";
 
@@ -67,17 +67,23 @@ public class InformixConnection extends JdbcConnection {
     }
 
     /**
-     * @return the current largest log sequence number
+     * Calculates the highest available Log Sequence Number.
+     * Tecnically, the _exact_ highest available LSN is not available in the JDBC session, but the current page of the active
+     * logical log file is. Each logical log file is a 32-bit address space of 4k pages, thus the log position within the file is
+     * the current page number bit-shifted 12 positions to the left.
+     * This is also the logical log position the change stream client actually starts from if set to start from the 'CURRENT'
+     * position (LSN = 0).
+     * (The full logical sequence number is a 64-bit integer where the unique id of the logical log file is placed in the 32 most
+     * significant bits.)
+     *
+     * @return the current highest log sequence number
      */
-    public Lsn getMaxLsn() {
-        /*
-         * return queryAndMap(GET_MAX_LSN, singleResultMapper(rs -> {
-         * final Lsn lsn = Lsn.valueOf(rs.getLong(1));
-         * LOGGER.trace("Current maximum lsn is {}", lsn);
-         * return lsn;
-         * }, "Maximum LSN query must return exactly one value"));
-         */
-        return Lsn.valueOf(0x00L);
+    public Lsn getMaxLsn() throws SQLException {
+        return queryAndMap(GET_MAX_LSN, singleResultMapper(rs -> {
+            final Lsn lsn = Lsn.of(rs.getLong("uniqid"), rs.getLong("logpage") << 12);
+            LOGGER.trace("Current maximum lsn is {}", lsn.toLongString());
+            return lsn;
+        }, "Maximum LSN query must return exactly one value"));
     }
 
     public String getRealDatabaseName() {

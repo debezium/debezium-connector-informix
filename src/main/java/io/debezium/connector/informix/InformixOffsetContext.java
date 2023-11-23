@@ -141,9 +141,9 @@ public class InformixOffsetContext extends CommonOffsetContext<SourceInfo> {
 
         @Override
         public InformixOffsetContext load(Map<String, ?> offset) {
-            final Lsn commitLsn = Lsn.valueOf((String) offset.get(SourceInfo.COMMIT_LSN_KEY));
-            final Lsn changeLsn = Lsn.valueOf((String) offset.get(SourceInfo.CHANGE_LSN_KEY));
-            final Lsn beginLsn = Lsn.valueOf((String) offset.get(SourceInfo.BEGIN_LSN_KEY));
+            final Lsn commitLsn = Lsn.of((String) offset.get(SourceInfo.COMMIT_LSN_KEY));
+            final Lsn changeLsn = Lsn.of((String) offset.get(SourceInfo.CHANGE_LSN_KEY));
+            final Lsn beginLsn = Lsn.of((String) offset.get(SourceInfo.BEGIN_LSN_KEY));
 
             boolean snapshot = Boolean.TRUE.equals(offset.get(SourceInfo.SNAPSHOT_KEY));
             boolean snapshotCompleted = Boolean.TRUE.equals(offset.get(SNAPSHOT_COMPLETED_KEY));

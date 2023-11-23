@@ -82,7 +82,7 @@ public class InformixSnapshotChangeEventSource extends RelationalSnapshotChangeE
     }
 
     @Override
-    protected SnapshotContext<InformixPartition, InformixOffsetContext> prepare(InformixPartition partition) throws Exception {
+    protected SnapshotContext<InformixPartition, InformixOffsetContext> prepare(InformixPartition partition) {
         return new InformixSnapshotContext(partition, jdbcConnection.getRealDatabaseName());
     }
 
@@ -143,7 +143,8 @@ public class InformixSnapshotChangeEventSource extends RelationalSnapshotChangeE
     }
 
     @Override
-    protected void determineSnapshotOffset(RelationalSnapshotContext<InformixPartition, InformixOffsetContext> ctx, InformixOffsetContext previousOffset) {
+    protected void determineSnapshotOffset(RelationalSnapshotContext<InformixPartition, InformixOffsetContext> ctx, InformixOffsetContext previousOffset)
+            throws SQLException {
         InformixOffsetContext offset = ctx.offset;
         if (offset == null) {
             if (previousOffset != null) {
@@ -246,7 +247,7 @@ public class InformixSnapshotChangeEventSource extends RelationalSnapshotChangeE
         private int isolationLevelBeforeStart;
         private Savepoint preSchemaSnapshotSavepoint;
 
-        InformixSnapshotContext(InformixPartition partition, String catalogName) throws SQLException {
+        InformixSnapshotContext(InformixPartition partition, String catalogName) {
             super(partition, catalogName);
         }
     }

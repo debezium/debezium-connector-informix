@@ -138,7 +138,6 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
 
         /**
          * This mode will block all reads and writes for the entire duration of the snapshot.
-         *
          * The connector will execute {@code SELECT * FROM .. WITH (TABLOCKX)}
          */
         EXCLUSIVE("exclusive"),
@@ -356,8 +355,8 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
         return new HistoryRecordComparator() {
             @Override
             protected boolean isPositionAtOrBefore(Document recorded, Document desired) {
-                return Lsn.valueOf(recorded.getString(SourceInfo.CHANGE_LSN_KEY))
-                        .compareTo(Lsn.valueOf(desired.getString(SourceInfo.CHANGE_LSN_KEY))) < 1;
+                return Lsn.of(recorded.getString(SourceInfo.CHANGE_LSN_KEY))
+                        .compareTo(Lsn.of(desired.getString(SourceInfo.CHANGE_LSN_KEY))) < 1;
             }
         };
     }

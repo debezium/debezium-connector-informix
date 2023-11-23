@@ -34,29 +34,16 @@ public class TxLogPosition implements Nullable, Comparable<TxLogPosition> {
         this.beginLsn = beginLsn;
     }
 
-    public static TxLogPosition valueOf(Lsn commitLsn) {
-        if (commitLsn == null || commitLsn.equals(Lsn.NULL)) {
-            return NULL;
-        }
-        return valueOf(commitLsn, Lsn.valueOf(0x00L));
+    public static TxLogPosition current() {
+        return TxLogPosition.valueOf(Lsn.of(0x00L));
     }
 
-    public static TxLogPosition valueOf(Lsn commitLsn, Lsn changeLsn) {
-        if ((commitLsn == null || commitLsn.equals(Lsn.NULL) && (changeLsn == null || changeLsn.equals(Lsn.NULL)))) {
-            return NULL;
-        }
-        else {
-            return valueOf(commitLsn, changeLsn, Lsn.valueOf(0x00L));
-        }
+    public static TxLogPosition valueOf(Lsn sequence) {
+        return sequence == null || !sequence.isAvailable() ? NULL : valueOf(sequence, Lsn.of(0x00L), sequence);
     }
 
     public static TxLogPosition valueOf(Lsn commitLsn, Lsn changeLsn, Lsn beginLsn) {
-        if ((commitLsn == null || commitLsn.equals(Lsn.NULL) && (changeLsn == null || changeLsn.equals(Lsn.NULL)))) {
-            return NULL;
-        }
-        else {
-            return valueOf(commitLsn, changeLsn, 0x00, beginLsn);
-        }
+        return valueOf(commitLsn, changeLsn, -1, beginLsn);
     }
 
     public static TxLogPosition valueOf(Lsn commitLsn, Lsn changeLsn, Integer txId, Lsn beginLsn) {
@@ -70,10 +57,6 @@ public class TxLogPosition implements Nullable, Comparable<TxLogPosition> {
                 changeLsn.compareTo(position.changeLsn) > 0 ? changeLsn : position.changeLsn,
                 txId >= 0 ? txId : position.txId,
                 beginLsn.compareTo(position.beginLsn) > 0 ? beginLsn : position.beginLsn);
-    }
-
-    public static TxLogPosition clone(TxLogPosition position) {
-        return valueOf(position.commitLsn, position.changeLsn, position.txId, position.beginLsn);
     }
 
     public Lsn getCommitLsn() {

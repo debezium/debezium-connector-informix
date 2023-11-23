@@ -21,24 +21,44 @@ public class Lsn implements Comparable<Lsn>, Nullable {
     private static final long LO_MASK = Long.parseUnsignedLong("00000000ffffffff", 16);
     private static final long HI_MASK = Long.parseUnsignedLong("ffffffff00000000", 16);
 
-    private final Long lsn;
+    private final Long sequence;
 
-    Lsn(Long lsn) {
-        this.lsn = lsn;
+    Lsn(Long sequence) {
+        this.sequence = sequence;
     }
 
     /**
-     * @param lsn - signed long integer string. We consider "NULL" and "-1L"
-     *            as same as "new Lsn(-1)".
+     * Creates an LSN object from a logical log sequence number's string representation.
+     *
+     * @param sequence - signed long integer string. We consider "NULL" and "-1L" as same as "new Lsn(-1)".
      * @return LSN converted from its textual representation
      */
-    public static Lsn valueOf(String lsn) {
-        return (lsn == null || lsn.equalsIgnoreCase("NULL")) ? NULL : Lsn.valueOf(Long.parseLong(lsn));
+    public static Lsn of(String sequence) {
+        return (sequence == null || sequence.equalsIgnoreCase("NULL")) ? NULL : Lsn.of(Long.parseLong(sequence));
 
     }
 
-    public static Lsn valueOf(Long lsn) {
-        return lsn == null ? NULL : new Lsn(lsn);
+    /**
+     * Creates an LSN object from a logical log sequence number.
+     *
+     * @param sequence logical sequence number
+     * @return LSN representing the given sequence number
+     */
+    public static Lsn of(Long sequence) {
+        return sequence == null ? NULL : new Lsn(sequence);
+    }
+
+    /**
+     * Creates an LSN from a logical log file unique id and position within the log file.
+     * The unique id is an integer that goes in the upper 32 bits of the 64 bit sequence number.
+     * The log position is a 32 bit adress within the log file and goes in the lower 32 bits of the sequence number.
+     *
+     * @param loguniq unique id of the logical log page
+     * @param logpos position within the logical log page
+     * @return LSN representing the given log file unique id and position within the log file
+     */
+    public static Lsn of(long loguniq, long logpos) {
+        return Lsn.of((loguniq << 32) + logpos);
     }
 
     /**
@@ -46,14 +66,14 @@ public class Lsn implements Comparable<Lsn>, Nullable {
      */
     @Override
     public boolean isAvailable() {
-        return lsn != null && lsn >= 0;
+        return sequence != null && sequence >= 0;
     }
 
     /**
      * @return textual representation of the stored LSN
      */
     public String toString() {
-        return Long.toString(lsn);
+        return Long.toString(sequence);
     }
 
     /**
@@ -69,26 +89,26 @@ public class Lsn implements Comparable<Lsn>, Nullable {
 
     /** 32bit position within the current log page */
     public long logpos() {
-        return LO_MASK & lsn;
+        return LO_MASK & sequence;
     }
 
     /** 32bit log page unique identifier */
     public long loguniq() {
-        return lsn >> 32;
+        return sequence >> 32;
     }
 
-    public long longValue() {
-        return lsn != null ? lsn : -1L;
+    public long sequence() {
+        return sequence != null ? sequence : -1L;
     }
 
     @Override
     public int hashCode() {
-        return lsn.hashCode();
+        return sequence.hashCode();
     }
 
     @Override
     public boolean equals(Object obj) {
-        return this == obj || obj != null && this.getClass().equals(obj.getClass()) && lsn.equals(((Lsn) obj).lsn);
+        return this == obj || obj != null && this.getClass().equals(obj.getClass()) && sequence.equals(((Lsn) obj).sequence);
     }
 
     /**
@@ -108,25 +128,6 @@ public class Lsn implements Comparable<Lsn>, Nullable {
         if (!o.isAvailable()) {
             return 1;
         }
-        return lsn.compareTo(o.lsn);
-    }
-
-    /**
-     * Verifies whether the LSN falls into a LSN interval
-     *
-     * @param from start of the interval (included)
-     * @param to end of the interval (excluded)
-     *
-     * @return true if the LSN falls into the interval
-     */
-    public boolean isBetween(Lsn from, Lsn to) {
-        return this.compareTo(from) >= 0 && this.compareTo(to) < 0;
-    }
-
-    /**
-     * Return the next LSN in sequence
-     */
-    public Lsn increment() {
-        return Lsn.valueOf(lsn + 1);
+        return sequence.compareTo(o.sequence);
     }
 }

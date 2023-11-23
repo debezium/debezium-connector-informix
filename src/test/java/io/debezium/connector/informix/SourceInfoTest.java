@@ -32,8 +32,8 @@ public class SourceInfoTest {
                         .with(InformixConnectorConfig.DATABASE_NAME, "c")
                         .build());
         source = new SourceInfo(connectorConfig);
-        source.setChangeLsn(Lsn.valueOf(0x01L));
-        source.setCommitLsn(Lsn.valueOf(0x02L));
+        source.setChangeLsn(Lsn.of(0x01L));
+        source.setCommitLsn(Lsn.of(0x02L));
         source.setSnapshot(SnapshotRecord.TRUE);
         source.setTimestamp(Instant.ofEpochMilli(3000));
         source.setTableId(new TableId("c", "s", "t"));
