@@ -15,6 +15,7 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.bean.StandardBeanNames;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
@@ -84,6 +85,16 @@ public class InformixConnectorTask extends BaseSourceTask<InformixPartition, Inf
                 connectorConfig.binaryHandlingMode());
         schema = new InformixDatabaseSchema(connectorConfig, topicNamingStrategy, valueConverters, schemaNameAdjuster, dataConnection);
         schema.initializeStorage();
+
+        // Manual Bean Registration
+        connectorConfig.getBeanRegistry().add(StandardBeanNames.CONFIGURATION, config);
+        connectorConfig.getBeanRegistry().add(StandardBeanNames.CONNECTOR_CONFIG, connectorConfig);
+        connectorConfig.getBeanRegistry().add(StandardBeanNames.DATABASE_SCHEMA, schema);
+        connectorConfig.getBeanRegistry().add(StandardBeanNames.JDBC_CONNECTION, connectionFactory.newConnection());
+        connectorConfig.getBeanRegistry().add(StandardBeanNames.VALUE_CONVERTER, valueConverters);
+
+        // Service providers
+        registerServiceProviders(connectorConfig.getServiceRegistry());
 
         Offsets<InformixPartition, InformixOffsetContext> previousOffsets = getPreviousOffsets(new InformixPartition.Provider(connectorConfig),
                 new InformixOffsetContext.Loader(connectorConfig));
