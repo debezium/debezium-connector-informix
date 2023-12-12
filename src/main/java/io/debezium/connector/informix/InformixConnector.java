@@ -6,6 +6,7 @@
 package io.debezium.connector.informix;
 
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -16,10 +17,12 @@ import org.apache.kafka.connect.connector.Task;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.config.Configuration;
 import io.debezium.connector.common.RelationalBaseSourceConnector;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
+import io.debezium.relational.TableId;
 
 /**
  * The main connector class used to instantiate configuration and execution classes
@@ -91,5 +94,17 @@ public class InformixConnector extends RelationalBaseSourceConnector {
     @Override
     protected Map<String, ConfigValue> validateAllFields(Configuration config) {
         return config.validate(InformixConnectorConfig.ALL_FIELDS);
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public List<TableId> getMatchingCollections(Configuration config) {
+        InformixConnectorConfig connectorConfig = new InformixConnectorConfig(config);
+        try (InformixConnection connection = new InformixConnection(connectorConfig.getJdbcConfig())) {
+            return new ArrayList<>(connection.readAllTableNames(new String[]{ "TABLE" }));
+        }
+        catch (SQLException e) {
+            throw new DebeziumException(e);
+        }
     }
 }
