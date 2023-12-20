@@ -30,7 +30,7 @@ public class InformixCloudEventsProvider implements CloudEventsProvider {
     }
 
     @Override
-    public CloudEventsMaker createMaker(RecordParser parser, SerializerType contentType, String dataSchemaUriBase) {
-        return new InformixCloudEventsMaker(parser, contentType, dataSchemaUriBase);
+    public CloudEventsMaker createMaker(RecordParser parser, SerializerType contentType, String dataSchemaUriBase, String cloudEventsSchemaName) {
+        return new InformixCloudEventsMaker(parser, contentType, dataSchemaUriBase, cloudEventsSchemaName);
     }
 }
