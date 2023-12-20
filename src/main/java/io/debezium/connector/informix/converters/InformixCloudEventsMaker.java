@@ -18,8 +18,8 @@ import io.debezium.converters.spi.SerializerType;
  */
 public class InformixCloudEventsMaker extends CloudEventsMaker {
 
-    public InformixCloudEventsMaker(RecordParser parser, SerializerType contentType, String dataSchemaUriBase) {
-        super(parser, contentType, dataSchemaUriBase);
+    public InformixCloudEventsMaker(RecordParser parser, SerializerType contentType, String dataSchemaUriBase, String cloudEventsSchemaName) {
+        super(parser, contentType, dataSchemaUriBase, cloudEventsSchemaName);
     }
 
     @Override
