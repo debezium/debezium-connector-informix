@@ -82,8 +82,8 @@ public class InformixSnapshotChangeEventSource extends RelationalSnapshotChangeE
     }
 
     @Override
-    protected SnapshotContext<InformixPartition, InformixOffsetContext> prepare(InformixPartition partition) {
-        return new InformixSnapshotContext(partition, jdbcConnection.getRealDatabaseName());
+    protected SnapshotContext<InformixPartition, InformixOffsetContext> prepare(InformixPartition partition, boolean onDemand) {
+        return new InformixSnapshotContext(partition, jdbcConnection.getRealDatabaseName(), onDemand);
     }
 
     @Override
@@ -180,7 +180,7 @@ public class InformixSnapshotChangeEventSource extends RelationalSnapshotChangeE
             LOGGER.info("Reading structure of schema '{}'", schema);
 
             TableFilter tableFilter = null;
-            if (snapshottingTask.isBlocking()) {
+            if (snapshottingTask.isOnDemand()) {
                 tableFilter = TableFilter.fromPredicate(snapshotContext.capturedTables::contains);
             }
             else if (connectorConfig.storeOnlyCapturedTables()) {
@@ -247,8 +247,8 @@ public class InformixSnapshotChangeEventSource extends RelationalSnapshotChangeE
         private int isolationLevelBeforeStart;
         private Savepoint preSchemaSnapshotSavepoint;
 
-        InformixSnapshotContext(InformixPartition partition, String catalogName) {
-            super(partition, catalogName);
+        InformixSnapshotContext(InformixPartition partition, String catalogName, boolean onDemand) {
+            super(partition, catalogName, onDemand);
         }
     }
 
