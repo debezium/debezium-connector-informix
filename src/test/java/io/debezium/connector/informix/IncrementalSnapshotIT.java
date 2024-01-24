@@ -148,7 +148,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Infor
     }
 
     @Test
-    @Ignore // Cannot perform this operation on a table defined for replication
+    @Ignore("Informix does not support DDL operations on tables defined for replication")
     @Override
     public void snapshotPreceededBySchemaChange() throws Exception {
         super.snapshotPreceededBySchemaChange();
