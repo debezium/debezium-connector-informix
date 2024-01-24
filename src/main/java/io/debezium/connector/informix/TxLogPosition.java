@@ -39,7 +39,7 @@ public class TxLogPosition implements Nullable, Comparable<TxLogPosition> {
     }
 
     public static TxLogPosition valueOf(Lsn sequence) {
-        return sequence == null || !sequence.isAvailable() ? NULL : valueOf(sequence, Lsn.of(0x00L), sequence);
+        return sequence == null || !sequence.isAvailable() ? NULL : valueOf(sequence, Lsn.NULL, Lsn.NULL);
     }
 
     public static TxLogPosition valueOf(Lsn commitLsn, Lsn changeLsn, Lsn beginLsn) {

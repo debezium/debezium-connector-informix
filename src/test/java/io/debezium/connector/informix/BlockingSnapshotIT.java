@@ -140,7 +140,7 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
     }
 
     @Test
-    @Ignore
+    @Ignore("Informix does not support DDL operations on tables defined for replication")
     @Override
     public void readsSchemaOnlyForSignaledTables() throws Exception {
         super.readsSchemaOnlyForSignaledTables();

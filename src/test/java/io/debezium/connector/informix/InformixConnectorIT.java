@@ -104,25 +104,21 @@ public class InformixConnectorIT extends AbstractConnectorTest {
                 .build();
 
         start(InformixConnector.class, config);
-
         assertConnectorIsRunning();
 
-        // Wait for snapshot completion
-        waitForSnapshotToBeCompleted(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-        consumeRecordsByTopic(0);
-
+        // Wait for streaming to start
         waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
+        consumeRecords(0);
 
         for (int i = 0; i < RECORDS_PER_TABLE; i++) {
             final int id = ID_START + i;
             connection.execute("INSERT INTO tablea VALUES(" + id + ", 'a')");
             connection.execute("INSERT INTO tableb VALUES(" + id + ", 'b')");
         }
+
         consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
 
         connection.execute("DELETE FROM tableB");
-
-        waitForAvailableRecords(10, TimeUnit.SECONDS);
 
         final SourceRecords deleteRecords = consumeRecordsByTopic(RECORDS_PER_TABLE);
         final List<SourceRecord> deleteTableA = deleteRecords.recordsForTopic("testdb.informix.tablea");
@@ -141,7 +137,6 @@ public class InformixConnectorIT extends AbstractConnectorTest {
             final Struct deleteValue = (Struct) deleteRecord.value();
             assertRecord((Struct) deleteValue.get("before"), expectedValueBefore);
         }
-
     }
 
     @Test
@@ -155,13 +150,13 @@ public class InformixConnectorIT extends AbstractConnectorTest {
                 .build();
 
         start(InformixConnector.class, config);
-
         assertConnectorIsRunning();
 
         // Wait for snapshot completion
         waitForSnapshotToBeCompleted(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
         consumeRecordsByTopic(1);
 
+        // Wait for streaming to start
         waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
 
         for (int i = 0; i < RECORDS_PER_TABLE; i++) {
@@ -169,11 +164,10 @@ public class InformixConnectorIT extends AbstractConnectorTest {
             connection.execute("INSERT INTO tablea VALUES(" + id + ", 'a')");
             connection.execute("INSERT INTO tableb VALUES(" + id + ", 'b')");
         }
+
         consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
 
         connection.execute("DELETE FROM tableB");
-
-        waitForAvailableRecords(10, TimeUnit.SECONDS);
 
         final SourceRecords deleteRecords = consumeRecordsByTopic(RECORDS_PER_TABLE * 2);
         final List<SourceRecord> deleteTableA = deleteRecords.recordsForTopic("testdb.informix.tablea");
@@ -196,7 +190,6 @@ public class InformixConnectorIT extends AbstractConnectorTest {
                 assertRecord((Struct) deleteValue.get("before"), expectedValueBefore);
             }
         }
-
     }
 
     @Test
@@ -209,30 +202,26 @@ public class InformixConnectorIT extends AbstractConnectorTest {
                 .build();
 
         start(InformixConnector.class, config);
-
         assertConnectorIsRunning();
 
-        waitForSnapshotToBeCompleted(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-        consumeRecordsByTopic(0);
-
+        // Wait for streaming to start
         waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
+        consumeRecords(0);
 
         for (int i = 0; i < RECORDS_PER_TABLE; i++) {
             final int id = ID_START + i;
             connection.execute("INSERT INTO truncate_table VALUES(" + id + ", 'name')");
         }
+
         consumeRecordsByTopic(RECORDS_PER_TABLE);
 
         connection.execute("truncate table truncate_table");
-
-        waitForAvailableRecords(10, TimeUnit.SECONDS);
 
         SourceRecords sourceRecords = consumeRecordsByTopic(1);
         List<SourceRecord> truncateTable = sourceRecords.recordsForTopic("testdb.informix.truncate_table");
         assertThat(truncateTable).isNotNull().hasSize(1);
 
         VerifyRecord.isValidTruncate(truncateTable.get(0));
-
     }
 
     @Test
@@ -243,20 +232,20 @@ public class InformixConnectorIT extends AbstractConnectorTest {
                 .build();
 
         start(InformixConnector.class, config);
-
         assertConnectorIsRunning();
 
+        // Wait for snapshot completion
         waitForSnapshotToBeCompleted(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
         consumeRecordsByTopic(1);
 
+        // Wait for streaming to start
         waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-
         connection.execute("INSERT INTO tableb VALUES(1, 'b')");
         consumeRecordsByTopic(1);
 
-        connection.execute("UPDATE tablea SET id=100 WHERE id=1", "UPDATE tableb SET id=100 WHERE id=1");
-
-        waitForAvailableRecords(10, TimeUnit.SECONDS);
+        connection.execute(
+                "UPDATE tablea SET id=100 WHERE id=1",
+                "UPDATE tableb SET id=100 WHERE id=1");
 
         final SourceRecords records = consumeRecordsByTopic(6);
         final List<SourceRecord> tableA = records.recordsForTopic("testdb.informix.tablea");
@@ -327,7 +316,6 @@ public class InformixConnectorIT extends AbstractConnectorTest {
         assertRecord(insertValueB.getStruct("after"), expectedInsertRowB);
         assertRecord(insertkeyB, expectedInsertKeyB);
         assertNull(insertValueB.get("before"));
-
     }
 
     @Test
@@ -339,36 +327,33 @@ public class InformixConnectorIT extends AbstractConnectorTest {
                 .build();
 
         start(InformixConnector.class, config);
-
         assertConnectorIsRunning();
 
+        // Wait for snapshot completion
         waitForSnapshotToBeCompleted(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
         consumeRecordsByTopic(1);
 
+        // Wait for streaming to start
         waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-
         connection.execute("INSERT INTO tableb VALUES(1, 'b')");
         consumeRecordsByTopic(1);
 
-        connection.execute("UPDATE tablea SET id=100 WHERE id=1", "UPDATE tableb SET id=100 WHERE id=1");
-
-        waitForAvailableRecords(10, TimeUnit.SECONDS);
+        connection.execute(
+                "UPDATE tablea SET id=100 WHERE id=1",
+                "UPDATE tableb SET id=100 WHERE id=1");
 
         final SourceRecords records1 = consumeRecordsByTopic(2);
 
         stopConnector();
-
         assertConnectorNotRunning();
 
         waitForConnectorShutdown(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
 
         start(InformixConnector.class, config);
-
         assertConnectorIsRunning();
 
+        // Wait for streaming to start
         waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-
-        waitForAvailableRecords(10, TimeUnit.SECONDS);
 
         final SourceRecords records2 = consumeRecordsByTopic(4);
 
@@ -461,9 +446,9 @@ public class InformixConnectorIT extends AbstractConnectorTest {
         }
 
         start(InformixConnector.class, config);
-
         assertConnectorIsRunning();
 
+        // Wait for snapshot completion
         waitForSnapshotToBeCompleted(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
 
         List<SourceRecord> records = consumeRecordsByTopic(1 + RECORDS_PER_TABLE * TABLES).allRecordsInOrder();
@@ -479,13 +464,7 @@ public class InformixConnectorIT extends AbstractConnectorTest {
             }
         }
 
-        waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-
-        connection.execute("INSERT INTO tablea VALUES(-1, 'a')"); // TODO: Snapshot should save LSN!
-        consumeRecordsByTopic(1);
-
         stopConnector();
-
         assertConnectorNotRunning();
 
         waitForConnectorShutdown(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
@@ -497,14 +476,13 @@ public class InformixConnectorIT extends AbstractConnectorTest {
         }
 
         start(InformixConnector.class, config);
-
         assertConnectorIsRunning();
 
+        // Wait for streaming to start
         waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
+        consumeRecords(0);
 
         connection.execute("INSERT INTO tableb VALUES(-1, 'b')");
-
-        waitForAvailableRecords(1, TimeUnit.MINUTES);
 
         final SourceRecords sourceRecords = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
         final List<SourceRecord> tableA = sourceRecords.recordsForTopic("testdb.informix.tablea");
@@ -553,25 +531,18 @@ public class InformixConnectorIT extends AbstractConnectorTest {
                 .with(InformixConnectorConfig.TABLE_INCLUDE_LIST, "testdb.informix.tableb")
                 .build();
 
-        connection.execute("INSERT INTO tableb VALUES(1, 'b')");
-
         start(InformixConnector.class, config);
-
         assertConnectorIsRunning();
 
-        // Wait for snapshot completion
-        waitForSnapshotToBeCompleted(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-        consumeRecordsByTopic(0);
-
+        // Wait for streaming to start
         waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
+        consumeRecords(0);
 
         for (int i = 0; i < RECORDS_PER_TABLE; i++) {
             final int id = ID_START + i;
             connection.execute("INSERT INTO tablea VALUES(" + id + ", 'a')");
             connection.execute("INSERT INTO tableb VALUES(" + id + ", 'b')");
         }
-
-        waitForAvailableRecords(10, TimeUnit.SECONDS);
 
         final SourceRecords records = consumeRecordsByTopic(RECORDS_PER_TABLE);
         final List<SourceRecord> tableA = records.recordsForTopic("testdb.informix.tablea");
@@ -592,13 +563,13 @@ public class InformixConnectorIT extends AbstractConnectorTest {
         connection.execute("INSERT INTO tableb VALUES(1, 'b')");
 
         start(InformixConnector.class, config);
-
         assertConnectorIsRunning();
 
         // Wait for snapshot completion
         waitForSnapshotToBeCompleted(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
         consumeRecordsByTopic(1);
 
+        // Wait for streaming to start
         waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
 
         for (int i = 0; i < RECORDS_PER_TABLE; i++) {
@@ -606,8 +577,6 @@ public class InformixConnectorIT extends AbstractConnectorTest {
             connection.execute("INSERT INTO tablea VALUES(" + id + ", 'a')");
             connection.execute("INSERT INTO tableb VALUES(" + id + ", 'b')");
         }
-
-        waitForAvailableRecords(10, TimeUnit.SECONDS);
 
         final SourceRecords records = consumeRecordsByTopic(RECORDS_PER_TABLE);
         final List<SourceRecord> tableA = records.recordsForTopic("testdb.informix.tablea");
@@ -628,7 +597,6 @@ public class InformixConnectorIT extends AbstractConnectorTest {
 
         if (restartJustAfterSnapshot) {
             start(InformixConnector.class, config);
-
             assertConnectorIsRunning();
 
             // Wait for snapshot to be completed
@@ -636,10 +604,8 @@ public class InformixConnectorIT extends AbstractConnectorTest {
             consumeRecordsByTopic(1);
 
             stopConnector();
-
-            waitForConnectorShutdown(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-
             assertConnectorNotRunning();
+            waitForConnectorShutdown(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
 
             connection.execute("INSERT INTO tablea VALUES(-1, '-a')");
         }
@@ -654,12 +620,12 @@ public class InformixConnectorIT extends AbstractConnectorTest {
             final String value = after.getString("cola");
             return id != null && id == HALF_ID && "a".equals(value);
         });
-
         assertConnectorIsRunning();
 
         // Wait for snapshot to be completed or a first streaming message delivered
         if (restartJustAfterSnapshot) {
             waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
+            consumeRecordsByTopic(1);
         }
         else {
             waitForSnapshotToBeCompleted(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
@@ -667,6 +633,7 @@ public class InformixConnectorIT extends AbstractConnectorTest {
         consumeRecordsByTopic(1);
 
         if (afterStreaming) {
+            waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
             connection.execute("INSERT INTO tablea VALUES(-2, '-a')");
             final SourceRecords records = consumeRecordsByTopic(1);
             final List<SchemaAndValueField> expectedRow = List.of(
@@ -683,11 +650,11 @@ public class InformixConnectorIT extends AbstractConnectorTest {
         }
         connection.commit();
 
-        waitForAvailableRecords(10, TimeUnit.SECONDS);
+        waitForAvailableRecords(5, TimeUnit.SECONDS);
 
         List<SourceRecord> records = consumeRecordsByTopic(RECORDS_PER_TABLE).allRecordsInOrder();
-        assertThat(records).hasSize(RECORDS_PER_TABLE);
 
+        assertThat(records).hasSize(RECORDS_PER_TABLE);
         SourceRecord lastRecordForOffset = records.get(RECORDS_PER_TABLE - 1);
         Struct value = (Struct) lastRecordForOffset.value();
         final List<SchemaAndValueField> expectedLastRow = List.of(
@@ -696,18 +663,14 @@ public class InformixConnectorIT extends AbstractConnectorTest {
         assertRecord((Struct) value.get("after"), expectedLastRow);
 
         stopConnector();
-
         assertConnectorNotRunning();
-
         waitForConnectorShutdown(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
 
         start(InformixConnector.class, config);
-
         assertConnectorIsRunning();
-
         waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
 
-        waitForAvailableRecords(10, TimeUnit.SECONDS);
+        waitForAvailableRecords(5, TimeUnit.SECONDS);
 
         SourceRecords sourceRecords = consumeRecordsByTopic(RECORDS_PER_TABLE);
         List<SourceRecord> tableA = sourceRecords.recordsForTopic("testdb.informix.tablea");
@@ -736,15 +699,14 @@ public class InformixConnectorIT extends AbstractConnectorTest {
             assertNull(valueB.get("before"));
         }
 
-        connection.setAutoCommit(false);
         for (int i = 0; i < RECORDS_PER_TABLE; i++) {
             final int id = ID_RESTART + i;
             connection.executeWithoutCommitting("INSERT INTO tablea VALUES(" + id + ", 'a')");
             connection.executeWithoutCommitting("INSERT INTO tableb VALUES(" + id + ", 'b')");
+            connection.commit();
         }
-        connection.commit();
 
-        waitForAvailableRecords(10, TimeUnit.SECONDS);
+        waitForAvailableRecords(5, TimeUnit.SECONDS);
 
         sourceRecords = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
         tableA = sourceRecords.recordsForTopic("testdb.informix.tablea");
@@ -772,7 +734,6 @@ public class InformixConnectorIT extends AbstractConnectorTest {
             assertRecord((Struct) valueB.get("after"), expectedRowB);
             assertNull(valueB.get("before"));
         }
-
     }
 
     @Test
@@ -805,12 +766,10 @@ public class InformixConnectorIT extends AbstractConnectorTest {
                 .build();
 
         start(InformixConnector.class, config);
-
         assertConnectorIsRunning();
 
+        // Wait for streaming to start
         waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-
-        waitForAvailableRecords(1, TimeUnit.SECONDS);
 
         stopConnector(value -> assertThat(logInterceptor.containsWarnMessage(DatabaseSchema.NO_CAPTURED_DATA_COLLECTIONS_WARNING)).isTrue());
     }
@@ -827,19 +786,14 @@ public class InformixConnectorIT extends AbstractConnectorTest {
                 .build();
 
         start(InformixConnector.class, config);
-
         assertConnectorIsRunning();
 
-        // Wait for snapshot completion
-        waitForSnapshotToBeCompleted(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-        consumeRecordsByTopic(0);
-
+        // Wait for streaming to start
         waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
+        consumeRecords(0);
 
         connection.execute("INSERT INTO masked_hashed_column_table (id, name, name2, name3) VALUES (10, 'some_name', 'test', 'test')");
         connection.execute("INSERT INTO truncated_column_table VALUES(11, 'some_name')");
-
-        waitForAvailableRecords(1, TimeUnit.MINUTES);
 
         final SourceRecords records = consumeRecordsByTopic(2);
         final List<SourceRecord> tableA = records.recordsForTopic("testdb.informix.masked_hashed_column_table");
@@ -876,18 +830,13 @@ public class InformixConnectorIT extends AbstractConnectorTest {
                 .build();
 
         start(InformixConnector.class, config);
-
         assertConnectorIsRunning();
 
-        // Wait for snapshot completion
-        waitForSnapshotToBeCompleted(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-        consumeRecordsByTopic(0);
-
+        // Wait for streaming to start
         waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
+        consumeRecords(0);
 
         connection.execute("INSERT INTO tablea (id, cola) values (100, 'hundred')");
-
-        waitForAvailableRecords(1, TimeUnit.MINUTES);
 
         List<SourceRecord> records = consumeRecordsByTopic(1).recordsForTopic("testdb.informix.tablea");
         assertThat(records).isNotNull().isNotEmpty();
@@ -895,7 +844,6 @@ public class InformixConnectorIT extends AbstractConnectorTest {
         Struct key = (Struct) records.get(0).key();
         assertThat(key.get("id")).isNotNull();
         assertThat(key.get("cola")).isNotNull();
-
     }
 
     @Test
@@ -907,18 +855,13 @@ public class InformixConnectorIT extends AbstractConnectorTest {
                 .build();
 
         start(InformixConnector.class, config);
-
         assertConnectorIsRunning();
 
-        // Wait for snapshot completion
-        waitForSnapshotToBeCompleted(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-        consumeRecordsByTopic(0);
-
+        // Wait for streaming to start
         waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
+        consumeRecords(0);
 
         connection.execute("INSERT INTO dt_table (id,c1,c2,c3a,c3b,f1,f2) values (1,123,456,789.01,'test',1.228,234.56)");
-
-        waitForAvailableRecords(1, TimeUnit.MINUTES);
 
         final SourceRecords records = consumeRecordsByTopic(1);
 
@@ -948,7 +891,6 @@ public class InformixConnectorIT extends AbstractConnectorTest {
                 .contains(entry(TYPE_NAME_PARAMETER_KEY, "DECIMAL"),
                         entry(TYPE_LENGTH_PARAMETER_KEY, "8"),
                         entry(TYPE_SCALE_PARAMETER_KEY, "4"));
-
     }
 
     @Test
@@ -961,9 +903,9 @@ public class InformixConnectorIT extends AbstractConnectorTest {
         connection.execute("INSERT INTO tablea (id,cola) values (1001, 'DBZ3668')");
 
         start(InformixConnector.class, config);
-
         assertConnectorIsRunning();
 
+        // Wait for snapshot completion
         waitForSnapshotToBeCompleted(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
 
         SourceRecords records = consumeRecordsByTopic(1);
@@ -977,11 +919,10 @@ public class InformixConnectorIT extends AbstractConnectorTest {
             CloudEventsConverterTest.shouldConvertToCloudEventsInAvro(record, "informix", TestHelper.TEST_DATABASE, false);
         }
 
+        // Wait for streaming to start
         waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
 
         connection.execute("INSERT INTO tablea (id,cola) VALUES (1002, 'DBZ3668')");
-
-        waitForAvailableRecords(10, TimeUnit.SECONDS);
 
         records = consumeRecordsByTopic(1);
 
