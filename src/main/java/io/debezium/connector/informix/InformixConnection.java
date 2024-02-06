@@ -142,18 +142,18 @@ public class InformixConnection extends JdbcConnection {
     }
 
     public Table getTableSchemaFromTableId(TableId tableId) throws SQLException {
-        final TableEditor tableEditor = Table.editor().tableId(tableId);
         final DatabaseMetaData metadata = connection().getMetaData();
-        final ResultSet columns = metadata.getColumns(
+        try (ResultSet columns = metadata.getColumns(
                 tableId.catalog(),
                 tableId.schema(),
                 tableId.table(),
-                null);
-        while (columns.next()) {
-            readTableColumn(columns, tableId, null).ifPresent(columnEditor -> tableEditor.addColumns(columnEditor.create()));
+                null)) {
+            final TableEditor tableEditor = Table.editor().tableId(tableId);
+            while (columns.next()) {
+                readTableColumn(columns, tableId, null).ifPresent(columnEditor -> tableEditor.addColumns(columnEditor.create()));
+            }
+            tableEditor.setPrimaryKeyNames(readPrimaryKeyNames(metadata, tableId));
+            return tableEditor.create();
         }
-        tableEditor.setPrimaryKeyNames(readPrimaryKeyNames(metadata, tableId));
-        return tableEditor.create();
-
     }
 }
