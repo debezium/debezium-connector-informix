@@ -32,6 +32,7 @@ import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.schema.SchemaChangeEvent;
+import io.debezium.snapshot.SnapshotterService;
 import io.debezium.util.Clock;
 import io.debezium.util.Strings;
 
@@ -46,8 +47,9 @@ public class InformixSnapshotChangeEventSource extends RelationalSnapshotChangeE
                                              MainConnectionProvidingConnectionFactory<InformixConnection> connectionFactory,
                                              InformixDatabaseSchema schema, EventDispatcher<InformixPartition, TableId> dispatcher,
                                              Clock clock, SnapshotProgressListener<InformixPartition> snapshotProgressListener,
-                                             NotificationService<InformixPartition, InformixOffsetContext> notificationService) {
-        super(connectorConfig, connectionFactory, schema, dispatcher, clock, snapshotProgressListener, notificationService);
+                                             NotificationService<InformixPartition, InformixOffsetContext> notificationService,
+                                             SnapshotterService snapshotterService) {
+        super(connectorConfig, connectionFactory, schema, dispatcher, clock, snapshotProgressListener, notificationService, snapshotterService);
         this.connectorConfig = connectorConfig;
         this.jdbcConnection = connectionFactory.mainConnection();
     }
