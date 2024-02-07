@@ -34,6 +34,7 @@ import io.debezium.pipeline.signal.SignalProcessor;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaNameAdjuster;
+import io.debezium.snapshot.SnapshotterService;
 import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Clock;
 
@@ -101,6 +102,8 @@ public class InformixConnectorTask extends BaseSourceTask<InformixPartition, Inf
         final InformixPartition partition = previousOffsets.getTheOnlyPartition();
         final InformixOffsetContext previousOffset = previousOffsets.getTheOnlyOffset();
 
+        final SnapshotterService snapshotterService = connectorConfig.getServiceRegistry().tryGetService(SnapshotterService.class);
+
         if (previousOffset != null) {
             schema.recover(partition, previousOffset);
         }
@@ -151,11 +154,13 @@ public class InformixConnectorTask extends BaseSourceTask<InformixPartition, Inf
                 errorHandler,
                 InformixConnector.class,
                 connectorConfig,
-                new InformixChangeEventSourceFactory(connectorConfig, connectionFactory, cdcConnectionFactory, errorHandler, dispatcher, clock, schema),
+                new InformixChangeEventSourceFactory(connectorConfig, connectionFactory, cdcConnectionFactory, errorHandler, dispatcher, clock, schema,
+                        snapshotterService),
                 new DefaultChangeEventSourceMetricsFactory<>(),
                 dispatcher, schema,
                 signalProcessor,
-                notificationService);
+                notificationService,
+                snapshotterService);
 
         coordinator.start(taskContext, this.queue, metadataProvider);
 

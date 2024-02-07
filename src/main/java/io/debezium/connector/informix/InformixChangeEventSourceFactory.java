@@ -19,6 +19,7 @@ import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.relational.TableId;
+import io.debezium.snapshot.SnapshotterService;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
 
@@ -31,12 +32,13 @@ public class InformixChangeEventSourceFactory implements ChangeEventSourceFactor
     private final EventDispatcher<InformixPartition, TableId> dispatcher;
     private final Clock clock;
     private final InformixDatabaseSchema schema;
+    private final SnapshotterService snapshotterService;
 
     public InformixChangeEventSourceFactory(InformixConnectorConfig configuration,
                                             MainConnectionProvidingConnectionFactory<InformixConnection> connectionFactory,
                                             MainConnectionProvidingConnectionFactory<InformixConnection> cdcConnectionFactory,
                                             ErrorHandler errorHandler, EventDispatcher<InformixPartition, TableId> dispatcher,
-                                            Clock clock, InformixDatabaseSchema schema) {
+                                            Clock clock, InformixDatabaseSchema schema, SnapshotterService snapshotterService) {
         this.configuration = configuration;
         this.connectionFactory = connectionFactory;
         this.cdcConnectionFactory = cdcConnectionFactory;
@@ -44,6 +46,7 @@ public class InformixChangeEventSourceFactory implements ChangeEventSourceFactor
         this.dispatcher = dispatcher;
         this.clock = clock;
         this.schema = schema;
+        this.snapshotterService = snapshotterService;
     }
 
     @Override
@@ -56,7 +59,8 @@ public class InformixChangeEventSourceFactory implements ChangeEventSourceFactor
                 dispatcher,
                 clock,
                 snapshotProgressListener,
-                notificationService);
+                notificationService,
+                snapshotterService);
     }
 
     @Override
