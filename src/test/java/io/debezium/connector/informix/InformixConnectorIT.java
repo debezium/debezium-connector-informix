@@ -37,6 +37,7 @@ import io.debezium.data.SchemaAndValueField;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.junit.Flaky;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.RelationalDatabaseSchema;
 import io.debezium.schema.DatabaseSchema;
@@ -738,6 +739,7 @@ public class InformixConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-1128")
+    @Flaky("DBZ-7539")
     public void restartInTheMiddleOfTxAfterSnapshot() throws Exception {
         restartInTheMiddleOfTx(true, false);
     }
