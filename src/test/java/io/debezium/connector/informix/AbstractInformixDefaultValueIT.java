@@ -27,6 +27,7 @@ import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.junit.Flaky;
 
 /**
  * Abstract default value integration test.
@@ -71,6 +72,7 @@ public abstract class AbstractInformixDefaultValueIT extends AbstractConnectorTe
 
     @Test
     @FixFor("DBZ-4990")
+    @Flaky("DBZ-7542")
     public void shouldHandleBooleanDefaultTypes() throws Exception {
         List<ColumnDefinition> columnDefinitions = List.of(
                 new ColumnDefinition("val_boolean", "BOOLEAN",

@@ -24,6 +24,7 @@ import io.debezium.connector.informix.InformixConnectorConfig.SnapshotMode;
 import io.debezium.connector.informix.util.TestHelper;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.junit.Flaky;
 
 /**
  * Integration test for the user-facing history topic of the Debezium Informix Server connector.
@@ -73,6 +74,7 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-1904")
+    @Flaky("DBZ-7556")
     public void snapshotSchemaChanges() throws Exception {
         final int RECORDS_PER_TABLE = 5;
         final int TABLES = 2;
