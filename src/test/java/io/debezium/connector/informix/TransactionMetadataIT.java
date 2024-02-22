@@ -14,12 +14,15 @@ import java.util.concurrent.TimeUnit;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestRule;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.informix.InformixConnectorConfig.SnapshotMode;
 import io.debezium.connector.informix.util.TestHelper;
 import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.junit.ConditionalFail;
 import io.debezium.junit.Flaky;
 import io.debezium.util.Collect;
 
@@ -28,6 +31,9 @@ import io.debezium.util.Collect;
  *
  */
 public class TransactionMetadataIT extends AbstractConnectorTest {
+
+    @Rule
+    public TestRule conditionalFail = new ConditionalFail();
 
     private InformixConnection connection;
 

@@ -17,13 +17,16 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestRule;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.informix.InformixConnectorConfig.SnapshotMode;
 import io.debezium.connector.informix.util.TestHelper;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.junit.ConditionalFail;
 import io.debezium.junit.Flaky;
 
 /**
@@ -34,6 +37,9 @@ import io.debezium.junit.Flaky;
  *
  */
 public class SchemaHistoryTopicIT extends AbstractConnectorTest {
+
+    @Rule
+    public TestRule conditionalFail = new ConditionalFail();
 
     private InformixConnection connection;
 

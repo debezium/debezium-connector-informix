@@ -19,7 +19,9 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestRule;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.informix.util.TestHelper;
@@ -27,6 +29,7 @@ import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.junit.ConditionalFail;
 import io.debezium.junit.Flaky;
 
 /**
@@ -39,6 +42,9 @@ import io.debezium.junit.Flaky;
  * @author Lars M Johansson, Chris Cranford
  */
 public abstract class AbstractInformixDefaultValueIT extends AbstractConnectorTest {
+
+    @Rule
+    public TestRule conditionalFail = new ConditionalFail();
 
     private InformixConnection connection;
     private Configuration config;
