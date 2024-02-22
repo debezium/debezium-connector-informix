@@ -364,7 +364,7 @@
                 <configuration>
                     <skipTests>${skipITs}</skipTests>
                     <enableAssertions>true</enableAssertions>
-                    <systemPropertyVariables>
+                    <systemPropertyVariables combine.children="append">
                         <!-- Make these available to the tests via system properties -->
                         <database.hostname>${docker.host.address}</database.hostname>
                         <database.dbname>${informix.db.name}</database.dbname>
