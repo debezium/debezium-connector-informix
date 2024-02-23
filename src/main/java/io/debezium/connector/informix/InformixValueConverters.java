@@ -55,12 +55,9 @@ public class InformixValueConverters extends JdbcValueConverters {
         }
     }
 
-    /**
-     * Time precision in Informix is defined in scale, the default one is 3
-     */
     @Override
     protected int getTimePrecision(Column column) {
-        return column.scale().orElse(3);
+        return column.length() < 20 ? 0 : column.length() - 20;
     }
 
 }

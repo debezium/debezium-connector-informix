@@ -89,6 +89,8 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
 
         consumeRecordsByTopic(1);
 
+        waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
+
         connection.setAutoCommit(false);
         for (int i = ID_START; i < RECORDS_PER_TABLE + ID_START; i++) {
             connection.executeWithoutCommitting(
@@ -100,7 +102,7 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
         connection.setAutoCommit(true);
         connection.execute("INSERT INTO tableb VALUES(1000, 'b')");
 
-        waitForAvailableRecords(30, TimeUnit.SECONDS);
+        waitForAvailableRecords(5, TimeUnit.SECONDS);
 
         // BEGIN, data, END, BEGIN, data, END
         final SourceRecords records = consumeRecordsByTopic(1 + RECORDS_PER_TABLE * 2 + 1 + 3);

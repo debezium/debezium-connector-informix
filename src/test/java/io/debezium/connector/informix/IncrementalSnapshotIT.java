@@ -32,11 +32,11 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Infor
         connection.execute(
                 "DROP TABLE IF EXISTS a",
                 "DROP TABLE IF EXISTS b",
-                "DROP TABLE IF EXISTS a42",
+                "DROP TABLE IF EXISTS c",
                 "DROP TABLE IF EXISTS debezium_signal",
                 "CREATE TABLE a (pk int not null, aa int, primary key (pk))",
                 "CREATE TABLE b (pk int not null, aa int, primary key (pk))",
-                "CREATE TABLE a42 (pk1 int, pk2 int, pk3 int, pk4 int, aa int)",
+                "CREATE TABLE c (pk1 int, pk2 int, pk3 int, pk4 int, aa int)",
                 "CREATE TABLE debezium_signal (id varchar(64), type varchar(32), data varchar(255))");
         initializeConnectorTestFramework();
         Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
@@ -57,7 +57,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Infor
                     .execute(
                             "DROP TABLE a",
                             "DROP TABLE b",
-                            "DROP TABLE a42",
+                            "DROP TABLE c",
                             "DROP TABLE debezium_signal")
                     .close();
         }
@@ -85,7 +85,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Infor
 
     @Override
     protected String noPKTopicName() {
-        return "testdb.informix.a42";
+        return "testdb.informix.c";
     }
 
     @Override
@@ -114,7 +114,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Infor
 
     @Override
     protected String noPKTableName() {
-        return "informix.a42";
+        return "informix.c";
     }
 
     @Override

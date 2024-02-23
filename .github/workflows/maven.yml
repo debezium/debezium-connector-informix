@@ -38,7 +38,7 @@ jobs:
       - name: Maven build core
         run: > 
           ./core/mvnw clean install -B -f core/pom.xml 
-          -pl debezium-bom,debezium-core,debezium-embedded,debezium-storage -am
+          -pl debezium-bom,debezium-core,debezium-embedded,debezium-storage/debezium-storage-file,debezium-storage/debezium-storage-kafka -am 
           -DskipTests=true 
           -DskipITs=true
           -Dcheckstyle.skip=true
@@ -73,6 +73,6 @@ jobs:
           -P${{ matrix.informix-plugin }}
           -Dformat.formatter.goal=validate
           -Dformat.imports.goal=check
-          -Ddebezium.test.records.waittime=5
-          -Ddebezium.test.records.waittime.after.nulls=5
+          -Ddebezium.test.records.waittime=7
+          -Ddebezium.test.records.waittime.after.nulls=13
           -DfailFlakyTests=false
