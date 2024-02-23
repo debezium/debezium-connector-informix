@@ -36,6 +36,7 @@
         <informix.image.registry>icr.io/informix</informix.image.registry>
         <informix.image.tag>14.10.FC9W1DE</informix.image.tag>
         <informix.version>14</informix.version>
+        <informix.init.timeout>300000</informix.init.timeout> <!-- five minutes max -->
         <docker.dbs>debezium/informix-test-database</docker.dbs>
         <docker.filter>${docker.dbs}:${informix.version}</docker.filter>
         <docker.skip>false</docker.skip>
@@ -282,8 +283,8 @@
                                     <color>yellow</color>
                                 </log>
                                 <wait>
-                                    <time>600000</time> <!-- 600 seconds max -->
-                                    <log>SCHAPI: Started \d+ dbWorker threads</log>
+                                    <log>${informix.run.wait.log}</log>
+                                    <time>${informix.init.timeout}</time>
                                 </wait>
                             </run>
                             <build>
@@ -480,6 +481,7 @@
                 <informix.version>12</informix.version>
                 <informix.image.registry>docker.io/ibmcom</informix.image.registry>
                 <informix.image.tag>12.10.FC12W1DE</informix.image.tag>
+                <informix.run.wait.log>Logical Log \d Complete</informix.run.wait.log>
             </properties>
             <build>
                 <plugins>
@@ -497,12 +499,12 @@
                                                     <file>
                                                         <source>${project.basedir}/src/test/docker/informix-cdc-docker/12/informix_init.sh</source>
                                                         <outputDirectory>scripts</outputDirectory>
+                                                        <lineEnding>unix</lineEnding>
                                                     </file>
                                                 </files>
                                             </inline>
                                             <targetDir>/opt/ibm</targetDir>
                                             <user>informix:informix</user>
-                                            <mode>tar</mode>
                                         </assembly>
                                     </build>
                                 </image>
@@ -524,6 +526,7 @@
                 <informix.version>14</informix.version>
                 <informix.image.registry>icr.io/informix</informix.image.registry>
                 <informix.image.tag>14.10.FC9W1DE</informix.image.tag>
+                <informix.run.wait.log>SCHAPI: Started \d dbWorker threads</informix.run.wait.log>
             </properties>
             <build>
                 <plugins>
@@ -546,16 +549,17 @@
                                                     <file>
                                                         <source>${project.basedir}/src/test/docker/informix-cdc-docker/14/informix_post_init.sh</source>
                                                         <outputDirectory>config</outputDirectory>
+                                                        <lineEnding>unix</lineEnding>
                                                     </file>
                                                     <file>
                                                         <source>${project.basedir}/src/test/docker/informix-cdc-docker/14/testdb.sql</source>
                                                         <outputDirectory>informix/etc</outputDirectory>
+                                                        <lineEnding>unix</lineEnding>
                                                     </file>
                                                 </files>
                                             </inline>
                                             <targetDir>/opt/ibm</targetDir>
                                             <user>informix:informix</user>
-                                            <mode>tar</mode>
                                         </assembly>
                                     </build>
                                 </image>

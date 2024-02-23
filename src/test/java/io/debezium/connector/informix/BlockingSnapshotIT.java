@@ -115,7 +115,8 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
                 .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .with(InformixConnectorConfig.SIGNAL_DATA_COLLECTION, this::signalTableNameSanitized)
                 .with(InformixConnectorConfig.SNAPSHOT_MODE_TABLES, this::tableDataCollectionId)
-                .with(InformixConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 100);
+                .with(InformixConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 100)
+                .with(InformixConnectorConfig.CDC_BUFFERSIZE, 0x800);
     }
 
     @Override
