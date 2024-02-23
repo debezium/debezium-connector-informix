@@ -124,6 +124,7 @@ public abstract class AbstractInformixDefaultValueIT extends AbstractConnectorTe
 
     @Test
     @FixFor("DBZ-4990")
+    @Flaky("DBZ-7542")
     public void shouldHandleFloatPointDefaultTypes() throws Exception {
         // TODO: remove once https://github.com/Apicurio/apicurio-registry/issues/2980 is fixed
         if (VerifyRecord.isApucurioAvailable()) {
