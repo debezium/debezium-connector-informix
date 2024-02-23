@@ -96,8 +96,6 @@ public class InformixCdcTypesIT extends AbstractConnectorTest {
 
         assertConnectorIsRunning();
 
-        waitForSnapshotToBeCompleted(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-        consumeRecords(0);
         waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
 
         /*

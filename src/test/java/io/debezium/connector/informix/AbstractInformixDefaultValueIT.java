@@ -27,6 +27,7 @@ import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.jdbc.TemporalPrecisionMode;
 
 /**
  * Abstract default value integration test.
@@ -185,7 +186,7 @@ public abstract class AbstractInformixDefaultValueIT extends AbstractConnectorTe
                         AssertionType.FIELD_DEFAULT_EQUAL),
                 new ColumnDefinition("val_time", "DATETIME HOUR TO SECOND",
                         "DATETIME(01:02:03) HOUR TO SECOND", "DATETIME(02:03:04) HOUR TO SECOND",
-                        3723000, 7384000,
+                        3723000000L, 7384000000L,
                         AssertionType.FIELD_DEFAULT_EQUAL),
                 new ColumnDefinition("val_datetime", "DATETIME YEAR TO SECOND",
                         "DATETIME(2024-01-01 01:02:03) YEAR TO SECOND", "DATETIME(2024-01-02 01:02:03) YEAR TO SECOND",
@@ -194,6 +195,10 @@ public abstract class AbstractInformixDefaultValueIT extends AbstractConnectorTe
                 new ColumnDefinition("val_timestamp", "DATETIME YEAR TO FRACTION",
                         "DATETIME(2024-01-01 01:02:03.003) YEAR TO FRACTION", "DATETIME(2024-01-02 01:02:03.003) YEAR TO FRACTION",
                         1704070923003L, 1704157323003L,
+                        AssertionType.FIELD_DEFAULT_EQUAL),
+                new ColumnDefinition("val_timestamp_us", "DATETIME YEAR TO FRACTION(5)",
+                        "DATETIME(2024-01-01 01:02:03.00005) YEAR TO FRACTION(5)", "DATETIME(2024-01-02 01:02:03.00005) YEAR TO FRACTION(5)",
+                        1704070923000050L, 1704157323000050L,
                         AssertionType.FIELD_DEFAULT_EQUAL));
 
         shouldHandleDefaultValuesCommon(columnDefinitions);
@@ -274,6 +279,8 @@ public abstract class AbstractInformixDefaultValueIT extends AbstractConnectorTe
         // store config so it can be used by other methods
         config = TestHelper.defaultConfig()
                 .with(InformixConnectorConfig.TABLE_INCLUDE_LIST, TestHelper.TEST_DATABASE + ".informix.dv_test")
+                .with(InformixConnectorConfig.CDC_BUFFERSIZE, 0x800)
+                .with(InformixConnectorConfig.TIME_PRECISION_MODE, TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS)
                 .build();
 
         // start connector
@@ -308,9 +315,6 @@ public abstract class AbstractInformixDefaultValueIT extends AbstractConnectorTe
             if (column.temporalType) {
                 assertSchemaFieldWithDefaultCurrentDateTime(record, column.name.toLowerCase() + "_current", null);
                 if (column.definition.equalsIgnoreCase("DATE")) {
-                    assertSchemaFieldWithDefaultCurrentDateTime(record, column.name.toLowerCase() + "_current_nonnull", 0);
-                }
-                else if (column.definition.equalsIgnoreCase("DATETIME HOUR TO SECOND")) {
                     assertSchemaFieldWithDefaultCurrentDateTime(record, column.name.toLowerCase() + "_current_nonnull", 0);
                 }
                 else {
@@ -385,9 +389,6 @@ public abstract class AbstractInformixDefaultValueIT extends AbstractConnectorTe
             if (column.temporalType) {
                 assertSchemaFieldWithDefaultCurrentDateTime(record, column.name.toLowerCase() + "_current", null);
                 if (column.definition.equalsIgnoreCase("DATE")) {
-                    assertSchemaFieldWithDefaultCurrentDateTime(record, column.name.toLowerCase() + "_current_nonnull", 0);
-                }
-                else if (column.definition.equalsIgnoreCase("DATETIME HOUR TO SECOND")) {
                     assertSchemaFieldWithDefaultCurrentDateTime(record, column.name.toLowerCase() + "_current_nonnull", 0);
                 }
                 else {
@@ -475,10 +476,6 @@ public abstract class AbstractInformixDefaultValueIT extends AbstractConnectorTe
                 assertSchemaFieldWithDefaultCurrentDateTime(record, column.name.toLowerCase() + "_current", null);
                 assertSchemaFieldWithDefaultCurrentDateTime(record, "a" + column.name.toLowerCase() + "_current", null);
                 if (column.definition.equalsIgnoreCase("DATE")) {
-                    assertSchemaFieldWithDefaultCurrentDateTime(record, column.name.toLowerCase() + "_current_nonnull", 0);
-                    assertSchemaFieldWithDefaultCurrentDateTime(record, "a" + column.name.toLowerCase() + "_current_nonnull", 0);
-                }
-                else if (column.definition.equalsIgnoreCase("DATETIME HOUR TO SECOND")) {
                     assertSchemaFieldWithDefaultCurrentDateTime(record, column.name.toLowerCase() + "_current_nonnull", 0);
                     assertSchemaFieldWithDefaultCurrentDateTime(record, "a" + column.name.toLowerCase() + "_current_nonnull", 0);
                 }

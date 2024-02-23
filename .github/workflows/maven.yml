@@ -30,7 +30,7 @@ jobs:
           distribution: temurin
           java-version: 17
       - name: Cache Maven packages
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
@@ -38,7 +38,7 @@ jobs:
       - name: Maven build core
         run: > 
           ./core/mvnw clean install -B -f core/pom.xml 
-          -pl debezium-bom,debezium-core,debezium-embedded,debezium-storage -am
+          -pl debezium-bom,debezium-core,debezium-embedded,debezium-storage/debezium-storage-file,debezium-storage/debezium-storage-kafka -am 
           -DskipTests=true 
           -DskipITs=true
           -Dcheckstyle.skip=true
@@ -62,7 +62,7 @@ jobs:
           distribution: temurin
           java-version: 17
       - name: Cache Maven packages
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
@@ -73,5 +73,5 @@ jobs:
           -P${{ matrix.informix-plugin }}
           -Dformat.formatter.goal=validate
           -Dformat.imports.goal=check
-          -Ddebezium.test.records.waittime=5
-          -Ddebezium.test.records.waittime.after.nulls=5
+          -Ddebezium.test.records.waittime=7
+          -Ddebezium.test.records.waittime.after.nulls=13

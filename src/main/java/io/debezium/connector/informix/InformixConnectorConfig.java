@@ -40,7 +40,7 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
 
     protected static final int DEFAULT_CDC_BUFFERSIZE = 0x10000;
 
-    protected static final int DEFAULT_CDC_TIMEOUT = 1;
+    protected static final int DEFAULT_CDC_TIMEOUT = 5;
 
     /**
      * The set of predefined SnapshotMode options or aliases.

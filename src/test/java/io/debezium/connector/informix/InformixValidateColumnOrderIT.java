@@ -86,9 +86,9 @@ public class InformixValidateColumnOrderIT extends AbstractConnectorTest {
         start(InformixConnector.class, config);
         assertConnectorIsRunning();
 
-        waitForSnapshotToBeCompleted(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-        consumeRecords(0);
         waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
+
+        waitForAvailableRecords(10, TimeUnit.SECONDS);
 
         // insert a record
         Map<String, String> recordToBeInsert = new LinkedHashMap<>() {
@@ -142,9 +142,9 @@ public class InformixValidateColumnOrderIT extends AbstractConnectorTest {
         start(InformixConnector.class, config);
         assertConnectorIsRunning();
 
-        waitForSnapshotToBeCompleted(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-        consumeRecords(0);
         waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
+
+        waitForAvailableRecords(10, TimeUnit.SECONDS);
 
         Map<String, String> recordAfterUpdate = new LinkedHashMap<>(recordToBeUpdate);
         // new value
@@ -195,9 +195,9 @@ public class InformixValidateColumnOrderIT extends AbstractConnectorTest {
         start(InformixConnector.class, config);
         assertConnectorIsRunning();
 
-        waitForSnapshotToBeCompleted(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-        consumeRecords(0);
         waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
+
+        waitForAvailableRecords(10, TimeUnit.SECONDS);
 
         connection.execute(String.format("delete from %s where id = \"%s\"", testTableName, recordToBeDelete.get("id")));
 
