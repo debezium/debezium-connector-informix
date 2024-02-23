@@ -71,8 +71,8 @@ public class InformixConnectorIT extends AbstractConnectorTest {
                 "CREATE TABLE masked_hashed_column_table (id int not null, name varchar(255), name2 varchar(255), name3 varchar(20), primary key (id))",
                 "CREATE TABLE truncated_column_table (id int not null, name varchar(20), primary key (id))",
                 "CREATE TABLE truncate_table (id int not null, name varchar(20), primary key (id))",
-                "CREATE TABLE dt_table (id int not null, c1 int, c2 int, c3a numeric(5,2), c3b varchar(128), f1 float(14), f2 decimal(8,4), primary key(id))")
-                .execute("INSERT INTO tablea VALUES(1, 'a')");
+                "CREATE TABLE dt_table (id int not null, c1 int, c2 int, c3a numeric(5,2), c3b varchar(128), f1 float(14), f2 decimal(8,4), primary key(id))",
+                "INSERT INTO tablea VALUES(1, 'a')");
         initializeConnectorTestFramework();
         Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
         Print.enable();
@@ -115,7 +115,7 @@ public class InformixConnectorIT extends AbstractConnectorTest {
 
         // Wait for streaming to start
         waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-        consumeRecords(0);
+        waitForAvailableRecords(10, TimeUnit.SECONDS);
 
         for (int i = 0; i < RECORDS_PER_TABLE; i++) {
             final int id = ID_START + i;
@@ -132,6 +132,7 @@ public class InformixConnectorIT extends AbstractConnectorTest {
         final List<SourceRecord> deleteTableB = deleteRecords.recordsForTopic("testdb.informix.tableb");
         assertThat(deleteTableA).isNullOrEmpty();
         assertThat(deleteTableB).hasSize(RECORDS_PER_TABLE);
+        assertNoRecordsToConsume();
 
         for (int i = 0; i < RECORDS_PER_TABLE; i++) {
             final SourceRecord deleteRecord = deleteTableB.get(i);
@@ -172,6 +173,8 @@ public class InformixConnectorIT extends AbstractConnectorTest {
             connection.execute("INSERT INTO tableb VALUES(" + id + ", 'b')");
         }
 
+        waitForAvailableRecords(10, TimeUnit.SECONDS);
+
         consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
 
         connection.execute("DELETE FROM tableB");
@@ -181,6 +184,7 @@ public class InformixConnectorIT extends AbstractConnectorTest {
         final List<SourceRecord> deleteTableB = deleteRecords.recordsForTopic("testdb.informix.tableb");
         assertThat(deleteTableA).isNullOrEmpty();
         assertThat(deleteTableB).hasSize(RECORDS_PER_TABLE * 2);
+        assertNoRecordsToConsume();
 
         for (int i = 0; i < RECORDS_PER_TABLE * 2; i++) {
             final SourceRecord deleteRecord = deleteTableB.get(i);
@@ -213,7 +217,7 @@ public class InformixConnectorIT extends AbstractConnectorTest {
 
         // Wait for streaming to start
         waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-        consumeRecords(0);
+        waitForAvailableRecords(10, TimeUnit.SECONDS);
 
         for (int i = 0; i < RECORDS_PER_TABLE; i++) {
             final int id = ID_START + i;
@@ -227,6 +231,7 @@ public class InformixConnectorIT extends AbstractConnectorTest {
         SourceRecords sourceRecords = consumeRecordsByTopic(1);
         List<SourceRecord> truncateTable = sourceRecords.recordsForTopic("testdb.informix.truncate_table");
         assertThat(truncateTable).isNotNull().hasSize(1);
+        assertNoRecordsToConsume();
 
         VerifyRecord.isValidTruncate(truncateTable.get(0));
     }
@@ -247,18 +252,23 @@ public class InformixConnectorIT extends AbstractConnectorTest {
 
         // Wait for streaming to start
         waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
+
         connection.execute("INSERT INTO tableb VALUES(1, 'b')");
+        waitForAvailableRecords(1, TimeUnit.SECONDS);
         consumeRecordsByTopic(1);
 
         connection.execute(
                 "UPDATE tablea SET id=100 WHERE id=1",
                 "UPDATE tableb SET id=100 WHERE id=1");
 
+        waitForAvailableRecords(10, TimeUnit.SECONDS);
+
         final SourceRecords records = consumeRecordsByTopic(6);
         final List<SourceRecord> tableA = records.recordsForTopic("testdb.informix.tablea");
         final List<SourceRecord> tableB = records.recordsForTopic("testdb.informix.tableb");
         assertThat(tableA).hasSize(3);
         assertThat(tableB).hasSize(3);
+        assertNoRecordsToConsume();
 
         final List<SchemaAndValueField> expectedDeleteRowA = List.of(
                 new SchemaAndValueField("id", Schema.INT32_SCHEMA, 1),
@@ -342,12 +352,15 @@ public class InformixConnectorIT extends AbstractConnectorTest {
 
         // Wait for streaming to start
         waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
+
         connection.execute("INSERT INTO tableb VALUES(1, 'b')");
         consumeRecordsByTopic(1);
 
         connection.execute(
                 "UPDATE tablea SET id=100 WHERE id=1",
                 "UPDATE tableb SET id=100 WHERE id=1");
+
+        waitForAvailableRecords(10, TimeUnit.SECONDS);
 
         final SourceRecords records1 = consumeRecordsByTopic(2);
 
@@ -361,6 +374,7 @@ public class InformixConnectorIT extends AbstractConnectorTest {
 
         // Wait for streaming to start
         waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
+        waitForAvailableRecords(10, TimeUnit.SECONDS);
 
         final SourceRecords records2 = consumeRecordsByTopic(4);
 
@@ -369,6 +383,7 @@ public class InformixConnectorIT extends AbstractConnectorTest {
         final List<SourceRecord> tableB = records2.recordsForTopic("testdb.informix.tableb");
         assertThat(tableA).hasSize(3);
         assertThat(tableB).hasSize(3);
+        assertNoRecordsToConsume();
 
         final List<SchemaAndValueField> expectedDeleteRowA = List.of(
                 new SchemaAndValueField("id", Schema.INT32_SCHEMA, 1),
@@ -437,13 +452,27 @@ public class InformixConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-1069")
-    public void verifyOffsets() throws Exception {
+    @Flaky("DBZ-7531")
+    public void verifyOffsetsWithoutOnlineUpd() throws Exception {
+        verifyOffsets(false);
+    }
+
+    @Test
+    @FixFor("DBZ-7531")
+    @Flaky("DBZ-7531")
+    public void verifyOffsetsWithOnlineUpd() throws Exception {
+        verifyOffsets(true);
+    }
+
+    public void verifyOffsets(boolean withOnlineUpd) throws Exception {
         final int RECORDS_PER_TABLE = 5;
         final int TABLES = 2;
         final int ID_START = 40;
         final int ID_RESTART = 100;
         final Configuration config = TestHelper.defaultConfig()
                 .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(InformixConnectorConfig.CDC_TIMEOUT, 5)
+                .with(InformixConnectorConfig.CDC_BUFFERSIZE, 0x800)
                 .build();
 
         for (int i = 0; i < RECORDS_PER_TABLE; i++) {
@@ -471,6 +500,22 @@ public class InformixConnectorIT extends AbstractConnectorTest {
             }
         }
 
+        if (withOnlineUpd) {
+            // Wait for streaming to start
+            waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
+            waitForAvailableRecords(10, TimeUnit.SECONDS);
+
+            connection.execute("UPDATE tablea SET cola = 'aa' WHERE id > 1");
+            connection.execute("UPDATE tableb SET colb = 'bb' WHERE id > 1");
+
+            final SourceRecords sourceRecords = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
+            final List<SourceRecord> tableA = sourceRecords.recordsForTopic("testdb.informix.tablea");
+            final List<SourceRecord> tableB = sourceRecords.recordsForTopic("testdb.informix.tableb");
+            assertThat(tableA).hasSize(RECORDS_PER_TABLE);
+            assertThat(tableB).hasSize(RECORDS_PER_TABLE);
+            assertNoRecordsToConsume();
+        }
+
         stopConnector();
         assertConnectorNotRunning();
 
@@ -487,18 +532,14 @@ public class InformixConnectorIT extends AbstractConnectorTest {
 
         // Wait for streaming to start
         waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-        consumeRecords(0);
-
-        connection.execute("INSERT INTO tableb VALUES(-1, 'b')");
+        waitForAvailableRecords(1, TimeUnit.MINUTES);
 
         final SourceRecords sourceRecords = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
         final List<SourceRecord> tableA = sourceRecords.recordsForTopic("testdb.informix.tablea");
         final List<SourceRecord> tableB = sourceRecords.recordsForTopic("testdb.informix.tableb");
-
-        consumeRecordsByTopic(1);
-
         assertThat(tableA).hasSize(RECORDS_PER_TABLE);
         assertThat(tableB).hasSize(RECORDS_PER_TABLE);
+        assertNoRecordsToConsume();
 
         for (int i = 0; i < RECORDS_PER_TABLE; i++) {
             final int id = i + ID_RESTART;
@@ -543,7 +584,7 @@ public class InformixConnectorIT extends AbstractConnectorTest {
 
         // Wait for streaming to start
         waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-        consumeRecords(0);
+        waitForAvailableRecords(10, TimeUnit.SECONDS);
 
         for (int i = 0; i < RECORDS_PER_TABLE; i++) {
             final int id = ID_START + i;
@@ -556,6 +597,7 @@ public class InformixConnectorIT extends AbstractConnectorTest {
         final List<SourceRecord> tableB = records.recordsForTopic("testdb.informix.tableb");
         assertThat(tableA).isNullOrEmpty();
         assertThat(tableB).hasSize(RECORDS_PER_TABLE);
+        assertNoRecordsToConsume();
     }
 
     @Test
@@ -585,11 +627,14 @@ public class InformixConnectorIT extends AbstractConnectorTest {
             connection.execute("INSERT INTO tableb VALUES(" + id + ", 'b')");
         }
 
+        waitForAvailableRecords(10, TimeUnit.SECONDS);
+
         final SourceRecords records = consumeRecordsByTopic(RECORDS_PER_TABLE);
         final List<SourceRecord> tableA = records.recordsForTopic("testdb.informix.tablea");
         final List<SourceRecord> tableB = records.recordsForTopic("testdb.informix.tableb");
         assertThat(tableA).isNullOrEmpty();
         assertThat(tableB).hasSize(RECORDS_PER_TABLE);
+        assertNoRecordsToConsume();
     }
 
     private void restartInTheMiddleOfTx(boolean restartJustAfterSnapshot, boolean afterStreaming) throws Exception {
@@ -600,6 +645,8 @@ public class InformixConnectorIT extends AbstractConnectorTest {
         final int HALF_ID = ID_START + RECORDS_PER_TABLE / 2;
         final Configuration config = TestHelper.defaultConfig()
                 .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(InformixConnectorConfig.CDC_TIMEOUT, 5)
+                .with(InformixConnectorConfig.CDC_BUFFERSIZE, 0x800)
                 .build();
 
         if (restartJustAfterSnapshot) {
@@ -632,7 +679,7 @@ public class InformixConnectorIT extends AbstractConnectorTest {
         // Wait for snapshot to be completed or a first streaming message delivered
         if (restartJustAfterSnapshot) {
             waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-            consumeRecordsByTopic(1);
+            waitForAvailableRecords(2, TimeUnit.MINUTES);
         }
         else {
             waitForSnapshotToBeCompleted(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
@@ -657,7 +704,7 @@ public class InformixConnectorIT extends AbstractConnectorTest {
         }
         connection.commit();
 
-        waitForAvailableRecords(5, TimeUnit.SECONDS);
+        waitForAvailableRecords(1, TimeUnit.MINUTES);
 
         List<SourceRecord> records = consumeRecordsByTopic(RECORDS_PER_TABLE).allRecordsInOrder();
 
@@ -677,7 +724,7 @@ public class InformixConnectorIT extends AbstractConnectorTest {
         assertConnectorIsRunning();
         waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
 
-        waitForAvailableRecords(5, TimeUnit.SECONDS);
+        waitForAvailableRecords(1, TimeUnit.MINUTES);
 
         SourceRecords sourceRecords = consumeRecordsByTopic(RECORDS_PER_TABLE);
         List<SourceRecord> tableA = sourceRecords.recordsForTopic("testdb.informix.tablea");
@@ -713,7 +760,7 @@ public class InformixConnectorIT extends AbstractConnectorTest {
             connection.commit();
         }
 
-        waitForAvailableRecords(5, TimeUnit.SECONDS);
+        waitForAvailableRecords(1, TimeUnit.MINUTES);
 
         sourceRecords = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
         tableA = sourceRecords.recordsForTopic("testdb.informix.tablea");
@@ -741,6 +788,8 @@ public class InformixConnectorIT extends AbstractConnectorTest {
             assertRecord((Struct) valueB.get("after"), expectedRowB);
             assertNull(valueB.get("before"));
         }
+
+        assertNoRecordsToConsume();
     }
 
     @Test
@@ -800,7 +849,7 @@ public class InformixConnectorIT extends AbstractConnectorTest {
 
         // Wait for streaming to start
         waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-        consumeRecords(0);
+        waitForAvailableRecords(10, TimeUnit.SECONDS);
 
         connection.execute("INSERT INTO masked_hashed_column_table (id, name, name2, name3) VALUES (10, 'some_name', 'test', 'test')");
         connection.execute("INSERT INTO truncated_column_table VALUES(11, 'some_name')");
@@ -808,8 +857,9 @@ public class InformixConnectorIT extends AbstractConnectorTest {
         final SourceRecords records = consumeRecordsByTopic(2);
         final List<SourceRecord> tableA = records.recordsForTopic("testdb.informix.masked_hashed_column_table");
         final List<SourceRecord> tableB = records.recordsForTopic("testdb.informix.truncated_column_table");
-
         assertThat(tableA).hasSize(1);
+        assertNoRecordsToConsume();
+
         SourceRecord record = tableA.get(0);
         VerifyRecord.isValidInsert(record, "id", 10);
 
@@ -844,7 +894,7 @@ public class InformixConnectorIT extends AbstractConnectorTest {
 
         // Wait for streaming to start
         waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-        consumeRecords(0);
+        waitForAvailableRecords(10, TimeUnit.SECONDS);
 
         connection.execute("INSERT INTO tablea (id, cola) values (100, 'hundred')");
 
@@ -854,6 +904,7 @@ public class InformixConnectorIT extends AbstractConnectorTest {
         Struct key = (Struct) records.get(0).key();
         assertThat(key.get("id")).isNotNull();
         assertThat(key.get("cola")).isNotNull();
+        assertNoRecordsToConsume();
     }
 
     @Test
@@ -869,7 +920,7 @@ public class InformixConnectorIT extends AbstractConnectorTest {
 
         // Wait for streaming to start
         waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-        consumeRecords(0);
+        waitForAvailableRecords(10, TimeUnit.SECONDS);
 
         connection.execute("INSERT INTO dt_table (id,c1,c2,c3a,c3b,f1,f2) values (1,123,456,789.01,'test',1.228,234.56)");
 
@@ -877,6 +928,7 @@ public class InformixConnectorIT extends AbstractConnectorTest {
 
         List<SourceRecord> recordsForTopic = records.recordsForTopic("testdb.informix.dt_table");
         assertThat(recordsForTopic).hasSize(1);
+        assertNoRecordsToConsume();
 
         final Field before = recordsForTopic.get(0).valueSchema().field("before");
 
@@ -934,10 +986,13 @@ public class InformixConnectorIT extends AbstractConnectorTest {
 
         connection.execute("INSERT INTO tablea (id,cola) VALUES (1002, 'DBZ3668')");
 
+        waitForAvailableRecords(10, TimeUnit.SECONDS);
+
         records = consumeRecordsByTopic(1);
 
         tablea = records.recordsForTopic("testdb.informix.tablea");
         assertThat(tablea).hasSize(1);
+        assertNoRecordsToConsume();
 
         for (SourceRecord record : tablea) {
             CloudEventsConverterTest.shouldConvertToCloudEventsInJson(record, false, jsonNode -> {

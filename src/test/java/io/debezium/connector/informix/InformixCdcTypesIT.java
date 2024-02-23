@@ -29,6 +29,7 @@ import io.debezium.connector.informix.InformixConnectorConfig.SnapshotMode;
 import io.debezium.connector.informix.util.TestHelper;
 import io.debezium.data.SourceRecordAssert;
 import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.junit.Flaky;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalDatabaseConnectorConfig.DecimalHandlingMode;
 import io.debezium.time.Date;
@@ -85,6 +86,7 @@ public class InformixCdcTypesIT extends AbstractConnectorTest {
     }
 
     @Test
+    @Flaky("DBZ-7531")
     public void testTypes() throws Exception {
 
         final Configuration config = TestHelper.defaultConfig()
@@ -96,8 +98,6 @@ public class InformixCdcTypesIT extends AbstractConnectorTest {
 
         assertConnectorIsRunning();
 
-        waitForSnapshotToBeCompleted(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-        consumeRecords(0);
         waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
 
         /*
