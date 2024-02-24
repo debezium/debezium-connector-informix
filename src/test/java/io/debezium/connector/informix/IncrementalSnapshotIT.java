@@ -19,6 +19,7 @@ import io.debezium.connector.informix.InformixConnectorConfig.SnapshotMode;
 import io.debezium.connector.informix.util.TestHelper;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotTest;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.history.SchemaHistory;
 
 public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<InformixConnector> {
@@ -31,9 +32,11 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Infor
         connection.execute(
                 "DROP TABLE IF EXISTS a",
                 "DROP TABLE IF EXISTS b",
+                "DROP TABLE IF EXISTS a42",
                 "DROP TABLE IF EXISTS debezium_signal",
                 "CREATE TABLE a (pk int not null, aa int, primary key (pk))",
                 "CREATE TABLE b (pk int not null, aa int, primary key (pk))",
+                "CREATE TABLE a42 (pk1 int, pk2 int, pk3 int, pk4 int, aa int)",
                 "CREATE TABLE debezium_signal (id varchar(64), type varchar(32), data varchar(255))");
         initializeConnectorTestFramework();
         Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
@@ -54,6 +57,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Infor
                     .execute(
                             "DROP TABLE a",
                             "DROP TABLE b",
+                            "DROP TABLE a42",
                             "DROP TABLE debezium_signal")
                     .close();
         }
@@ -77,6 +81,11 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Infor
     @Override
     protected List<String> topicNames() {
         return List.of(topicName(), "testdb.informix.b");
+    }
+
+    @Override
+    protected String noPKTopicName() {
+        return "testdb.informix.a42";
     }
 
     @Override
@@ -104,6 +113,16 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Infor
     }
 
     @Override
+    protected String noPKTableName() {
+        return "informix.a42";
+    }
+
+    @Override
+    protected String noPKTableDataCollectionId() {
+        return TestHelper.TEST_DATABASE + "." + noPKTableName();
+    }
+
+    @Override
     protected String signalTableName() {
         return "informix.debezium_signal";
     }
@@ -118,14 +137,16 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Infor
         return TestHelper.defaultConfig()
                 .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
                 .with(InformixConnectorConfig.SIGNAL_DATA_COLLECTION, this::signalTableNameSanitized)
-                .with(InformixConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 250);
+                .with(InformixConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 250)
+                .with(RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS, noPKTableDataCollectionId() + ":pk1,pk2,pk3,pk4");
     }
 
     @Override
     protected Builder mutableConfig(boolean signalTableOnly, boolean storeOnlyCapturedDdl) {
         Builder config = config()
                 .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
-                .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, storeOnlyCapturedDdl);
+                .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, storeOnlyCapturedDdl)
+                .with(RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS, noPKTableDataCollectionId() + ":pk1,pk2,pk3,pk4");
         return signalTableOnly
                 ? config.with(InformixConnectorConfig.TABLE_EXCLUDE_LIST, this::tableDataCollectionId)
                 : config.with(InformixConnectorConfig.TABLE_INCLUDE_LIST, this::tableIncludeList);
