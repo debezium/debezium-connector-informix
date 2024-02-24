@@ -118,6 +118,13 @@ public class InformixConnection extends JdbcConnection {
     }
 
     @Override
+    public Optional<Boolean> nullsSortLast() {
+        // "NULL values by default are ordered as less than values that are not NULL"
+        // https://www.ibm.com/docs/en/informix-servers/14.10?topic=clause-ascending-descending-orders#ids_sqs_1055
+        return Optional.of(false);
+    }
+
+    @Override
     public String quotedTableIdString(TableId tableId) {
         // TODO: Unless DELIMIDENT is set, table names cannot be quoted
         StringBuilder builder = new StringBuilder();
