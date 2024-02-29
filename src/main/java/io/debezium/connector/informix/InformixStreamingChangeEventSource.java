@@ -266,7 +266,7 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
         long endSeq = endRecord.getSequenceId();
 
         if (!recover) {
-            updateChangePosition(offsetContext, null, beginSeq, transactionId, lowestBeginSeq);
+            updateChangePosition(offsetContext, endSeq, beginSeq, transactionId, lowestBeginSeq < beginSeq ? lowestBeginSeq : beginSeq);
             dispatcher.dispatchTransactionStartedEvent(
                     partition,
                     String.valueOf(transactionId),
@@ -283,10 +283,6 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
             IfxCDCCommitTransactionRecord commitRecord = (IfxCDCCommitTransactionRecord) endRecord;
             long commitSeq = commitRecord.getSequenceId();
             long commitTs = commitRecord.getTime();
-
-            if (!recover) {
-                updateChangePosition(offsetContext, commitSeq, null, transactionId, null);
-            }
 
             Map<String, IfmxReadableType> before = null;
             Map<String, TableId> label2TableId = engine.getTableIdByLabelId();
@@ -379,7 +375,7 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
 
             start = System.nanoTime();
 
-            updateChangePosition(offsetContext, null, commitSeq, transactionId, null);
+            updateChangePosition(offsetContext, commitSeq, commitSeq, transactionId, lowestBeginSeq);
             dispatcher.dispatchTransactionCommittedEvent(partition, offsetContext, Instant.ofEpochSecond(commitTs));
 
             end = System.nanoTime();
