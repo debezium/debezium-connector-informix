@@ -136,8 +136,17 @@ public class InformixConnectorTask extends BaseSourceTask<InformixPartition, Inf
                 queue,
                 connectorConfig.getTableFilters().dataCollectionFilter(),
                 DataChangeEvent::new,
-                metadataProvider,
+                null,
+                connectorConfig.createHeartbeat(topicNamingStrategy, schemaNameAdjuster, null, null),
                 schemaNameAdjuster,
+                new InformixTransactionMonitor(
+                        connectorConfig,
+                        metadataProvider,
+                        schemaNameAdjuster,
+                        (record) -> {
+                            queue.enqueue(new DataChangeEvent(record));
+                        },
+                        topicNamingStrategy.transactionTopic()),
                 signalProcessor);
 
         final NotificationService<InformixPartition, InformixOffsetContext> notificationService = new NotificationService<>(
