@@ -5,11 +5,16 @@
  */
 package io.debezium.connector.informix;
 
+import java.io.PrintWriter;
+import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.SQLFeatureNotSupportedException;
 import java.time.Instant;
 import java.util.Optional;
+
+import javax.sql.DataSource;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -156,4 +161,59 @@ public class InformixConnection extends JdbcConnection {
             return tableEditor.create();
         }
     }
+
+    public DataSource datasource() {
+        return new DataSource() {
+            @Override
+            public Connection getConnection() throws SQLException {
+                return connection();
+            }
+
+            @Override
+            public Connection getConnection(String username, String password) throws SQLException {
+                JdbcConfiguration config = JdbcConfiguration.copy(config()).with(JdbcConfiguration.USER, username).with(JdbcConfiguration.PASSWORD, password).build();
+                return FACTORY.connect(config);
+            }
+
+            @Override
+            public PrintWriter getLogWriter() {
+                throw new UnsupportedOperationException("getLogWriter");
+            }
+
+            @Override
+            public void setLogWriter(PrintWriter out) {
+                throw new UnsupportedOperationException("setLogWriter");
+            }
+
+            @Override
+            public void setLoginTimeout(int seconds) {
+                throw new UnsupportedOperationException("setLoginTimeout");
+            }
+
+            @Override
+            public int getLoginTimeout() {
+                return 0;
+            }
+
+            @Override
+            public java.util.logging.Logger getParentLogger() throws SQLFeatureNotSupportedException {
+                throw new SQLFeatureNotSupportedException("getParentLogger");
+            }
+
+            @Override
+            @SuppressWarnings("unchecked")
+            public <T> T unwrap(Class<T> iface) throws SQLException {
+                if (iface.isInstance(this)) {
+                    return (T) this;
+                }
+                throw new SQLException("DataSource of type [" + getClass().getName() + "] cannot be unwrapped as [" + iface.getName() + "]");
+            }
+
+            @Override
+            public boolean isWrapperFor(Class<?> iface) throws SQLException {
+                return iface.isInstance(this);
+            }
+        };
+    }
+
 }
