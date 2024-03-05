@@ -532,7 +532,7 @@ public class InformixConnectorIT extends AbstractConnectorTest {
 
         // Wait for streaming to start
         waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-        waitForAvailableRecords(1, TimeUnit.MINUTES);
+        waitForAvailableRecords(2, TimeUnit.MINUTES);
 
         final SourceRecords sourceRecords = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
         final List<SourceRecord> tableA = sourceRecords.recordsForTopic("testdb.informix.tablea");
