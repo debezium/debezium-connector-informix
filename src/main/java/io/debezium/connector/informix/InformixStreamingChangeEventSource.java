@@ -16,7 +16,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.informix.jdbc.IfmxReadableType;
-import com.informix.jdbcx.IfxDataSource;
 import com.informix.stream.api.IfmxStreamOperationRecord;
 import com.informix.stream.api.IfmxStreamRecord;
 import com.informix.stream.api.IfmxStreamRecordType;
@@ -227,7 +226,7 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
 
     private IfxCDCEngine getCDCEngine(InformixDatabaseSchema schema, Lsn startLsn) throws SQLException {
         IfxCDCEngine.Builder builder = IfxCDCEngine
-                .builder(new IfxDataSource(dataConnection.connectionString()))
+                .builder(dataConnection.datasource())
                 .buffer(connectorConfig.getCdcBuffersize())
                 .timeout(connectorConfig.getCdcTimeout());
 

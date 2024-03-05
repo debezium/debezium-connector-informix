@@ -98,8 +98,12 @@ public class TestHelper {
         return new InformixConnection(TestHelper.adminJdbcConfig());
     }
 
+    private static class LazyConnectionHolder {
+        static final InformixConnection INSTANCE = new InformixConnection(TestHelper.defaultJdbcConfig());
+    }
+
     public static InformixConnection testConnection() {
-        return new InformixConnection(TestHelper.defaultJdbcConfig());
+        return LazyConnectionHolder.INSTANCE;
     }
 
     /**
