@@ -5,9 +5,7 @@
  */
 package io.debezium.connector.informix;
 
-import java.util.Properties;
-
-import io.debezium.util.IoUtil;
+import io.debezium.util.VersionParser;
 
 /**
  * Information about this module.
@@ -17,10 +15,8 @@ import io.debezium.util.IoUtil;
  */
 public final class Module {
 
-    private static final Properties INFO = IoUtil.loadProperties(Module.class, "io/debezium/connector/informix/build.version");
-
     public static String version() {
-        return INFO.getProperty("version");
+        return VersionParser.getVersion();
     }
 
     /**
