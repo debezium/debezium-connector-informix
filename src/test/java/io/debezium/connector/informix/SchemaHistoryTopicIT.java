@@ -25,7 +25,7 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.informix.InformixConnectorConfig.SnapshotMode;
 import io.debezium.connector.informix.util.TestHelper;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.ConditionalFail;
 import io.debezium.junit.Flaky;
 
@@ -36,7 +36,7 @@ import io.debezium.junit.Flaky;
  * the {@code ALTER} schema events from streaming
  *
  */
-public class SchemaHistoryTopicIT extends AbstractConnectorTest {
+public class SchemaHistoryTopicIT extends AbstractAsyncEngineConnectorTest {
 
     @Rule
     public TestRule conditionalFail = new ConditionalFail();

@@ -25,7 +25,7 @@ import org.junit.rules.TestRule;
 import io.debezium.config.Configuration;
 import io.debezium.connector.informix.InformixConnectorConfig.SnapshotMode;
 import io.debezium.connector.informix.util.TestHelper;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.ConditionalFail;
 import io.debezium.junit.Flaky;
 import io.debezium.util.Collect;
@@ -34,7 +34,7 @@ import io.debezium.util.Collect;
  * Transaction metadata test for the Debezium Informix Server connector.
  *
  */
-public class TransactionMetadataIT extends AbstractConnectorTest {
+public class TransactionMetadataIT extends AbstractAsyncEngineConnectorTest {
 
     @Rule
     public TestRule conditionalFail = new ConditionalFail();
