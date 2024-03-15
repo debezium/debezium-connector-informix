@@ -28,14 +28,14 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.informix.InformixConnectorConfig.SnapshotMode;
 import io.debezium.connector.informix.util.TestHelper;
 import io.debezium.data.SourceRecordAssert;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.Flaky;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalDatabaseConnectorConfig.DecimalHandlingMode;
 import io.debezium.time.Date;
 import io.debezium.util.Testing;
 
-public class InformixCdcTypesIT extends AbstractConnectorTest {
+public class InformixCdcTypesIT extends AbstractAsyncEngineConnectorTest {
 
     private InformixConnection connection;
 
@@ -181,7 +181,7 @@ public class InformixCdcTypesIT extends AbstractConnectorTest {
         String topicName = String.format("testdb.informix.%s", tableName);
         connection.execute(String.format("insert into %s values(%s)", tableName, insertValue));
 
-        waitForAvailableRecords(10, TimeUnit.SECONDS);
+        waitForAvailableRecords(1, TimeUnit.MINUTES);
 
         List<SourceRecord> records = consumeRecordsByTopic(1).recordsForTopic(topicName);
         assertThat(records).isNotNull().hasSize(1);

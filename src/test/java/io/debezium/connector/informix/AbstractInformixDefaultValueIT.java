@@ -12,6 +12,8 @@ import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 import org.apache.kafka.connect.data.Field;
@@ -28,7 +30,7 @@ import io.debezium.connector.informix.util.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.junit.ConditionalFail;
 import io.debezium.junit.Flaky;
@@ -42,7 +44,7 @@ import io.debezium.junit.Flaky;
  *
  * @author Lars M Johansson, Chris Cranford
  */
-public abstract class AbstractInformixDefaultValueIT extends AbstractConnectorTest {
+public abstract class AbstractInformixDefaultValueIT extends AbstractAsyncEngineConnectorTest {
 
     @Rule
     public TestRule conditionalFail = new ConditionalFail();
@@ -459,7 +461,8 @@ public abstract class AbstractInformixDefaultValueIT extends AbstractConnectorTe
         connection.execute("INSERT INTO dv_test (id) values (3)");
 
         // TODO: ALTER TABLE ADD columns sometimes(!) result in 'ghost' inserts for all existing rows(?)
-        SourceRecords records = consumeRecordsByTopic(4);
+        waitForAvailableRecords(10, TimeUnit.SECONDS);
+        SourceRecords records = consumeRecordsByTopicUntil((integer, record) -> Objects.equals(3, ((Struct) record.key()).get("id")));
         assertNoRecordsToConsume();
 
         List<SourceRecord> tableRecords = records.recordsForTopic(TestHelper.TEST_DATABASE + ".informix.dv_test");

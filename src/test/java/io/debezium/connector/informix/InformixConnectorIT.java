@@ -40,7 +40,7 @@ import io.debezium.data.Envelope;
 import io.debezium.data.SchemaAndValueField;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.ConditionalFail;
 import io.debezium.junit.Flaky;
 import io.debezium.junit.logging.LogInterceptor;
@@ -55,7 +55,7 @@ import junit.framework.TestCase;
  * Integration test for the Debezium Informix connector.
  *
  */
-public class InformixConnectorIT extends AbstractConnectorTest {
+public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
 
     @Rule
     public TestRule conditionalFail = new ConditionalFail();
@@ -538,7 +538,7 @@ public class InformixConnectorIT extends AbstractConnectorTest {
 
         // Wait for streaming to start
         waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-        waitForAvailableRecords(2, TimeUnit.MINUTES);
+        waitForAvailableRecords(3, TimeUnit.MINUTES);
 
         final SourceRecords sourceRecords = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
         final List<SourceRecord> tableA = sourceRecords.recordsForTopic("testdb.informix.tablea");
@@ -722,9 +722,9 @@ public class InformixConnectorIT extends AbstractConnectorTest {
                 new SchemaAndValueField("colb", Schema.OPTIONAL_STRING_SCHEMA, "b"));
         assertRecord((Struct) value.get("after"), expectedLastRow);
 
+        waitForConnectorShutdown(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
         stopConnector();
         assertConnectorNotRunning();
-        waitForConnectorShutdown(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
 
         start(InformixConnector.class, config);
         assertConnectorIsRunning();
