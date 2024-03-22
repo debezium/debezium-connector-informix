@@ -32,8 +32,10 @@ import io.debezium.pipeline.metrics.DefaultChangeEventSourceMetricsFactory;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.signal.SignalProcessor;
 import io.debezium.pipeline.spi.Offsets;
+import io.debezium.processors.PostProcessorRegistryServiceProvider;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaNameAdjuster;
+import io.debezium.service.spi.ServiceRegistry;
 import io.debezium.snapshot.SnapshotterService;
 import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Clock;
@@ -223,5 +225,12 @@ public class InformixConnectorTask extends BaseSourceTask<InformixPartition, Inf
     @Override
     protected Iterable<Field> getAllConfigurationFields() {
         return InformixConnectorConfig.ALL_FIELDS;
+    }
+
+    // TODO remove when DBZ-7699 is implemented
+    @Override
+    protected void registerServiceProviders(ServiceRegistry serviceRegistry) {
+
+        serviceRegistry.registerServiceProvider(new PostProcessorRegistryServiceProvider());
     }
 }

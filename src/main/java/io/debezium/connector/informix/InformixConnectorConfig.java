@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.informix;
 
+import java.util.Optional;
+
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Width;
@@ -327,6 +329,11 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
 
     public SnapshotMode getSnapshotMode() {
         return snapshotMode;
+    }
+
+    @Override
+    public Optional<? extends EnumeratedValue> getSnapshotLockingMode() {
+        return Optional.empty();
     }
 
     public SnapshotIsolationMode getSnapshotIsolationMode() {

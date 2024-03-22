@@ -86,10 +86,6 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
     @Override
     public void execute(ChangeEventSourceContext context, InformixPartition partition, InformixOffsetContext offsetContext)
             throws InterruptedException {
-        if (!connectorConfig.getSnapshotMode().shouldStream()) {
-            LOGGER.info("Streaming is not enabled in current configuration");
-            return;
-        }
 
         // Need to refresh schema before CDCEngine is started, to capture columns added in off-line schema evolution
         try {
