@@ -51,7 +51,7 @@ public class Lsn implements Comparable<Lsn>, Nullable {
     /**
      * Creates an LSN from a logical log file unique id and position within the log file.
      * The unique id is an integer that goes in the upper 32 bits of the 64 bit sequence number.
-     * The log position is a 32 bit adress within the log file and goes in the lower 32 bits of the sequence number.
+     * The log position is a 32 bit address within the log file and goes in the lower 32 bits of the sequence number.
      *
      * @param loguniq unique id of the logical log page
      * @param logpos position within the logical log page

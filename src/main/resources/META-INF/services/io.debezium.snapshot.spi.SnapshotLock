@@ -1,0 +1,2 @@
+io.debezium.connector.informix.snapshot.lock.ShareSnapshotLock
+io.debezium.connector.informix.snapshot.lock.ExclusiveSnapshotLock

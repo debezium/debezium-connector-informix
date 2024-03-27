@@ -50,28 +50,58 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
     public enum SnapshotMode implements EnumeratedValue {
 
         /**
-         * Perform a snapshot of data and schema upon initial startup of a connector.
+         * Performs a snapshot of data and schema upon each connector start.
          */
-        INITIAL("initial", true, true),
+        ALWAYS("always"),
 
         /**
-         * Perform a snapshot of data and schema upon initial startup of a connector and stop after initial consistent snapshot.
+         * Perform a snapshot of data and schema upon initial startup of a connector.
          */
-        INITIAL_ONLY("initial_only", true, false),
+        INITIAL("initial"),
+
+        /**
+         * Perform a snapshot of data and schema upon initial startup of a connector but does not transition to streaming.
+         */
+        INITIAL_ONLY("initial_only"),
+
+        /**
+         * Perform a snapshot of the schema but no data upon initial startup of a connector.
+         * @deprecated to be removed in Debezium 3.0, replaced by {{@link #NO_DATA}}
+         */
+        SCHEMA_ONLY("schema_only"),
 
         /**
          * Perform a snapshot of the schema but no data upon initial startup of a connector.
          */
-        SCHEMA_ONLY("schema_only", false, true);
+        NO_DATA("no_data"),
+
+        /**
+         * Perform a snapshot of only the database schemas (without data) and then begin reading the redo log at the current redo log position.
+         * This can be used for recovery only if the connector has existing offsets and the schema.history.internal.kafka.topic does not exist (deleted).
+         * This recovery option should be used with care as it assumes there have been no schema changes since the connector last stopped,
+         * otherwise some events during the gap may be processed with an incorrect schema and corrupted.
+         */
+        RECOVERY("recovery"),
+
+        /**
+         * Perform a snapshot when it is needed.
+         */
+        WHEN_NEEDED("when_needed"),
+
+        /**
+         * Allows over snapshots by setting connectors properties prefixed with 'snapshot.mode.configuration.based'.
+         */
+        CONFIGURATION_BASED("configuration_based"),
+
+        /**
+         * Inject a custom snapshotter, which allows for more control over snapshots.
+         */
+        CUSTOM("custom");
 
         private final String value;
-        private final boolean includeData;
-        private final boolean shouldStream;
 
-        SnapshotMode(String value, boolean includeData, boolean shouldStream) {
+        SnapshotMode(String value) {
             this.value = value;
-            this.includeData = includeData;
-            this.shouldStream = shouldStream;
         }
 
         /**
@@ -117,19 +147,62 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
             return value;
         }
 
-        /**
-         * Whether this snapshotting mode should include the actual data or just the
-         * schema of captured tables.
-         */
-        public boolean includeData() {
-            return includeData;
+    }
+
+    /**
+     * The set of predefined snapshot locking mode options.
+     */
+    public enum SnapshotLockingMode implements EnumeratedValue {
+
+        EXCLUSIVE("exclusive"),
+
+        SHARE("share"),
+
+        CUSTOM("custom");
+
+        private final String value;
+
+        SnapshotLockingMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
         }
 
         /**
-         * Whether the snapshot mode is followed by streaming.
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
          */
-        public boolean shouldStream() {
-            return shouldStream;
+        public static SnapshotLockingMode parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+            for (SnapshotLockingMode option : SnapshotLockingMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static SnapshotLockingMode parse(String value, String defaultValue) {
+            SnapshotLockingMode mode = parse(value);
+            if (mode == null && defaultValue != null) {
+                mode = parse(defaultValue);
+            }
+            return mode;
         }
     }
 
@@ -241,6 +314,20 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
                     + "In '" + SnapshotIsolationMode.READ_UNCOMMITTED.getValue()
                     + "' mode neither table nor row-level locks are acquired, but connector does not guarantee snapshot consistency.");
 
+    public static final Field SNAPSHOT_LOCKING_MODE = Field.create("snapshot.locking.mode")
+            .withDisplayName("Snapshot locking mode")
+            .withEnum(SnapshotLockingMode.class, SnapshotLockingMode.EXCLUSIVE)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 2))
+            .withDescription(
+                    "Controls how the connector holds locks on tables while performing the schema snapshot when `snapshot.isolation.mode` is `REPEATABLE_READ` or `EXCLUSIVE`. The 'exclusive' "
+                            + "which means the connector will hold a table lock for exclusive table access for just the initial portion of the snapshot "
+                            + "while the database schemas and other metadata are being read. The remaining work in a snapshot involves selecting all rows from "
+                            + "each table, and this is done using a flashback query that requires no locks. However, in some cases it may be desirable to avoid "
+                            + "locks entirely which can be done by specifying 'none'. This mode is only safe to use if no schema changes are happening while the "
+                            + "snapshot is taken.");
+
     public static final Field CDC_BUFFERSIZE = Field.create("cdc.buffersize")
             .withDisplayName("CDC Engine buffer size")
             .withType(ConfigDef.Type.INT)
@@ -305,6 +392,8 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
     private final int cdcBuffersize;
     private final int cdcTimeout;
 
+    private final SnapshotLockingMode snapshotLockingMode;
+
     public InformixConnectorConfig(Configuration config) {
         super(
                 InformixConnector.class,
@@ -318,6 +407,7 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
         this.databaseName = config.getString(DATABASE_NAME);
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE), SNAPSHOT_MODE.defaultValueAsString());
         this.snapshotIsolationMode = SnapshotIsolationMode.parse(config.getString(SNAPSHOT_ISOLATION_MODE), SNAPSHOT_ISOLATION_MODE.defaultValueAsString());
+        this.snapshotLockingMode = SnapshotLockingMode.parse(config.getString(SNAPSHOT_LOCKING_MODE), SNAPSHOT_LOCKING_MODE.defaultValueAsString());
         this.cdcJdbcConfig = JdbcConfiguration.adapt(getJdbcConfig().edit().with(JdbcConfiguration.DATABASE, CDC_DATABASE).build());
         this.cdcBuffersize = config.getInteger(CDC_BUFFERSIZE);
         this.cdcTimeout = config.getInteger(CDC_TIMEOUT);
@@ -333,7 +423,7 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
 
     @Override
     public Optional<? extends EnumeratedValue> getSnapshotLockingMode() {
-        return Optional.empty();
+        return Optional.of(this.snapshotLockingMode);
     }
 
     public SnapshotIsolationMode getSnapshotIsolationMode() {

@@ -80,7 +80,7 @@ public class InformixValidateColumnOrderIT extends AbstractConnectorTest {
     public void testColumnOrderWhileInsert() throws Exception {
 
         final Configuration config = TestHelper.defaultConfig()
-                .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .build();
 
         start(InformixConnector.class, config);
@@ -136,7 +136,7 @@ public class InformixValidateColumnOrderIT extends AbstractConnectorTest {
                 Strings.join("\", \"", recordToBeUpdate.values())));
 
         final Configuration config = TestHelper.defaultConfig()
-                .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .build();
 
         start(InformixConnector.class, config);
@@ -188,7 +188,7 @@ public class InformixValidateColumnOrderIT extends AbstractConnectorTest {
                 Strings.join("\", \"", recordToBeDelete.values())));
 
         final Configuration config = TestHelper.defaultConfig()
-                .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .with(CommonConnectorConfig.TOMBSTONES_ON_DELETE, false)
                 .build();
 

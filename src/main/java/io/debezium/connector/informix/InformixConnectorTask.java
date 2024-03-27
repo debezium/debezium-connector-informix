@@ -89,26 +89,27 @@ public class InformixConnectorTask extends BaseSourceTask<InformixPartition, Inf
         schema = new InformixDatabaseSchema(connectorConfig, topicNamingStrategy, valueConverters, schemaNameAdjuster, dataConnection);
         schema.initializeStorage();
 
+        Offsets<InformixPartition, InformixOffsetContext> previousOffsets = getPreviousOffsets(new InformixPartition.Provider(connectorConfig),
+                new InformixOffsetContext.Loader(connectorConfig));
+
         // Manual Bean Registration
         connectorConfig.getBeanRegistry().add(StandardBeanNames.CONFIGURATION, config);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.CONNECTOR_CONFIG, connectorConfig);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.DATABASE_SCHEMA, schema);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.JDBC_CONNECTION, connectionFactory.newConnection());
         connectorConfig.getBeanRegistry().add(StandardBeanNames.VALUE_CONVERTER, valueConverters);
+        connectorConfig.getBeanRegistry().add(StandardBeanNames.OFFSETS, previousOffsets);
 
         // Service providers
         registerServiceProviders(connectorConfig.getServiceRegistry());
 
-        Offsets<InformixPartition, InformixOffsetContext> previousOffsets = getPreviousOffsets(new InformixPartition.Provider(connectorConfig),
-                new InformixOffsetContext.Loader(connectorConfig));
         final InformixPartition partition = previousOffsets.getTheOnlyPartition();
         final InformixOffsetContext previousOffset = previousOffsets.getTheOnlyOffset();
 
         final SnapshotterService snapshotterService = connectorConfig.getServiceRegistry().tryGetService(SnapshotterService.class);
 
-        if (previousOffset != null) {
-            schema.recover(partition, previousOffset);
-        }
+        validateAndLoadSchemaHistory(connectorConfig, dataConnection, previousOffsets, schema,
+                snapshotterService.getSnapshotter());
 
         taskContext = new InformixTaskContext(connectorConfig, schema);
 
