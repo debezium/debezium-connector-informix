@@ -90,7 +90,7 @@ public class InformixCdcTypesIT extends AbstractConnectorTest {
     public void testTypes() throws Exception {
 
         final Configuration config = TestHelper.defaultConfig()
-                .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .with(RelationalDatabaseConnectorConfig.DECIMAL_HANDLING_MODE, DecimalHandlingMode.STRING)
                 .build();
 
