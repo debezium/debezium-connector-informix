@@ -12,7 +12,6 @@ import java.sql.Savepoint;
 import java.sql.Statement;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -34,7 +33,6 @@ import io.debezium.relational.Tables.TableFilter;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.snapshot.SnapshotterService;
 import io.debezium.util.Clock;
-import io.debezium.util.Strings;
 
 public class InformixSnapshotChangeEventSource extends RelationalSnapshotChangeEventSource<InformixPartition, InformixOffsetContext> {
 
@@ -52,35 +50,6 @@ public class InformixSnapshotChangeEventSource extends RelationalSnapshotChangeE
         super(connectorConfig, connectionFactory, schema, dispatcher, clock, snapshotProgressListener, notificationService, snapshotterService);
         this.connectorConfig = connectorConfig;
         this.jdbcConnection = connectionFactory.mainConnection();
-    }
-
-    @Override
-    public SnapshottingTask getSnapshottingTask(InformixPartition partition, InformixOffsetContext previousOffset) {
-        boolean snapshotSchema = true;
-        boolean snapshotData;
-
-        List<String> dataCollectionsToBeSnapshotted = connectorConfig.getDataCollectionsToBeSnapshotted();
-        Map<String, String> snapshotSelectOverridesByTable = connectorConfig.getSnapshotSelectOverridesByTable().entrySet().stream()
-                .collect(Collectors.toMap(e -> e.getKey().identifier(), Map.Entry::getValue));
-
-        // found a previous offset and the earlier snapshot has completed
-        if (previousOffset != null && !previousOffset.isSnapshotRunning()) {
-            LOGGER.info("A previous offset indicating a completed snapshot has been found. Neither schema nor data will be snapshot.");
-            snapshotSchema = false;
-            snapshotData = false;
-        }
-        else {
-            LOGGER.info("No previous offset has been found");
-            if (connectorConfig.getSnapshotMode().includeData()) {
-                LOGGER.info("According to the connector configuration both schema and data will be snapshot");
-            }
-            else {
-                LOGGER.info("According to the connector configuration only schema will be snapshot");
-            }
-            snapshotData = connectorConfig.getSnapshotMode().includeData();
-        }
-
-        return new SnapshottingTask(snapshotSchema, snapshotData, dataCollectionsToBeSnapshotted, snapshotSelectOverridesByTable, false);
     }
 
     @Override
@@ -122,10 +91,16 @@ public class InformixSnapshotChangeEventSource extends RelationalSnapshotChangeE
                         throw new InterruptedException("Interrupted while locking table " + tableId);
                     }
 
-                    LOGGER.info("Locking table {}", tableId);
-                    String query = String.format("LOCK TABLE %s.%s IN %s MODE", tableId.schema(), tableId.table(),
-                            connectorConfig.getSnapshotIsolationMode().equals(SnapshotIsolationMode.EXCLUSIVE) ? "EXCLUSIVE" : "SHARE");
-                    statement.execute(query);
+                    String fullTableName = String.format("%s.%s", tableId.schema(), tableId.table());
+                    Optional<String> lockingStatement = snapshotterService.getSnapshotLock().tableLockingStatement(
+                            connectorConfig.snapshotLockTimeout(),
+                            fullTableName);
+
+                    if (lockingStatement.isPresent()) {
+                        LOGGER.info("Locking table {}", tableId);
+                        statement.execute(lockingStatement.get());
+                    }
+
                 }
             }
         }
@@ -237,8 +212,8 @@ public class InformixSnapshotChangeEventSource extends RelationalSnapshotChangeE
     @Override
     protected Optional<String> getSnapshotSelect(RelationalSnapshotContext<InformixPartition, InformixOffsetContext> snapshotContext, TableId tableId,
                                                  List<String> columns) {
-        String snapshotSelectColumns = !columns.isEmpty() ? Strings.join(", ", columns) : "*";
-        return Optional.of(String.format("SELECT %s FROM %s.%s", snapshotSelectColumns, tableId.schema(), tableId.table()));
+        String fullTableName = String.format("%s.%s", tableId.schema(), tableId.table());
+        return snapshotterService.getSnapshotQuery().snapshotQuery(fullTableName, columns);
     }
 
     /**

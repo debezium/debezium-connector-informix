@@ -32,10 +32,8 @@ import io.debezium.pipeline.metrics.DefaultChangeEventSourceMetricsFactory;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.signal.SignalProcessor;
 import io.debezium.pipeline.spi.Offsets;
-import io.debezium.processors.PostProcessorRegistryServiceProvider;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaNameAdjuster;
-import io.debezium.service.spi.ServiceRegistry;
 import io.debezium.snapshot.SnapshotterService;
 import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Clock;
@@ -89,26 +87,27 @@ public class InformixConnectorTask extends BaseSourceTask<InformixPartition, Inf
         schema = new InformixDatabaseSchema(connectorConfig, topicNamingStrategy, valueConverters, schemaNameAdjuster, dataConnection);
         schema.initializeStorage();
 
+        Offsets<InformixPartition, InformixOffsetContext> previousOffsets = getPreviousOffsets(new InformixPartition.Provider(connectorConfig),
+                new InformixOffsetContext.Loader(connectorConfig));
+
         // Manual Bean Registration
         connectorConfig.getBeanRegistry().add(StandardBeanNames.CONFIGURATION, config);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.CONNECTOR_CONFIG, connectorConfig);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.DATABASE_SCHEMA, schema);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.JDBC_CONNECTION, connectionFactory.newConnection());
         connectorConfig.getBeanRegistry().add(StandardBeanNames.VALUE_CONVERTER, valueConverters);
+        connectorConfig.getBeanRegistry().add(StandardBeanNames.OFFSETS, previousOffsets);
 
         // Service providers
         registerServiceProviders(connectorConfig.getServiceRegistry());
 
-        Offsets<InformixPartition, InformixOffsetContext> previousOffsets = getPreviousOffsets(new InformixPartition.Provider(connectorConfig),
-                new InformixOffsetContext.Loader(connectorConfig));
         final InformixPartition partition = previousOffsets.getTheOnlyPartition();
         final InformixOffsetContext previousOffset = previousOffsets.getTheOnlyOffset();
 
         final SnapshotterService snapshotterService = connectorConfig.getServiceRegistry().tryGetService(SnapshotterService.class);
 
-        if (previousOffset != null) {
-            schema.recover(partition, previousOffset);
-        }
+        validateAndLoadSchemaHistory(connectorConfig, dataConnection, previousOffsets, schema,
+                snapshotterService.getSnapshotter());
 
         taskContext = new InformixTaskContext(connectorConfig, schema);
 
@@ -225,12 +224,5 @@ public class InformixConnectorTask extends BaseSourceTask<InformixPartition, Inf
     @Override
     protected Iterable<Field> getAllConfigurationFields() {
         return InformixConnectorConfig.ALL_FIELDS;
-    }
-
-    // TODO remove when DBZ-7699 is implemented
-    @Override
-    protected void registerServiceProviders(ServiceRegistry serviceRegistry) {
-
-        serviceRegistry.registerServiceProvider(new PostProcessorRegistryServiceProvider());
     }
 }

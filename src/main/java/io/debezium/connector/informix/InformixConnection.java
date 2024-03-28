@@ -21,9 +21,12 @@ import org.slf4j.LoggerFactory;
 
 import com.informix.jdbc.IfxDriver;
 
+import io.debezium.DebeziumException;
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableEditor;
 import io.debezium.relational.TableId;
@@ -42,6 +45,7 @@ public class InformixConnection extends JdbcConnection {
     private static final String GET_DATABASE_NAME = "select dbinfo('dbname') as dbname from systables where tabid = 1";
 
     private static final String GET_MAX_LSN = "select uniqid, used as logpage from sysmaster:syslogs where is_current = 1";
+    private static final String GET_MIN_LSN = "select min(uniqid) as uniqid , 0 as logpage from sysmaster:syslogs";
 
     private static final String GET_CURRENT_TIMESTAMP = "select sysdate as sysdate from sysmaster:sysdual";
 
@@ -72,6 +76,7 @@ public class InformixConnection extends JdbcConnection {
      */
     public InformixConnection(JdbcConfiguration config) {
         super(config, FACTORY, QUOTED_CHARACTER, QUOTED_CHARACTER);
+        this.logPositionValidator = this::validateLogPosition;
         realDatabaseName = retrieveRealDatabaseName().trim();
     }
 
@@ -221,6 +226,33 @@ public class InformixConnection extends JdbcConnection {
                 return iface.isInstance(this);
             }
         };
+    }
+
+    public boolean validateLogPosition(OffsetContext offset, CommonConnectorConfig config) {
+
+        final Lsn storedLsn = ((InformixOffsetContext) offset).getChangePosition().getCommitLsn();
+
+        try {
+            final Lsn oldestLsn = getOldestLsn();
+
+            if (oldestLsn == null) {
+                return false;
+            }
+
+            LOGGER.trace("Oldest SCN in logs is '{}'", oldestLsn);
+            return storedLsn == null || oldestLsn.compareTo(storedLsn) < 0;
+        }
+        catch (SQLException e) {
+            throw new DebeziumException("Unable to get last available log position", e);
+        }
+    }
+
+    private Lsn getOldestLsn() throws SQLException {
+        return queryAndMap(GET_MIN_LSN, singleResultMapper(rs -> {
+            final Lsn lsn = Lsn.of(rs.getLong("uniqid"), rs.getLong("logpage") << 12);
+            LOGGER.trace("Current minimum lsn is {}", lsn.toLongString());
+            return lsn;
+        }, "Minimum LSN query must return exactly one value"));
     }
 
 }
