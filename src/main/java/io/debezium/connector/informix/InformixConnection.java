@@ -76,7 +76,6 @@ public class InformixConnection extends JdbcConnection {
      */
     public InformixConnection(JdbcConfiguration config) {
         super(config, FACTORY, QUOTED_CHARACTER, QUOTED_CHARACTER);
-        this.logPositionValidator = this::validateLogPosition;
         realDatabaseName = retrieveRealDatabaseName().trim();
     }
 
