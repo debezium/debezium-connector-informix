@@ -255,8 +255,4 @@ public class InformixConnection extends JdbcConnection {
         }, "Minimum LSN query must return exactly one value"));
     }
 
-    public <T> T singleOptionalValue(String query, ResultSetExtractor<T> extractor) throws SQLException {
-        return queryAndMap(query, rs -> rs.next() ? extractor.apply(rs) : null);
-    }
-
 }
