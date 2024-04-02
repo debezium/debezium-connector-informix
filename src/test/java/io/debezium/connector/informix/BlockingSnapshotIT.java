@@ -112,6 +112,11 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
     }
 
     @Override
+    protected String escapedTableDataCollectionId() {
+        return "\\\"testdb\\\".\\\"informix\\\".\\\"a\\\"";
+    }
+
+    @Override
     protected String signalTableNameSanitized() {
         return TestHelper.TEST_DATABASE + '.' + signalTableName();
     }
