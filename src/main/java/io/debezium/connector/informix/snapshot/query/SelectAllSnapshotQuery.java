@@ -9,10 +9,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import io.debezium.annotation.ConnectorSpecific;
 import io.debezium.config.CommonConnectorConfig;
+import io.debezium.connector.informix.InformixConnector;
 import io.debezium.snapshot.spi.SnapshotQuery;
 import io.debezium.util.Strings;
 
+@ConnectorSpecific(connector = InformixConnector.class)
 public class SelectAllSnapshotQuery implements SnapshotQuery {
 
     @Override
