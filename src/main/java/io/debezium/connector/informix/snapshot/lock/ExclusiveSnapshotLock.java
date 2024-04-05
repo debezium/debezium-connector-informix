@@ -9,9 +9,12 @@ import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
 
+import io.debezium.annotation.ConnectorSpecific;
+import io.debezium.connector.informix.InformixConnector;
 import io.debezium.connector.informix.InformixConnectorConfig;
 import io.debezium.snapshot.spi.SnapshotLock;
 
+@ConnectorSpecific(connector = InformixConnector.class)
 public class ExclusiveSnapshotLock implements SnapshotLock {
 
     @Override
