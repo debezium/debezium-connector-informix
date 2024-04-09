@@ -23,6 +23,8 @@ on:
 jobs:
   build-core:
     runs-on: ubuntu-latest
+    outputs:
+      cache-key: ${{ steps.cache-key-generator.outputs.cache-key }}
     steps:
       - name: Check if pull request branch exists in debezium main repository
         id: branch
@@ -71,6 +73,13 @@ jobs:
           -Dcheckstyle.skip=true
           -Dformat.skip=true
           -Drevapi.skip=true
+
+      # This job builds and creates/restores the cache based on the hash  of the POM files from the core
+      # repository; therefore, we need to output this so that the matrix job can reuse this cache.
+      - name: Generate Cache Key
+        id: cache-key-generator
+        run: echo "cache-key=${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}" >> "$GITHUB_OUTPUT"
+
   build-ifx:
     needs: build-core
     runs-on: ubuntu-latest
@@ -92,8 +101,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.m2
-          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-m2
+          key: ${{ needs.build-core.outputs.cache-key }}
+          restore-keys: ${{ needs.build-core.outputs.cache-key }}
       - name: Maven build Informix (${{ matrix.informix-plugin }})
         run: >
           ./informix/mvnw clean install -B -f informix/pom.xml
