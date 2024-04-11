@@ -17,17 +17,13 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.TestRule;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.informix.InformixConnectorConfig.SnapshotMode;
 import io.debezium.connector.informix.util.TestHelper;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
-import io.debezium.junit.ConditionalFail;
-import io.debezium.junit.Flaky;
 
 /**
  * Integration test for the user-facing history topic of the Debezium Informix Server connector.
@@ -37,9 +33,6 @@ import io.debezium.junit.Flaky;
  *
  */
 public class SchemaHistoryTopicIT extends AbstractAsyncEngineConnectorTest {
-
-    @Rule
-    public TestRule conditionalFail = new ConditionalFail();
 
     private InformixConnection connection;
 
@@ -80,7 +73,6 @@ public class SchemaHistoryTopicIT extends AbstractAsyncEngineConnectorTest {
 
     @Test
     @FixFor("DBZ-1904")
-    @Flaky("DBZ-7556")
     public void snapshotSchemaChanges() throws Exception {
         final int RECORDS_PER_TABLE = 5;
         final int TABLES = 2;
