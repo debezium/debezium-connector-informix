@@ -26,9 +26,7 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.TestRule;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -41,8 +39,6 @@ import io.debezium.data.SchemaAndValueField;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
-import io.debezium.junit.ConditionalFail;
-import io.debezium.junit.Flaky;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.RelationalDatabaseSchema;
 import io.debezium.relational.history.MemorySchemaHistory;
@@ -56,9 +52,6 @@ import junit.framework.TestCase;
  *
  */
 public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
-
-    @Rule
-    public TestRule conditionalFail = new ConditionalFail();
 
     private InformixConnection connection;
 
@@ -458,14 +451,12 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
 
     @Test
     @FixFor("DBZ-1069")
-    @Flaky("DBZ-7531")
     public void verifyOffsetsWithoutOnlineUpd() throws Exception {
         verifyOffsets(false);
     }
 
     @Test
     @FixFor("DBZ-7531")
-    @Flaky("DBZ-7531")
     public void verifyOffsetsWithOnlineUpd() throws Exception {
         verifyOffsets(true);
     }
@@ -800,21 +791,18 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
 
     @Test
     @FixFor("DBZ-1128")
-    @Flaky("DBZ-7539")
     public void restartInTheMiddleOfTxAfterSnapshot() throws Exception {
         restartInTheMiddleOfTx(true, false);
     }
 
     @Test
     @FixFor("DBZ-1128")
-    @Flaky("DBZ-7539")
     public void restartInTheMiddleOfTxAfterCompletedTx() throws Exception {
         restartInTheMiddleOfTx(false, true);
     }
 
     @Test
     @FixFor("DBZ-1128")
-    @Flaky("DBZ-7539")
     public void restartInTheMiddleOfTx() throws Exception {
         restartInTheMiddleOfTx(false, false);
     }
