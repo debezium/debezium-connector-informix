@@ -21,9 +21,7 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.TestRule;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.informix.util.TestHelper;
@@ -32,8 +30,6 @@ import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.jdbc.TemporalPrecisionMode;
-import io.debezium.junit.ConditionalFail;
-import io.debezium.junit.Flaky;
 
 /**
  * Abstract default value integration test.
@@ -45,9 +41,6 @@ import io.debezium.junit.Flaky;
  * @author Lars M Johansson, Chris Cranford
  */
 public abstract class AbstractInformixDefaultValueIT extends AbstractAsyncEngineConnectorTest {
-
-    @Rule
-    public TestRule conditionalFail = new ConditionalFail();
 
     private InformixConnection connection;
     private Configuration config;
@@ -81,7 +74,6 @@ public abstract class AbstractInformixDefaultValueIT extends AbstractAsyncEngine
 
     @Test
     @FixFor("DBZ-4990")
-    @Flaky("DBZ-7542")
     public void shouldHandleBooleanDefaultTypes() throws Exception {
         List<ColumnDefinition> columnDefinitions = List.of(
                 new ColumnDefinition("val_boolean", "BOOLEAN",
@@ -94,7 +86,6 @@ public abstract class AbstractInformixDefaultValueIT extends AbstractAsyncEngine
 
     @Test
     @FixFor("DBZ-4990")
-    @Flaky("DBZ-7542")
     public void shouldHandleNumericDefaultTypes() throws Exception {
         // TODO: remove once https://github.com/Apicurio/apicurio-registry/issues/2990 is fixed
         if (VerifyRecord.isApucurioAvailable()) {
@@ -128,7 +119,6 @@ public abstract class AbstractInformixDefaultValueIT extends AbstractAsyncEngine
 
     @Test
     @FixFor("DBZ-4990")
-    @Flaky("DBZ-7542")
     public void shouldHandleFloatPointDefaultTypes() throws Exception {
         // TODO: remove once https://github.com/Apicurio/apicurio-registry/issues/2980 is fixed
         if (VerifyRecord.isApucurioAvailable()) {
@@ -162,7 +152,6 @@ public abstract class AbstractInformixDefaultValueIT extends AbstractAsyncEngine
 
     @Test
     @FixFor("DBZ-4990")
-    @Flaky("DBZ-7542")
     public void shouldHandleCharacterDefaultTypes() throws Exception {
         List<ColumnDefinition> columnDefinitions = Arrays.asList(
                 new ColumnDefinition("val_char", "char(5)",
@@ -191,7 +180,6 @@ public abstract class AbstractInformixDefaultValueIT extends AbstractAsyncEngine
 
     @Test
     @FixFor("DBZ-4990")
-    @Flaky("DBZ-7542")
     public void shouldHandleDateTimeDefaultTypes() throws Exception {
         List<ColumnDefinition> columnDefinitions = Arrays.asList(
                 new ColumnDefinition("val_date", "DATE",
