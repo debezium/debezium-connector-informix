@@ -359,6 +359,7 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
                     PORT,
                     USER,
                     PASSWORD,
+                    QUERY_TIMEOUT_MS,
                     DATABASE_NAME)
             .connector(
                     SNAPSHOT_MODE,

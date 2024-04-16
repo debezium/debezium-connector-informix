@@ -94,7 +94,7 @@ public class InformixConnectorTask extends BaseSourceTask<InformixPartition, Inf
         connectorConfig.getBeanRegistry().add(StandardBeanNames.CONFIGURATION, config);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.CONNECTOR_CONFIG, connectorConfig);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.DATABASE_SCHEMA, schema);
-        connectorConfig.getBeanRegistry().add(StandardBeanNames.JDBC_CONNECTION, connectionFactory.newConnection());
+        connectorConfig.getBeanRegistry().add(StandardBeanNames.JDBC_CONNECTION, dataConnection);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.VALUE_CONVERTER, valueConverters);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.OFFSETS, previousOffsets);
 
