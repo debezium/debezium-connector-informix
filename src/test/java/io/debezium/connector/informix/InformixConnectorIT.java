@@ -40,14 +40,13 @@ import io.debezium.data.Envelope;
 import io.debezium.data.SchemaAndValueField;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.ConditionalFail;
 import io.debezium.junit.Flaky;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.RelationalDatabaseSchema;
 import io.debezium.relational.history.MemorySchemaHistory;
 import io.debezium.schema.DatabaseSchema;
-import io.debezium.util.Testing;
 
 import junit.framework.TestCase;
 
@@ -55,7 +54,7 @@ import junit.framework.TestCase;
  * Integration test for the Debezium Informix connector.
  *
  */
-public class InformixConnectorIT extends AbstractConnectorTest {
+public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
 
     @Rule
     public TestRule conditionalFail = new ConditionalFail();
@@ -72,12 +71,14 @@ public class InformixConnectorIT extends AbstractConnectorTest {
                 "DROP TABLE IF EXISTS truncated_column_table",
                 "DROP TABLE IF EXISTS truncate_table",
                 "DROP TABLE IF EXISTS dt_table",
+                "DROP TABLE IF EXISTS always_snapshot",
                 "CREATE TABLE tablea (id int not null, cola varchar(30), primary key (id))",
                 "CREATE TABLE tableb (id int not null, colb varchar(30), primary key (id))",
                 "CREATE TABLE masked_hashed_column_table (id int not null, name varchar(255), name2 varchar(255), name3 varchar(20), primary key (id))",
                 "CREATE TABLE truncated_column_table (id int not null, name varchar(20), primary key (id))",
                 "CREATE TABLE truncate_table (id int not null, name varchar(20), primary key (id))",
                 "CREATE TABLE dt_table (id int not null, c1 int, c2 int, c3a numeric(5,2), c3b varchar(128), f1 float(14), f2 decimal(8,4), primary key(id))",
+                "CREATE TABLE always_snapshot (id int primary key not null, data varchar(50) not null)",
                 "INSERT INTO tablea VALUES(1, 'a')");
         initializeConnectorTestFramework();
         Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
@@ -101,7 +102,8 @@ public class InformixConnectorIT extends AbstractConnectorTest {
                             "DROP TABLE masked_hashed_column_table",
                             "DROP TABLE truncated_column_table",
                             "DROP TABLE truncate_table",
-                            "DROP TABLE dt_table")
+                            "DROP TABLE dt_table",
+                            "DROP TABLE IF EXISTS always_snapshot")
                     .close();
         }
     }
@@ -458,14 +460,12 @@ public class InformixConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-1069")
-    @Flaky("DBZ-7531")
     public void verifyOffsetsWithoutOnlineUpd() throws Exception {
         verifyOffsets(false);
     }
 
     @Test
     @FixFor("DBZ-7531")
-    @Flaky("DBZ-7531")
     public void verifyOffsetsWithOnlineUpd() throws Exception {
         verifyOffsets(true);
     }
@@ -538,7 +538,7 @@ public class InformixConnectorIT extends AbstractConnectorTest {
 
         // Wait for streaming to start
         waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-        waitForAvailableRecords(2, TimeUnit.MINUTES);
+        waitForAvailableRecords(3, TimeUnit.MINUTES);
 
         final SourceRecords sourceRecords = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
         final List<SourceRecord> tableA = sourceRecords.recordsForTopic("testdb.informix.tablea");
@@ -722,9 +722,9 @@ public class InformixConnectorIT extends AbstractConnectorTest {
                 new SchemaAndValueField("colb", Schema.OPTIONAL_STRING_SCHEMA, "b"));
         assertRecord((Struct) value.get("after"), expectedLastRow);
 
+        waitForConnectorShutdown(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
         stopConnector();
         assertConnectorNotRunning();
-        waitForConnectorShutdown(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
 
         start(InformixConnector.class, config);
         assertConnectorIsRunning();
@@ -800,21 +800,18 @@ public class InformixConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-1128")
-    @Flaky("DBZ-7539")
     public void restartInTheMiddleOfTxAfterSnapshot() throws Exception {
         restartInTheMiddleOfTx(true, false);
     }
 
     @Test
     @FixFor("DBZ-1128")
-    @Flaky("DBZ-7539")
     public void restartInTheMiddleOfTxAfterCompletedTx() throws Exception {
         restartInTheMiddleOfTx(false, true);
     }
 
     @Test
     @FixFor("DBZ-1128")
-    @Flaky("DBZ-7539")
     public void restartInTheMiddleOfTx() throws Exception {
         restartInTheMiddleOfTx(false, false);
     }
@@ -1012,65 +1009,61 @@ public class InformixConnectorIT extends AbstractConnectorTest {
     @Test
     public void shouldNotUseOffsetWhenSnapshotIsAlways() throws Exception {
 
-        try {
-            Configuration config = TestHelper.defaultConfig()
-                    .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.ALWAYS)
-                    .with(InformixConnectorConfig.TABLE_INCLUDE_LIST, "testdb.informix.always_snapshot")
-                    .with(InformixConnectorConfig.SNAPSHOT_MODE_TABLES, "testdb.informix.always_snapshot")
-                    .with(InformixConnectorConfig.STORE_ONLY_CAPTURED_TABLES_DDL, true)
-                    .with(InformixConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
-                    .build();
+        Configuration config = TestHelper.defaultConfig()
+                .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.ALWAYS)
+                .with(InformixConnectorConfig.TABLE_INCLUDE_LIST, "testdb.informix.always_snapshot")
+                .with(InformixConnectorConfig.SNAPSHOT_MODE_TABLES, "testdb.informix.always_snapshot")
+                .with(InformixConnectorConfig.STORE_ONLY_CAPTURED_TABLES_DDL, true)
+                .with(InformixConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                .build();
 
-            connection.execute("CREATE TABLE always_snapshot ("
-                    + " id INT PRIMARY KEY NOT NULL,"
-                    + " data VARCHAR(50) NOT NULL);");
-            connection.execute("INSERT INTO always_snapshot VALUES (1,'Test1');");
-            connection.execute("INSERT INTO always_snapshot VALUES (2,'Test2');");
+        connection.execute("INSERT INTO always_snapshot VALUES (1,'Test1');");
+        connection.execute("INSERT INTO always_snapshot VALUES (2,'Test2');");
 
-            start(InformixConnector.class, config);
+        start(InformixConnector.class, config);
+        assertConnectorIsRunning();
 
-            TestHelper.waitForCDC();
+        // Wait for snapshot completion
+        waitForSnapshotToBeCompleted(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
 
-            int expectedRecordCount = 2;
-            SourceRecords sourceRecords = consumeRecordsByTopic(expectedRecordCount);
-            assertThat(sourceRecords.recordsForTopic("testdb.informix.always_snapshot")).hasSize(expectedRecordCount);
-            Struct struct = (Struct) ((Struct) sourceRecords.allRecordsInOrder().get(0).value()).get(AFTER);
-            TestCase.assertEquals(1, struct.get("id"));
-            TestCase.assertEquals("Test1", struct.get("data"));
-            struct = (Struct) ((Struct) sourceRecords.allRecordsInOrder().get(1).value()).get(AFTER);
-            TestCase.assertEquals(2, struct.get("id"));
-            TestCase.assertEquals("Test2", struct.get("data"));
+        int expectedRecordCount = 2;
+        SourceRecords sourceRecords = consumeRecordsByTopic(expectedRecordCount);
+        assertThat(sourceRecords.recordsForTopic("testdb.informix.always_snapshot")).hasSize(expectedRecordCount);
+        Struct struct = (Struct) ((Struct) sourceRecords.allRecordsInOrder().get(0).value()).get(AFTER);
+        TestCase.assertEquals(1, struct.get("id"));
+        TestCase.assertEquals("Test1", struct.get("data"));
+        struct = (Struct) ((Struct) sourceRecords.allRecordsInOrder().get(1).value()).get(AFTER);
+        TestCase.assertEquals(2, struct.get("id"));
+        TestCase.assertEquals("Test2", struct.get("data"));
 
-            stopConnector();
+        stopConnector();
+        assertConnectorNotRunning();
 
-            connection.execute("DELETE FROM ALWAYS_SNAPSHOT WHERE id=1;");
-            connection.execute("INSERT INTO ALWAYS_SNAPSHOT VALUES (3,'Test3');");
+        waitForConnectorShutdown(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
 
-            start(InformixConnector.class, config);
-            TestHelper.waitForCDC();
-            sourceRecords = consumeRecordsByTopic(expectedRecordCount);
+        connection.execute("DELETE FROM ALWAYS_SNAPSHOT WHERE id=1;");
+        connection.execute("INSERT INTO ALWAYS_SNAPSHOT VALUES (3,'Test3');");
 
-            // Check we get up-to-date data in the snapshot.
-            assertThat(sourceRecords.recordsForTopic("testdb.informix.always_snapshot")).hasSize(expectedRecordCount);
-            struct = (Struct) ((Struct) sourceRecords.recordsForTopic("testdb.informix.always_snapshot").get(0).value()).get(AFTER);
-            TestCase.assertEquals(3, struct.get("id"));
-            TestCase.assertEquals("Test3", struct.get("data"));
-            struct = (Struct) ((Struct) sourceRecords.recordsForTopic("testdb.informix.always_snapshot").get(1).value()).get(AFTER);
-            TestCase.assertEquals(2, struct.get("id"));
-            TestCase.assertEquals("Test2", struct.get("data"));
-        }
-        catch (Exception e) {
-            Testing.printError(e);
-        }
-        finally {
-            stopConnector();
-            waitForConnectorShutdown(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-            assertConnectorNotRunning();
-            connection.rollback().execute("DROP TABLE ALWAYS_SNAPSHOT");
-        }
+        start(InformixConnector.class, config);
+        assertConnectorIsRunning();
+
+        // Wait for snapshot completion
+        waitForSnapshotToBeCompleted(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
+
+        sourceRecords = consumeRecordsByTopic(expectedRecordCount);
+
+        // Check we get up-to-date data in the snapshot.
+        assertThat(sourceRecords.recordsForTopic("testdb.informix.always_snapshot")).hasSize(expectedRecordCount);
+        struct = (Struct) ((Struct) sourceRecords.recordsForTopic("testdb.informix.always_snapshot").get(0).value()).get(AFTER);
+        TestCase.assertEquals(3, struct.get("id"));
+        TestCase.assertEquals("Test3", struct.get("data"));
+        struct = (Struct) ((Struct) sourceRecords.recordsForTopic("testdb.informix.always_snapshot").get(1).value()).get(AFTER);
+        TestCase.assertEquals(2, struct.get("id"));
+        TestCase.assertEquals("Test2", struct.get("data"));
     }
 
     @Test
+    @Flaky("7699")
     public void shouldCreateSnapshotSchemaOnlyRecovery() throws Exception {
 
         Configuration.Builder builder = TestHelper.defaultConfig()
@@ -1081,23 +1074,30 @@ public class InformixConnectorIT extends AbstractConnectorTest {
         Configuration config = builder.build();
         // Start the connector ...
         start(InformixConnector.class, config);
+        assertConnectorIsRunning();
 
         waitForSnapshotToBeCompleted(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-        // Poll for records ...
-        // Testing.Print.enable();
+
         int recordCount = 1;
         SourceRecords sourceRecords = consumeRecordsByTopic(recordCount);
         assertThat(sourceRecords.allRecordsInOrder()).hasSize(recordCount);
+
         stopConnector();
+        assertConnectorNotRunning();
+
+        waitForConnectorShutdown(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
 
         builder.with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.RECOVERY);
         config = builder.build();
         start(InformixConnector.class, config);
+        assertConnectorIsRunning();
 
-        waitForSnapshotToBeCompleted(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
+        waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
 
         connection.execute("INSERT INTO tablea VALUES (100,'100')");
         connection.execute("INSERT INTO tablea VALUES (200,'200')");
+
+        waitForAvailableRecords(10, TimeUnit.SECONDS);
 
         recordCount = 2;
         sourceRecords = consumeRecordsByTopic(recordCount);
@@ -1122,6 +1122,8 @@ public class InformixConnectorIT extends AbstractConnectorTest {
         start(InformixConnector.class, config);
         assertConnectorIsRunning();
 
+        waitForSnapshotToBeCompleted(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
+
         SourceRecords actualRecords = consumeRecordsByTopic(2);
 
         List<SourceRecord> s1recs = actualRecords.recordsForTopic("testdb.informix.tablea");
@@ -1137,8 +1139,12 @@ public class InformixConnectorIT extends AbstractConnectorTest {
         SourceRecord record = s1recs.get(0);
         VerifyRecord.isValidRead(record, pkField, 1);
 
+        waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
+
         connection.execute("INSERT INTO tablea VALUES (2, '1');");
         connection.execute("INSERT INTO tableb VALUES (2, '1');");
+
+        waitForAvailableRecords(10, TimeUnit.SECONDS);
 
         actualRecords = consumeRecordsByTopic(2);
 
@@ -1150,7 +1156,11 @@ public class InformixConnectorIT extends AbstractConnectorTest {
         VerifyRecord.isValidInsert(record, pkField, 2);
         record = s2recs.get(0);
         VerifyRecord.isValidInsert(record, pkField, 2);
+
         stopConnector();
+        assertConnectorNotRunning();
+
+        waitForConnectorShutdown(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
 
         config = TestHelper.defaultConfig()
                 .with(InformixConnectorConfig.SNAPSHOT_MODE, InformixConnectorConfig.SnapshotMode.CUSTOM.getValue())
@@ -1161,6 +1171,9 @@ public class InformixConnectorIT extends AbstractConnectorTest {
 
         start(InformixConnector.class, config);
         assertConnectorIsRunning();
+
+        waitForSnapshotToBeCompleted(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
+
         actualRecords = consumeRecordsByTopic(4);
 
         s1recs = actualRecords.recordsForTopic("testdb.informix.tablea");

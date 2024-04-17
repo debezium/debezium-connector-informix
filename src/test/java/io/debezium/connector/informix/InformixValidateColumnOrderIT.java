@@ -25,10 +25,10 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.informix.InformixConnectorConfig.SnapshotMode;
 import io.debezium.connector.informix.util.TestHelper;
 import io.debezium.data.VerifyRecord;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.util.Strings;
 
-public class InformixValidateColumnOrderIT extends AbstractConnectorTest {
+public class InformixValidateColumnOrderIT extends AbstractAsyncEngineConnectorTest {
 
     private static final String testTableName = "test_column_order";
     private static final Map<String, String> testTableColumns = new LinkedHashMap<>() {

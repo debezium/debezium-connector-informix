@@ -12,6 +12,8 @@ import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 import org.apache.kafka.connect.data.Field;
@@ -19,19 +21,15 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.TestRule;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.informix.util.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.jdbc.TemporalPrecisionMode;
-import io.debezium.junit.ConditionalFail;
-import io.debezium.junit.Flaky;
 
 /**
  * Abstract default value integration test.
@@ -42,10 +40,7 @@ import io.debezium.junit.Flaky;
  *
  * @author Lars M Johansson, Chris Cranford
  */
-public abstract class AbstractInformixDefaultValueIT extends AbstractConnectorTest {
-
-    @Rule
-    public TestRule conditionalFail = new ConditionalFail();
+public abstract class AbstractInformixDefaultValueIT extends AbstractAsyncEngineConnectorTest {
 
     private InformixConnection connection;
     private Configuration config;
@@ -79,7 +74,6 @@ public abstract class AbstractInformixDefaultValueIT extends AbstractConnectorTe
 
     @Test
     @FixFor("DBZ-4990")
-    @Flaky("DBZ-7542")
     public void shouldHandleBooleanDefaultTypes() throws Exception {
         List<ColumnDefinition> columnDefinitions = List.of(
                 new ColumnDefinition("val_boolean", "BOOLEAN",
@@ -92,7 +86,6 @@ public abstract class AbstractInformixDefaultValueIT extends AbstractConnectorTe
 
     @Test
     @FixFor("DBZ-4990")
-    @Flaky("DBZ-7542")
     public void shouldHandleNumericDefaultTypes() throws Exception {
         // TODO: remove once https://github.com/Apicurio/apicurio-registry/issues/2990 is fixed
         if (VerifyRecord.isApucurioAvailable()) {
@@ -126,7 +119,6 @@ public abstract class AbstractInformixDefaultValueIT extends AbstractConnectorTe
 
     @Test
     @FixFor("DBZ-4990")
-    @Flaky("DBZ-7542")
     public void shouldHandleFloatPointDefaultTypes() throws Exception {
         // TODO: remove once https://github.com/Apicurio/apicurio-registry/issues/2980 is fixed
         if (VerifyRecord.isApucurioAvailable()) {
@@ -160,7 +152,6 @@ public abstract class AbstractInformixDefaultValueIT extends AbstractConnectorTe
 
     @Test
     @FixFor("DBZ-4990")
-    @Flaky("DBZ-7542")
     public void shouldHandleCharacterDefaultTypes() throws Exception {
         List<ColumnDefinition> columnDefinitions = Arrays.asList(
                 new ColumnDefinition("val_char", "char(5)",
@@ -189,7 +180,6 @@ public abstract class AbstractInformixDefaultValueIT extends AbstractConnectorTe
 
     @Test
     @FixFor("DBZ-4990")
-    @Flaky("DBZ-7542")
     public void shouldHandleDateTimeDefaultTypes() throws Exception {
         List<ColumnDefinition> columnDefinitions = Arrays.asList(
                 new ColumnDefinition("val_date", "DATE",
@@ -459,7 +449,8 @@ public abstract class AbstractInformixDefaultValueIT extends AbstractConnectorTe
         connection.execute("INSERT INTO dv_test (id) values (3)");
 
         // TODO: ALTER TABLE ADD columns sometimes(!) result in 'ghost' inserts for all existing rows(?)
-        SourceRecords records = consumeRecordsByTopic(4);
+        waitForAvailableRecords(10, TimeUnit.SECONDS);
+        SourceRecords records = consumeRecordsByTopicUntil((integer, record) -> Objects.equals(3, ((Struct) record.key()).get("id")));
         assertNoRecordsToConsume();
 
         List<SourceRecord> tableRecords = records.recordsForTopic(TestHelper.TEST_DATABASE + ".informix.dv_test");
