@@ -6,6 +6,7 @@
 package io.debezium.connector.informix;
 
 import java.sql.SQLException;
+import java.util.List;
 
 import org.junit.After;
 import org.junit.Before;
@@ -20,8 +21,12 @@ public class NotificationsIT extends AbstractNotificationsIT<InformixConnector> 
     private InformixConnection connection;
 
     @Before
-    public void before() {
+    public void before() throws SQLException {
         connection = TestHelper.testConnection();
+        connection.execute(
+                "DROP TABLE IF EXISTS tablea",
+                "CREATE TABLE tablea (id int not null, cola varchar(30), primary key(id))");
+
         initializeConnectorTestFramework();
         Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
         Print.enable();
@@ -29,8 +34,18 @@ public class NotificationsIT extends AbstractNotificationsIT<InformixConnector> 
 
     @After
     public void after() throws SQLException {
+        /*
+         * Since all DDL operations are forbidden during Informix CDC,
+         * we have to ensure the connector is properly shut down before dropping tables.
+         */
+        stopConnector();
+        waitForConnectorShutdown(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
+        assertConnectorNotRunning();
         if (connection != null) {
-            connection.rollback().close();
+            connection.rollback()
+                    .execute(
+                            "DROP TABLE tablea")
+                    .close();
         }
     }
 
@@ -57,5 +72,9 @@ public class NotificationsIT extends AbstractNotificationsIT<InformixConnector> 
     @Override
     protected String snapshotStatusResult() {
         return "COMPLETED";
+    }
+
+    protected List<String> collections() {
+        return List.of("testdb.informix.tablea");
     }
 }
