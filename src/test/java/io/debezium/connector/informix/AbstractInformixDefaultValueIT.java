@@ -13,7 +13,6 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 import org.apache.kafka.connect.data.Field;
@@ -329,6 +328,8 @@ public abstract class AbstractInformixDefaultValueIT extends AbstractAsyncEngine
 
         connection.execute("INSERT INTO dv_test (id) values (1)");
 
+        waitForAvailableRecords();
+
         records = consumeRecordsByTopic(1);
         tableRecords = records.recordsForTopic(TestHelper.TEST_DATABASE + ".informix.dv_test");
         assertThat(tableRecords).hasSize(1);
@@ -364,6 +365,8 @@ public abstract class AbstractInformixDefaultValueIT extends AbstractAsyncEngine
         performSchemaChange(config, connection, alterSql.toString());
 
         connection.execute("INSERT INTO dv_test (id) values (2)");
+
+        waitForAvailableRecords();
 
         SourceRecords records = consumeRecordsByTopic(1);
 
@@ -449,7 +452,7 @@ public abstract class AbstractInformixDefaultValueIT extends AbstractAsyncEngine
         connection.execute("INSERT INTO dv_test (id) values (3)");
 
         // TODO: ALTER TABLE ADD columns sometimes(!) result in 'ghost' inserts for all existing rows(?)
-        waitForAvailableRecords(10, TimeUnit.SECONDS);
+        waitForAvailableRecords();
         SourceRecords records = consumeRecordsByTopicUntil((integer, record) -> Objects.equals(3, ((Struct) record.key()).get("id")));
         assertNoRecordsToConsume();
 

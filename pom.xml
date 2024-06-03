@@ -270,7 +270,7 @@
                             <name>${docker.dbs}:${informix.version}</name>
                             <run>
                                 <env>
-                                    <SIZE>small</SIZE>
+                                    <SIZE>medium</SIZE>
                                     <LICENSE>accept</LICENSE>
                                     <USEOSTIME>1</USEOSTIME>
                                 </env>

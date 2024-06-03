@@ -9,8 +9,8 @@ on:
   push:
     branches:
       - main
-      - 1.*
       - 2.*
+      - 3.*
     paths-ignore:
         - '*.md'
 

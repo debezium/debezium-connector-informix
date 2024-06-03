@@ -162,12 +162,6 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Infor
         return TestHelper.TEST_DATABASE;
     }
 
-    @Override
-    protected void sendAdHocSnapshotSignal() throws SQLException {
-        super.sendAdHocSnapshotSignal();
-        TestHelper.waitForCDC();
-    }
-
     @Test
     @Ignore("Informix does not support DDL operations on tables defined for replication")
     @Override

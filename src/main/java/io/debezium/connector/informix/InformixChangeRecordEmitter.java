@@ -12,6 +12,7 @@ import org.apache.kafka.connect.data.Field;
 
 import com.informix.jdbc.IfmxReadableType;
 
+import io.debezium.DebeziumException;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.relational.RelationalChangeRecordEmitter;
 import io.debezium.relational.TableSchema;
@@ -56,7 +57,8 @@ public class InformixChangeRecordEmitter extends RelationalChangeRecordEmitter<I
     @Override
     protected void emitTruncateRecord(Receiver<InformixPartition> receiver, TableSchema tableSchema) throws InterruptedException {
         receiver.changeRecord(getPartition(), tableSchema, Operation.TRUNCATE, null,
-                tableSchema.getEnvelopeSchema().truncate(getOffset().getSourceInfo(), getClock().currentTimeAsInstant()), getOffset(), null);
+                tableSchema.getEnvelopeSchema().truncate(getOffset().getSourceInfo(), getClock().currentTimeAsInstant()),
+                getOffset(), null);
     }
 
     /**
@@ -79,8 +81,11 @@ public class InformixChangeRecordEmitter extends RelationalChangeRecordEmitter<I
         try {
             return callable.call();
         }
-        catch (Exception e) {
-            throw (e instanceof RuntimeException) ? (RuntimeException) e : new RuntimeException(e);
+        catch (RuntimeException rex) {
+            throw rex;
+        }
+        catch (Exception ex) {
+            throw new DebeziumException(ex);
         }
     }
 }

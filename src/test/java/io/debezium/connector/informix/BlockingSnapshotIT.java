@@ -21,7 +21,6 @@ import io.debezium.connector.informix.InformixConnectorConfig.SnapshotMode;
 import io.debezium.connector.informix.util.TestHelper;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.ConditionalFail;
-import io.debezium.junit.Flaky;
 import io.debezium.pipeline.AbstractBlockingSnapshotTest;
 import io.debezium.relational.history.SchemaHistory;
 
@@ -152,11 +151,5 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
     @Override
     public void readsSchemaOnlyForSignaledTables() throws Exception {
         super.readsSchemaOnlyForSignaledTables();
-    }
-
-    @Test
-    @Flaky("DBZ-7543")
-    public void executeBlockingSnapshotWhileStreaming() throws Exception {
-        super.executeBlockingSnapshotWhileStreaming();
     }
 }

@@ -9,7 +9,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.sql.SQLException;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -94,7 +93,7 @@ public class SchemaHistoryTopicIT extends AbstractAsyncEngineConnectorTest {
         waitForSnapshotToBeCompleted(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
         waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
 
-        waitForAvailableRecords(10, TimeUnit.SECONDS);
+        waitForAvailableRecords();
 
         // DDL for 3 tables
         SourceRecords records = consumeRecordsByTopic(3);

@@ -5,8 +5,6 @@
  */
 package io.debezium.connector.informix;
 
-import java.util.concurrent.TimeUnit;
-
 import org.junit.After;
 import org.junit.Before;
 
@@ -107,12 +105,12 @@ public class InformixReselectColumnsProcessorIT extends AbstractReselectProcesso
     }
 
     protected SourceRecords consumeRecordsByTopicReselectWhenNullStreaming() throws InterruptedException {
-        waitForAvailableRecords(10, TimeUnit.SECONDS);
+        waitForAvailableRecords();
         return super.consumeRecordsByTopicReselectWhenNullStreaming();
     }
 
     protected SourceRecords consumeRecordsByTopicReselectWhenNotNullStreaming() throws InterruptedException {
-        waitForAvailableRecords(10, TimeUnit.SECONDS);
+        waitForAvailableRecords();
         return super.consumeRecordsByTopicReselectWhenNotNullStreaming();
     }
 }
