@@ -11,7 +11,6 @@ import java.sql.SQLException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Struct;
@@ -88,8 +87,6 @@ public class InformixValidateColumnOrderIT extends AbstractAsyncEngineConnectorT
 
         waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
 
-        waitForAvailableRecords(10, TimeUnit.SECONDS);
-
         // insert a record
         Map<String, String> recordToBeInsert = new LinkedHashMap<>() {
             {
@@ -104,7 +101,7 @@ public class InformixValidateColumnOrderIT extends AbstractAsyncEngineConnectorT
                 Strings.join(", ", recordToBeInsert.keySet()),
                 Strings.join("\", \"", recordToBeInsert.values())));
 
-        waitForAvailableRecords(10, TimeUnit.SECONDS);
+        waitForAvailableRecords();
 
         String topicName = String.format("%s.informix.%s", TestHelper.TEST_DATABASE, testTableName);
         SourceRecords sourceRecords = consumeRecordsByTopic(1);
@@ -144,8 +141,6 @@ public class InformixValidateColumnOrderIT extends AbstractAsyncEngineConnectorT
 
         waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
 
-        waitForAvailableRecords(10, TimeUnit.SECONDS);
-
         Map<String, String> recordAfterUpdate = new LinkedHashMap<>(recordToBeUpdate);
         // new value
         recordAfterUpdate.put("address", "00:00:00:00:00:00");
@@ -154,7 +149,7 @@ public class InformixValidateColumnOrderIT extends AbstractAsyncEngineConnectorT
         connection.execute(String.format("update %s set address = \"%s\" where id = \"%s\"",
                 testTableName, recordAfterUpdate.get("address"), recordToBeUpdate.get("id")));
 
-        waitForAvailableRecords(10, TimeUnit.SECONDS);
+        waitForAvailableRecords();
 
         String topicName = String.format("%s.informix.%s", TestHelper.TEST_DATABASE, testTableName);
         SourceRecords sourceRecords = consumeRecordsByTopic(1);
@@ -197,11 +192,9 @@ public class InformixValidateColumnOrderIT extends AbstractAsyncEngineConnectorT
 
         waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
 
-        waitForAvailableRecords(10, TimeUnit.SECONDS);
-
         connection.execute(String.format("delete from %s where id = \"%s\"", testTableName, recordToBeDelete.get("id")));
 
-        waitForAvailableRecords(10, TimeUnit.SECONDS);
+        waitForAvailableRecords();
 
         String topicName = String.format("%s.informix.%s", TestHelper.TEST_DATABASE, testTableName);
         SourceRecords sourceRecords = consumeRecordsByTopic(1);

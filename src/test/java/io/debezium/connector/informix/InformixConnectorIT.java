@@ -8,20 +8,20 @@ package io.debezium.connector.informix;
 import static io.debezium.connector.informix.util.TestHelper.TYPE_LENGTH_PARAMETER_KEY;
 import static io.debezium.connector.informix.util.TestHelper.TYPE_NAME_PARAMETER_KEY;
 import static io.debezium.connector.informix.util.TestHelper.TYPE_SCALE_PARAMETER_KEY;
-import static io.debezium.data.Envelope.FieldName.AFTER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 import static org.junit.Assert.assertNull;
 
+import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
@@ -36,13 +36,15 @@ import io.debezium.connector.informix.InformixConnectorConfig.SnapshotMode;
 import io.debezium.connector.informix.util.TestHelper;
 import io.debezium.converters.CloudEventsConverterTest;
 import io.debezium.converters.spi.CloudEventsMaker;
-import io.debezium.data.Envelope;
+import io.debezium.data.Envelope.FieldName;
 import io.debezium.data.SchemaAndValueField;
+import io.debezium.data.SourceRecordAssert;
+import io.debezium.data.SpecialValueDecimal;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
+import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.junit.ConditionalFail;
-import io.debezium.junit.Flaky;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.RelationalDatabaseSchema;
 import io.debezium.relational.history.MemorySchemaHistory;
@@ -123,13 +125,13 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
 
         // Wait for streaming to start
         waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-        waitForAvailableRecords(10, TimeUnit.SECONDS);
 
         for (int i = 0; i < RECORDS_PER_TABLE; i++) {
             final int id = ID_START + i;
             connection.execute("INSERT INTO tablea VALUES(" + id + ", 'a')");
             connection.execute("INSERT INTO tableb VALUES(" + id + ", 'b')");
         }
+        waitForAvailableRecords();
 
         consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
 
@@ -151,7 +153,7 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
                     new SchemaAndValueField("colb", Schema.OPTIONAL_STRING_SCHEMA, "b"));
 
             final Struct deleteValue = (Struct) deleteRecord.value();
-            assertRecord((Struct) deleteValue.get("before"), expectedValueBefore);
+            assertRecord((Struct) deleteValue.get(FieldName.BEFORE), expectedValueBefore);
         }
     }
 
@@ -180,8 +182,7 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
             connection.execute("INSERT INTO tablea VALUES(" + id + ", 'a')");
             connection.execute("INSERT INTO tableb VALUES(" + id + ", 'b')");
         }
-
-        waitForAvailableRecords(10, TimeUnit.SECONDS);
+        waitForAvailableRecords();
 
         consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
 
@@ -206,7 +207,7 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
                         new SchemaAndValueField("colb", Schema.OPTIONAL_STRING_SCHEMA, "b"));
 
                 final Struct deleteValue = (Struct) deleteRecord.value();
-                assertRecord((Struct) deleteValue.get("before"), expectedValueBefore);
+                assertRecord((Struct) deleteValue.get(FieldName.BEFORE), expectedValueBefore);
             }
         }
     }
@@ -225,12 +226,12 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
 
         // Wait for streaming to start
         waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-        waitForAvailableRecords(10, TimeUnit.SECONDS);
 
         for (int i = 0; i < RECORDS_PER_TABLE; i++) {
             final int id = ID_START + i;
             connection.execute("INSERT INTO truncate_table VALUES(" + id + ", 'name')");
         }
+        waitForAvailableRecords();
 
         consumeRecordsByTopic(RECORDS_PER_TABLE);
 
@@ -262,14 +263,10 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
         waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
 
         connection.execute("INSERT INTO tableb VALUES(1, 'b')");
-        waitForAvailableRecords(1, TimeUnit.SECONDS);
         consumeRecordsByTopic(1);
 
-        connection.execute(
-                "UPDATE tablea SET id=100 WHERE id=1",
-                "UPDATE tableb SET id=100 WHERE id=1");
-
-        waitForAvailableRecords(10, TimeUnit.SECONDS);
+        connection.execute("UPDATE tablea SET id=100 WHERE id=1", "UPDATE tableb SET id=100 WHERE id=1");
+        waitForAvailableRecords();
 
         final SourceRecords records = consumeRecordsByTopic(6);
         final List<SourceRecord> tableA = records.recordsForTopic("testdb.informix.tablea");
@@ -295,9 +292,9 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
 
         final Struct deleteKeyA = (Struct) deleteRecordA.key();
         final Struct deleteValueA = (Struct) deleteRecordA.value();
-        assertRecord(deleteValueA.getStruct("before"), expectedDeleteRowA);
+        assertRecord(deleteValueA.getStruct(FieldName.BEFORE), expectedDeleteRowA);
         assertRecord(deleteKeyA, expectedDeleteKeyA);
-        assertNull(deleteValueA.get("after"));
+        assertNull(deleteValueA.get(FieldName.AFTER));
 
         final Struct tombstoneKeyA = (Struct) tombstoneRecordA.key();
         final Struct tombstoneValueA = (Struct) tombstoneRecordA.value();
@@ -306,9 +303,9 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
 
         final Struct insertKeyA = (Struct) insertRecordA.key();
         final Struct insertValueA = (Struct) insertRecordA.value();
-        assertRecord(insertValueA.getStruct("after"), expectedInsertRowA);
+        assertRecord(insertValueA.getStruct(FieldName.AFTER), expectedInsertRowA);
         assertRecord(insertKeyA, expectedInsertKeyA);
-        assertNull(insertValueA.get("before"));
+        assertNull(insertValueA.get(FieldName.BEFORE));
 
         final List<SchemaAndValueField> expectedDeleteRowB = List.of(
                 new SchemaAndValueField("id", Schema.INT32_SCHEMA, 1),
@@ -327,9 +324,9 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
 
         final Struct deletekeyB = (Struct) deleteRecordB.key();
         final Struct deleteValueB = (Struct) deleteRecordB.value();
-        assertRecord(deleteValueB.getStruct("before"), expectedDeleteRowB);
+        assertRecord(deleteValueB.getStruct(FieldName.BEFORE), expectedDeleteRowB);
         assertRecord(deletekeyB, expectedDeleteKeyB);
-        assertNull(deleteValueB.get("after"));
+        assertNull(deleteValueB.get(FieldName.AFTER));
 
         final Struct tombstonekeyB = (Struct) tombstoneRecordB.key();
         final Struct tombstoneValueB = (Struct) tombstoneRecordB.value();
@@ -338,9 +335,9 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
 
         final Struct insertkeyB = (Struct) insertRecordB.key();
         final Struct insertValueB = (Struct) insertRecordB.value();
-        assertRecord(insertValueB.getStruct("after"), expectedInsertRowB);
+        assertRecord(insertValueB.getStruct(FieldName.AFTER), expectedInsertRowB);
         assertRecord(insertkeyB, expectedInsertKeyB);
-        assertNull(insertValueB.get("before"));
+        assertNull(insertValueB.get(FieldName.BEFORE));
     }
 
     @Test
@@ -364,11 +361,8 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
         connection.execute("INSERT INTO tableb VALUES(1, 'b')");
         consumeRecordsByTopic(1);
 
-        connection.execute(
-                "UPDATE tablea SET id=100 WHERE id=1",
-                "UPDATE tableb SET id=100 WHERE id=1");
-
-        waitForAvailableRecords(10, TimeUnit.SECONDS);
+        connection.execute("UPDATE tablea SET id=100 WHERE id=1", "UPDATE tableb SET id=100 WHERE id=1");
+        waitForAvailableRecords();
 
         final SourceRecords records1 = consumeRecordsByTopic(2);
 
@@ -382,7 +376,7 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
 
         // Wait for streaming to start
         waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-        waitForAvailableRecords(10, TimeUnit.SECONDS);
+        waitForAvailableRecords();
 
         final SourceRecords records2 = consumeRecordsByTopic(4);
 
@@ -410,9 +404,9 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
 
         final Struct deleteKeyA = (Struct) deleteRecordA.key();
         final Struct deleteValueA = (Struct) deleteRecordA.value();
-        assertRecord(deleteValueA.getStruct("before"), expectedDeleteRowA);
+        assertRecord(deleteValueA.getStruct(FieldName.BEFORE), expectedDeleteRowA);
         assertRecord(deleteKeyA, expectedDeleteKeyA);
-        assertNull(deleteValueA.get("after"));
+        assertNull(deleteValueA.get(FieldName.AFTER));
 
         final Struct tombstoneKeyA = (Struct) tombstoneRecordA.key();
         final Struct tombstoneValueA = (Struct) tombstoneRecordA.value();
@@ -421,9 +415,9 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
 
         final Struct insertKeyA = (Struct) insertRecordA.key();
         final Struct insertValueA = (Struct) insertRecordA.value();
-        assertRecord(insertValueA.getStruct("after"), expectedInsertRowA);
+        assertRecord(insertValueA.getStruct(FieldName.AFTER), expectedInsertRowA);
         assertRecord(insertKeyA, expectedInsertKeyA);
-        assertNull(insertValueA.get("before"));
+        assertNull(insertValueA.get(FieldName.BEFORE));
 
         final List<SchemaAndValueField> expectedDeleteRowB = List.of(
                 new SchemaAndValueField("id", Schema.INT32_SCHEMA, 1),
@@ -442,9 +436,9 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
 
         final Struct deletekeyB = (Struct) deleteRecordB.key();
         final Struct deleteValueB = (Struct) deleteRecordB.value();
-        assertRecord(deleteValueB.getStruct("before"), expectedDeleteRowB);
+        assertRecord(deleteValueB.getStruct(FieldName.BEFORE), expectedDeleteRowB);
         assertRecord(deletekeyB, expectedDeleteKeyB);
-        assertNull(deleteValueB.get("after"));
+        assertNull(deleteValueB.get(FieldName.AFTER));
 
         final Struct tombstonekeyB = (Struct) tombstoneRecordB.key();
         final Struct tombstoneValueB = (Struct) tombstoneRecordB.value();
@@ -453,9 +447,9 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
 
         final Struct insertkeyB = (Struct) insertRecordB.key();
         final Struct insertValueB = (Struct) insertRecordB.value();
-        assertRecord(insertValueB.getStruct("after"), expectedInsertRowB);
+        assertRecord(insertValueB.getStruct(FieldName.AFTER), expectedInsertRowB);
         assertRecord(insertkeyB, expectedInsertKeyB);
-        assertNull(insertValueB.get("before"));
+        assertNull(insertValueB.get(FieldName.BEFORE));
     }
 
     @Test
@@ -509,10 +503,11 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
         if (withOnlineUpd) {
             // Wait for streaming to start
             waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-            waitForAvailableRecords(10, TimeUnit.SECONDS);
 
             connection.execute("UPDATE tablea SET cola = 'aa' WHERE id > 1");
             connection.execute("UPDATE tableb SET colb = 'bb' WHERE id > 1");
+
+            waitForAvailableRecords();
 
             final SourceRecords sourceRecords = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
             final List<SourceRecord> tableA = sourceRecords.recordsForTopic("testdb.informix.tablea");
@@ -538,7 +533,7 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
 
         // Wait for streaming to start
         waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-        waitForAvailableRecords(3, TimeUnit.MINUTES);
+        waitForAvailableRecords();
 
         final SourceRecords sourceRecords = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
         final List<SourceRecord> tableA = sourceRecords.recordsForTopic("testdb.informix.tablea");
@@ -559,12 +554,12 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
                     new SchemaAndValueField("colb", Schema.OPTIONAL_STRING_SCHEMA, "b"));
 
             final Struct valueA = (Struct) recordA.value();
-            assertRecord((Struct) valueA.get("after"), expectedRowA);
-            assertNull(valueA.get("before"));
+            assertRecord((Struct) valueA.get(FieldName.AFTER), expectedRowA);
+            assertNull(valueA.get(FieldName.BEFORE));
 
             final Struct valueB = (Struct) recordB.value();
-            assertRecord((Struct) valueB.get("after"), expectedRowB);
-            assertNull(valueB.get("before"));
+            assertRecord((Struct) valueB.get(FieldName.AFTER), expectedRowB);
+            assertNull(valueB.get(FieldName.BEFORE));
 
             assertThat(recordA.sourceOffset().get("snapshot")).as("Streaming phase").isNull();
             assertThat(recordA.sourceOffset().get("snapshot_completed")).as("Streaming phase").isNull();
@@ -590,13 +585,13 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
 
         // Wait for streaming to start
         waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-        waitForAvailableRecords(10, TimeUnit.SECONDS);
 
         for (int i = 0; i < RECORDS_PER_TABLE; i++) {
             final int id = ID_START + i;
             connection.execute("INSERT INTO tablea VALUES(" + id + ", 'a')");
             connection.execute("INSERT INTO tableb VALUES(" + id + ", 'b')");
         }
+        waitForAvailableRecords();
 
         final SourceRecords records = consumeRecordsByTopic(RECORDS_PER_TABLE);
         final List<SourceRecord> tableA = records.recordsForTopic("testdb.informix.tablea");
@@ -632,14 +627,150 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
             connection.execute("INSERT INTO tablea VALUES(" + id + ", 'a')");
             connection.execute("INSERT INTO tableb VALUES(" + id + ", 'b')");
         }
-
-        waitForAvailableRecords(10, TimeUnit.SECONDS);
+        waitForAvailableRecords();
 
         final SourceRecords records = consumeRecordsByTopic(RECORDS_PER_TABLE);
         final List<SourceRecord> tableA = records.recordsForTopic("testdb.informix.tablea");
         final List<SourceRecord> tableB = records.recordsForTopic("testdb.informix.tableb");
         assertThat(tableA).isNullOrEmpty();
         assertThat(tableB).hasSize(RECORDS_PER_TABLE);
+        assertNoRecordsToConsume();
+    }
+
+    @Test
+    @FixFor("DBZ-7813")
+    public void testColumnIncludeListWithInitialSnapshot() throws Exception {
+        testColumnIncludeList(SnapshotMode.INITIAL);
+    }
+
+    @Test
+    @FixFor("DBZ-7813")
+    public void testColumnIncludeListWithNoData() throws Exception {
+        testColumnIncludeList(SnapshotMode.NO_DATA);
+    }
+
+    public void testColumnIncludeList(SnapshotMode snapshotMode) throws Exception {
+        final Configuration config = TestHelper.defaultConfig()
+                .with(InformixConnectorConfig.SNAPSHOT_MODE, snapshotMode)
+                .with(InformixConnectorConfig.TABLE_INCLUDE_LIST, "testdb.informix.dt_table")
+                .with(InformixConnectorConfig.COLUMN_INCLUDE_LIST,
+                        "informix.dt_table.id,informix.dt_table.c1,informix.dt_table.c2,informix.dt_table.c3a,informix.dt_table.c3b")
+                .build();
+
+        final int expectedRecords;
+        if (snapshotMode == SnapshotMode.INITIAL) {
+            expectedRecords = 2;
+            connection.execute("INSERT INTO dt_table (id,c1,c2,c3a,c3b,f1,f2) values (0,123,456,789.01,'test',1.228,234.56)");
+        }
+        else {
+            expectedRecords = 1;
+        }
+
+        start(InformixConnector.class, config);
+        assertConnectorIsRunning();
+
+        // Wait for snapshot completion
+        waitForSnapshotToBeCompleted(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
+
+        // Wait for streaming to start
+        waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
+
+        connection.execute("INSERT INTO dt_table (id,c1,c2,c3a,c3b,f1,f2) values (1,123,456,789.01,'test',1.228,234.56)");
+
+        waitForAvailableRecords();
+
+        final SourceRecords records = consumeRecordsByTopic(expectedRecords);
+        final List<SourceRecord> table = records.recordsForTopic("testdb.informix.dt_table");
+        assertThat(table).hasSize(expectedRecords);
+        Schema aSchema = SchemaBuilder.struct().optional()
+                .name("testdb.informix.dt_table.Value")
+                .field("id", Schema.INT32_SCHEMA)
+                .field("c1", Schema.OPTIONAL_INT32_SCHEMA)
+                .field("c2", Schema.OPTIONAL_INT32_SCHEMA)
+                .field("c3a", SpecialValueDecimal.builder(DecimalMode.PRECISE, 5, 2).optional().build())
+                .field("c3b", Schema.OPTIONAL_STRING_SCHEMA)
+                .build();
+        Struct aStruct = new Struct(aSchema)
+                .put("c1", 123)
+                .put("c2", 456)
+                .put("c3a", BigDecimal.valueOf(789.01))
+                .put("c3b", "test");
+        if (snapshotMode == SnapshotMode.INITIAL) {
+            SourceRecordAssert.assertThat(table.get(0)).valueAfterFieldIsEqualTo(aStruct.put("id", 0));
+            SourceRecordAssert.assertThat(table.get(1)).valueAfterFieldIsEqualTo(aStruct.put("id", 1));
+        }
+        else {
+            SourceRecordAssert.assertThat(table.get(0)).valueAfterFieldIsEqualTo(aStruct.put("id", 1));
+        }
+
+        assertNoRecordsToConsume();
+    }
+
+    @Test
+    @FixFor("DBZ-7813")
+    public void testColumnExcludeListWithInitialSnapshot() throws Exception {
+        testColumnExcludeList(SnapshotMode.INITIAL);
+    }
+
+    @Test
+    @FixFor("DBZ-7813")
+    public void testColumnExcludeListWithINoData() throws Exception {
+        testColumnExcludeList(SnapshotMode.NO_DATA);
+    }
+
+    public void testColumnExcludeList(SnapshotMode snapshotMode) throws Exception {
+        final Configuration config = TestHelper.defaultConfig()
+                .with(InformixConnectorConfig.SNAPSHOT_MODE, snapshotMode)
+                .with(InformixConnectorConfig.TABLE_EXCLUDE_LIST, "testdb.informix.tablea")
+                .with(InformixConnectorConfig.COLUMN_EXCLUDE_LIST, "informix.dt_table.f1,informix.dt_table.f2")
+                .build();
+
+        final int expectedRecords;
+        if (snapshotMode == SnapshotMode.INITIAL) {
+            expectedRecords = 2;
+            connection.execute("INSERT INTO dt_table (id,c1,c2,c3a,c3b,f1,f2) values (0,123,456,789.01,'test',1.228,234.56)");
+        }
+        else {
+            expectedRecords = 1;
+        }
+
+        start(InformixConnector.class, config);
+        assertConnectorIsRunning();
+
+        // Wait for snapshot completion
+        waitForSnapshotToBeCompleted(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
+
+        // Wait for streaming to start
+        waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
+
+        connection.execute("INSERT INTO dt_table (id,c1,c2,c3a,c3b,f1,f2) values (1,123,456,789.01,'test',1.228,234.56)");
+
+        waitForAvailableRecords();
+
+        final SourceRecords records = consumeRecordsByTopic(expectedRecords);
+        final List<SourceRecord> table = records.recordsForTopic("testdb.informix.dt_table");
+        assertThat(table).hasSize(expectedRecords);
+        Schema aSchema = SchemaBuilder.struct().optional()
+                .name("testdb.informix.dt_table.Value")
+                .field("id", Schema.INT32_SCHEMA)
+                .field("c1", Schema.OPTIONAL_INT32_SCHEMA)
+                .field("c2", Schema.OPTIONAL_INT32_SCHEMA)
+                .field("c3a", SpecialValueDecimal.builder(DecimalMode.PRECISE, 5, 2).optional().build())
+                .field("c3b", Schema.OPTIONAL_STRING_SCHEMA)
+                .build();
+        Struct aStruct = new Struct(aSchema)
+                .put("c1", 123)
+                .put("c2", 456)
+                .put("c3a", BigDecimal.valueOf(789.01))
+                .put("c3b", "test");
+        if (snapshotMode == SnapshotMode.INITIAL) {
+            SourceRecordAssert.assertThat(table.get(0)).valueAfterFieldIsEqualTo(aStruct.put("id", 0));
+            SourceRecordAssert.assertThat(table.get(1)).valueAfterFieldIsEqualTo(aStruct.put("id", 1));
+        }
+        else {
+            SourceRecordAssert.assertThat(table.get(0)).valueAfterFieldIsEqualTo(aStruct.put("id", 1));
+        }
+
         assertNoRecordsToConsume();
     }
 
@@ -675,7 +806,7 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
                 return false;
             }
             final Struct envelope = (Struct) record.value();
-            final Struct after = envelope.getStruct("after");
+            final Struct after = envelope.getStruct(FieldName.AFTER);
             final Integer id = after.getInt32("id");
             final String value = after.getString("cola");
             return id != null && id == HALF_ID && "a".equals(value);
@@ -685,7 +816,7 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
         // Wait for snapshot to be completed or a first streaming message delivered
         if (restartJustAfterSnapshot) {
             waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-            waitForAvailableRecords(2, TimeUnit.MINUTES);
+            waitForAvailableRecords();
         }
         else {
             waitForSnapshotToBeCompleted(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
@@ -699,7 +830,7 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
             final List<SchemaAndValueField> expectedRow = List.of(
                     new SchemaAndValueField("id", Schema.INT32_SCHEMA, -2),
                     new SchemaAndValueField("cola", Schema.OPTIONAL_STRING_SCHEMA, "-a"));
-            assertRecord(((Struct) records.allRecordsInOrder().get(0).value()).getStruct(Envelope.FieldName.AFTER), expectedRow);
+            assertRecord(((Struct) records.allRecordsInOrder().get(0).value()).getStruct(FieldName.AFTER), expectedRow);
         }
 
         connection.setAutoCommit(false);
@@ -710,7 +841,7 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
         }
         connection.commit();
 
-        waitForAvailableRecords(1, TimeUnit.MINUTES);
+        waitForAvailableRecords();
 
         List<SourceRecord> records = consumeRecordsByTopic(RECORDS_PER_TABLE).allRecordsInOrder();
 
@@ -720,7 +851,7 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
         final List<SchemaAndValueField> expectedLastRow = List.of(
                 new SchemaAndValueField("id", Schema.INT32_SCHEMA, HALF_ID - 1),
                 new SchemaAndValueField("colb", Schema.OPTIONAL_STRING_SCHEMA, "b"));
-        assertRecord((Struct) value.get("after"), expectedLastRow);
+        assertRecord((Struct) value.get(FieldName.AFTER), expectedLastRow);
 
         waitForConnectorShutdown(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
         stopConnector();
@@ -730,7 +861,7 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
         assertConnectorIsRunning();
         waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
 
-        waitForAvailableRecords(1, TimeUnit.MINUTES);
+        waitForAvailableRecords();
 
         SourceRecords sourceRecords = consumeRecordsByTopic(RECORDS_PER_TABLE);
         List<SourceRecord> tableA = sourceRecords.recordsForTopic("testdb.informix.tablea");
@@ -751,12 +882,12 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
                     new SchemaAndValueField("colb", Schema.OPTIONAL_STRING_SCHEMA, "b"));
 
             final Struct valueA = (Struct) recordA.value();
-            assertRecord((Struct) valueA.get("after"), expectedRowA);
-            assertNull(valueA.get("before"));
+            assertRecord((Struct) valueA.get(FieldName.AFTER), expectedRowA);
+            assertNull(valueA.get(FieldName.BEFORE));
 
             final Struct valueB = (Struct) recordB.value();
-            assertRecord((Struct) valueB.get("after"), expectedRowB);
-            assertNull(valueB.get("before"));
+            assertRecord((Struct) valueB.get(FieldName.AFTER), expectedRowB);
+            assertNull(valueB.get(FieldName.BEFORE));
         }
 
         for (int i = 0; i < RECORDS_PER_TABLE; i++) {
@@ -765,8 +896,7 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
             connection.executeWithoutCommitting("INSERT INTO tableb VALUES(" + id + ", 'b')");
             connection.commit();
         }
-
-        waitForAvailableRecords(1, TimeUnit.MINUTES);
+        waitForAvailableRecords();
 
         sourceRecords = consumeRecordsByTopic(RECORDS_PER_TABLE * TABLES);
         tableA = sourceRecords.recordsForTopic("testdb.informix.tablea");
@@ -787,12 +917,12 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
                     new SchemaAndValueField("colb", Schema.OPTIONAL_STRING_SCHEMA, "b"));
 
             final Struct valueA = (Struct) recordA.value();
-            assertRecord((Struct) valueA.get("after"), expectedRowA);
-            assertNull(valueA.get("before"));
+            assertRecord((Struct) valueA.get(FieldName.AFTER), expectedRowA);
+            assertNull(valueA.get(FieldName.BEFORE));
 
             final Struct valueB = (Struct) recordB.value();
-            assertRecord((Struct) valueB.get("after"), expectedRowB);
-            assertNull(valueB.get("before"));
+            assertRecord((Struct) valueB.get(FieldName.AFTER), expectedRowB);
+            assertNull(valueB.get(FieldName.BEFORE));
         }
 
         assertNoRecordsToConsume();
@@ -852,10 +982,11 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
 
         // Wait for streaming to start
         waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-        waitForAvailableRecords(10, TimeUnit.SECONDS);
 
         connection.execute("INSERT INTO masked_hashed_column_table (id, name, name2, name3) VALUES (10, 'some_name', 'test', 'test')");
         connection.execute("INSERT INTO truncated_column_table VALUES(11, 'some_name')");
+
+        waitForAvailableRecords();
 
         final SourceRecords records = consumeRecordsByTopic(2);
         final List<SourceRecord> tableA = records.recordsForTopic("testdb.informix.masked_hashed_column_table");
@@ -867,8 +998,8 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
         VerifyRecord.isValidInsert(record, "id", 10);
 
         Struct value = (Struct) record.value();
-        if (value.getStruct("after") != null) {
-            Struct after = value.getStruct("after");
+        if (value.getStruct(FieldName.AFTER) != null) {
+            Struct after = value.getStruct(FieldName.AFTER);
             assertThat(after.getString("name")).isEqualTo("************");
             assertThat(after.getString("name2")).isEqualTo("8e68c68edbbac316dfe2f6ada6b0d2d3e2002b487a985d4b7c7c82dd83b0f4d7");
             assertThat(after.getString("name3")).isEqualTo("8e68c68edbbac316dfe2");
@@ -879,8 +1010,8 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
         VerifyRecord.isValidInsert(record, "id", 11);
 
         value = (Struct) record.value();
-        if (value.getStruct("after") != null) {
-            assertThat(value.getStruct("after").getString("name")).isEqualTo("some");
+        if (value.getStruct(FieldName.AFTER) != null) {
+            assertThat(value.getStruct(FieldName.AFTER).getString("name")).isEqualTo("some");
         }
     }
 
@@ -897,9 +1028,10 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
 
         // Wait for streaming to start
         waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-        waitForAvailableRecords(10, TimeUnit.SECONDS);
 
         connection.execute("INSERT INTO tablea (id, cola) values (100, 'hundred')");
+
+        waitForAvailableRecords();
 
         List<SourceRecord> records = consumeRecordsByTopic(1).recordsForTopic("testdb.informix.tablea");
         assertThat(records).isNotNull().isNotEmpty();
@@ -923,9 +1055,10 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
 
         // Wait for streaming to start
         waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-        waitForAvailableRecords(10, TimeUnit.SECONDS);
 
         connection.execute("INSERT INTO dt_table (id,c1,c2,c3a,c3b,f1,f2) values (1,123,456,789.01,'test',1.228,234.56)");
+
+        waitForAvailableRecords();
 
         final SourceRecords records = consumeRecordsByTopic(1);
 
@@ -933,7 +1066,7 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
         assertThat(recordsForTopic).hasSize(1);
         assertNoRecordsToConsume();
 
-        final Field before = recordsForTopic.get(0).valueSchema().field("before");
+        final Field before = recordsForTopic.get(0).valueSchema().field(FieldName.BEFORE);
 
         assertThat(before.schema().field("id").schema().parameters()).isNull();
         assertThat(before.schema().field("c1").schema().parameters()).isNull();
@@ -965,8 +1098,6 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
                 .with(InformixConnectorConfig.TABLE_INCLUDE_LIST, "testdb.informix.tablea")
                 .build();
 
-        connection.execute("INSERT INTO tablea (id,cola) values (1001, 'DBZ3668')");
-
         start(InformixConnector.class, config);
         assertConnectorIsRunning();
 
@@ -987,9 +1118,9 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
         // Wait for streaming to start
         waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
 
-        connection.execute("INSERT INTO tablea (id,cola) VALUES (1002, 'DBZ3668')");
+        connection.execute("INSERT INTO tablea (id,cola) VALUES (3668, 'DBZ3668')");
 
-        waitForAvailableRecords(10, TimeUnit.SECONDS);
+        waitForAvailableRecords();
 
         records = consumeRecordsByTopic(1);
 
@@ -1029,10 +1160,10 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
         int expectedRecordCount = 2;
         SourceRecords sourceRecords = consumeRecordsByTopic(expectedRecordCount);
         assertThat(sourceRecords.recordsForTopic("testdb.informix.always_snapshot")).hasSize(expectedRecordCount);
-        Struct struct = (Struct) ((Struct) sourceRecords.allRecordsInOrder().get(0).value()).get(AFTER);
+        Struct struct = (Struct) ((Struct) sourceRecords.allRecordsInOrder().get(0).value()).get(FieldName.AFTER);
         TestCase.assertEquals(1, struct.get("id"));
         TestCase.assertEquals("Test1", struct.get("data"));
-        struct = (Struct) ((Struct) sourceRecords.allRecordsInOrder().get(1).value()).get(AFTER);
+        struct = (Struct) ((Struct) sourceRecords.allRecordsInOrder().get(1).value()).get(FieldName.AFTER);
         TestCase.assertEquals(2, struct.get("id"));
         TestCase.assertEquals("Test2", struct.get("data"));
 
@@ -1054,16 +1185,16 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
 
         // Check we get up-to-date data in the snapshot.
         assertThat(sourceRecords.recordsForTopic("testdb.informix.always_snapshot")).hasSize(expectedRecordCount);
-        struct = (Struct) ((Struct) sourceRecords.recordsForTopic("testdb.informix.always_snapshot").get(0).value()).get(AFTER);
+        struct = (Struct) ((Struct) sourceRecords.recordsForTopic("testdb.informix.always_snapshot").get(0).value()).get(FieldName.AFTER);
         TestCase.assertEquals(3, struct.get("id"));
         TestCase.assertEquals("Test3", struct.get("data"));
-        struct = (Struct) ((Struct) sourceRecords.recordsForTopic("testdb.informix.always_snapshot").get(1).value()).get(AFTER);
+        struct = (Struct) ((Struct) sourceRecords.recordsForTopic("testdb.informix.always_snapshot").get(1).value()).get(FieldName.AFTER);
         TestCase.assertEquals(2, struct.get("id"));
         TestCase.assertEquals("Test2", struct.get("data"));
     }
 
     @Test
-    @Flaky("7699")
+    @FixFor("DBZ-7699")
     public void shouldCreateSnapshotSchemaOnlyRecovery() throws Exception {
 
         Configuration.Builder builder = TestHelper.defaultConfig()
@@ -1097,7 +1228,7 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
         connection.execute("INSERT INTO tablea VALUES (100,'100')");
         connection.execute("INSERT INTO tablea VALUES (200,'200')");
 
-        waitForAvailableRecords(10, TimeUnit.SECONDS);
+        waitForAvailableRecords();
 
         recordCount = 2;
         sourceRecords = consumeRecordsByTopic(recordCount);
@@ -1144,7 +1275,7 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
         connection.execute("INSERT INTO tablea VALUES (2, '1');");
         connection.execute("INSERT INTO tableb VALUES (2, '1');");
 
-        waitForAvailableRecords(10, TimeUnit.SECONDS);
+        waitForAvailableRecords();
 
         actualRecords = consumeRecordsByTopic(2);
 

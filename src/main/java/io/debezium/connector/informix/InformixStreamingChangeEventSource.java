@@ -30,7 +30,6 @@ import io.debezium.data.Envelope.Operation;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
-import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.util.Clock;
@@ -88,19 +87,25 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
             throws InterruptedException {
 
         // Need to refresh schema before CDCEngine is started, to capture columns added in off-line schema evolution
-        try {
-            for (TableId tableId : schema.tableIds()) {
-                final Table table = metadataConnection.getTableSchemaFromTableId(tableId);
-                schema.refresh(table);
+        schema.tableIds().stream().map(TableId::schema).distinct().forEach(schemaName -> {
+            try {
+                metadataConnection.readSchema(
+                        schema.tables(),
+                        null,
+                        schemaName,
+                        schema.getTableFilter(),
+                        null,
+                        true);
             }
-        }
-        catch (SQLException e) {
-            LOGGER.error("Caught SQLException", e);
-            errorHandler.setProducerThrowable(e);
-        }
+            catch (SQLException e) {
+                LOGGER.error("Caught SQLException", e);
+                errorHandler.setProducerThrowable(e);
+            }
+        });
 
         TxLogPosition lastPosition = offsetContext.getChangePosition();
         Lsn lastCommitLsn = lastPosition.getCommitLsn();
+        Lsn lastChangeLsn = lastPosition.getChangeLsn();
         Lsn lastBeginLsn = lastPosition.getBeginLsn();
         Lsn beginLsn = lastBeginLsn.isAvailable() ? lastBeginLsn : lastCommitLsn;
 
@@ -136,9 +141,15 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
                                         transactionRecord.getTransactionId(), commitLsn, lastCommitLsn);
                                 break;
                             }
+                            if (commitLsn.equals(lastCommitLsn) && lastChangeLsn.equals(lastCommitLsn)) {
+                                LOGGER.info("Skipping transaction with id: '{}' since commitLsn='{}' == lastCommitLsn='{}' and lastChangeLsn='{}' == lastCommitLsn",
+                                        transactionRecord.getTransactionId(), commitLsn, lastCommitLsn, lastChangeLsn);
+                                break;
+                            }
                             if (commitLsn.compareTo(lastCommitLsn) > 0) {
+                                Lsn currentLsn = Lsn.of(transactionRecord.getBeginRecord().getSequenceId());
                                 LOGGER.info("Recover finished: from lastBeginLsn='{}' to lastCommitLsn='{}', current Lsn='{}'",
-                                        lastBeginLsn, lastCommitLsn, commitLsn);
+                                        lastBeginLsn, lastCommitLsn, currentLsn);
                                 recovering = false;
                             }
                             handleTransaction(transactionEngine, partition, offsetContext, transactionRecord, recovering);
@@ -248,6 +259,8 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
             throws InterruptedException, IfxStreamException {
         long tStart = System.nanoTime();
 
+        long lastChangeSeq = offsetContext.getChangePosition().getChangeLsn().sequence();
+
         int transactionId = transactionRecord.getTransactionId();
 
         IfxCDCBeginTransactionRecord beginRecord = transactionRecord.getBeginRecord();
@@ -257,11 +270,11 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
 
         long beginTs = beginRecord.getTime();
         long beginSeq = beginRecord.getSequenceId();
-        long lowestBeginSeq = engine.getLowestBeginSequence().orElse(beginSeq);
         long endSeq = endRecord.getSequenceId();
+        long restartSeq = engine.getLowestBeginSequence().orElse(endSeq);
 
         if (!recover) {
-            updateChangePosition(offsetContext, endSeq, beginSeq, transactionId, lowestBeginSeq < beginSeq ? lowestBeginSeq : beginSeq);
+            updateChangePosition(offsetContext, endSeq, beginSeq, transactionId, Math.min(restartSeq, beginSeq));
             dispatcher.dispatchTransactionStartedEvent(
                     partition,
                     String.valueOf(transactionId),
@@ -276,7 +289,7 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
 
         if (IfmxStreamRecordType.COMMIT.equals(endRecord.getType())) {
             IfxCDCCommitTransactionRecord commitRecord = (IfxCDCCommitTransactionRecord) endRecord;
-            long commitSeq = commitRecord.getSequenceId();
+            long commitSeq = endSeq;
             long commitTs = commitRecord.getTime();
 
             Map<String, IfmxReadableType> before = null;
@@ -287,7 +300,7 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
 
                 long changeSeq = streamRecord.getSequenceId();
 
-                if (recover && Lsn.of(changeSeq).compareTo(offsetContext.getChangePosition().getChangeLsn()) <= 0) {
+                if (recover && changeSeq <= lastChangeSeq) {
                     LOGGER.info("Skipping already processed record {}", changeSeq);
                     continue;
                 }
@@ -370,7 +383,7 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
 
             start = System.nanoTime();
 
-            updateChangePosition(offsetContext, commitSeq, commitSeq, transactionId, lowestBeginSeq);
+            updateChangePosition(offsetContext, commitSeq, commitSeq, transactionId, restartSeq);
             dispatcher.dispatchTransactionCommittedEvent(partition, offsetContext, Instant.ofEpochSecond(commitTs));
 
             end = System.nanoTime();
@@ -384,7 +397,7 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
         if (IfmxStreamRecordType.ROLLBACK.equals(endRecord.getType())) {
 
             if (!recover) {
-                updateChangePosition(offsetContext, endSeq, endSeq, transactionId, null);
+                updateChangePosition(offsetContext, endSeq, endSeq, transactionId, restartSeq);
                 offsetContext.getTransactionContext().endTransaction();
             }
 

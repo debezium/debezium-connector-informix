@@ -11,7 +11,6 @@ import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Struct;
@@ -98,7 +97,7 @@ public class TransactionMetadataIT extends AbstractAsyncEngineConnectorTest {
         connection.setAutoCommit(true);
         connection.execute("INSERT INTO tableb VALUES(1000, 'b')");
 
-        waitForAvailableRecords(5, TimeUnit.SECONDS);
+        waitForAvailableRecords();
 
         // BEGIN, data, END, BEGIN, data, END
         final SourceRecords records = consumeRecordsByTopic(1 + RECORDS_PER_TABLE * 2 + 1 + 3);
