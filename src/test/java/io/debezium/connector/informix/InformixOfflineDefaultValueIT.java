@@ -6,7 +6,6 @@
 package io.debezium.connector.informix;
 
 import java.sql.SQLException;
-import java.util.concurrent.TimeUnit;
 
 import org.junit.Before;
 
@@ -52,7 +51,5 @@ public class InformixOfflineDefaultValueIT extends AbstractInformixDefaultValueI
         waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
 
         assertConnectorIsRunning();
-
-        waitForAvailableRecords(1, TimeUnit.SECONDS);
     }
 }

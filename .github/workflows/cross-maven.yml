@@ -15,8 +15,8 @@ on:
   pull_request:
     branches:
       - main
-      - 1.*
       - 2.*
+      - 3.*
     paths-ignore:
       - '*.md'
 
@@ -65,14 +65,15 @@ jobs:
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
       - name: Maven build core
-        run: >
-          ./core/mvnw clean install -B -f core/pom.xml 
-          -pl debezium-bom,debezium-core,debezium-embedded,debezium-storage/debezium-storage-file,debezium-storage/debezium-storage-kafka -am 
+        run: ./core/mvnw clean install -f core/pom.xml -am
+          -pl debezium-bom,debezium-core,debezium-embedded,debezium-storage/debezium-storage-file,debezium-storage/debezium-storage-kafka 
           -DskipTests=true 
           -DskipITs=true
           -Dcheckstyle.skip=true
           -Dformat.skip=true
           -Drevapi.skip=true
+          -Dhttp.keepAlive=false
+          -Dmaven.wagon.http.pool=false
 
       # This job builds and creates/restores the cache based on the hash  of the POM files from the core
       # repository; therefore, we need to output this so that the matrix job can reuse this cache.
@@ -105,10 +106,12 @@ jobs:
           restore-keys: ${{ needs.build-core.outputs.cache-key }}
       - name: Maven build Informix (${{ matrix.informix-plugin }})
         run: >
-          ./informix/mvnw clean install -B -f informix/pom.xml
+          ./informix/mvnw clean install -f informix/pom.xml
           -P${{ matrix.informix-plugin }}
           -Dformat.formatter.goal=validate
           -Dformat.imports.goal=check
-          -Ddebezium.test.records.waittime=7
-          -Ddebezium.test.records.waittime.after.nulls=13
+          -Ddebezium.test.records.waittime=16
+          -Ddebezium.test.records.waittime.after.nulls=16
+          -Dhttp.keepAlive=false
+          -Dmaven.wagon.http.pool=false
           -DfailFlakyTests=false

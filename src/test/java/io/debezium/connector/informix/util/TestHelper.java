@@ -11,10 +11,8 @@ import java.nio.file.Path;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.List;
+import java.util.concurrent.TimeUnit;
 
-import org.apache.kafka.connect.data.Struct;
-import org.awaitility.Durations;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,11 +20,9 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.informix.InformixConnection;
 import io.debezium.connector.informix.InformixConnectorConfig;
-import io.debezium.data.SchemaAndValueField;
 import io.debezium.jdbc.JdbcConfiguration;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.storage.file.history.FileSchemaHistory;
-import io.debezium.util.Clock;
-import io.debezium.util.Metronome;
 import io.debezium.util.Testing;
 
 public class TestHelper {
@@ -87,6 +83,7 @@ public class TestHelper {
 
         return Configuration.copy(defaultJdbcConfig().map(key -> InformixConnectorConfig.DATABASE_CONFIG_PREFIX + key))
                 .with(CommonConnectorConfig.TOPIC_PREFIX, TEST_DATABASE)
+                .with(RelationalDatabaseConnectorConfig.SNAPSHOT_LOCK_TIMEOUT_MS, TimeUnit.SECONDS.toMillis(30))
                 .with(InformixConnectorConfig.SCHEMA_HISTORY, FileSchemaHistory.class)
                 .with(FileSchemaHistory.FILE_PATH, SCHEMA_HISTORY_PATH)
                 .with(InformixConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
@@ -125,16 +122,4 @@ public class TestHelper {
         assertThat(is_logging + is_buff_logging).isPositive();
     }
 
-    public static void assertRecord(Struct record, List<SchemaAndValueField> expected) {
-        expected.forEach(schemaAndValueField -> schemaAndValueField.assertFor(record));
-    }
-
-    public static void waitForCDC() {
-        try {
-            Metronome.parker(Durations.TWO_SECONDS, Clock.SYSTEM).pause();
-        }
-        catch (InterruptedException e) {
-            // IGNORE
-        }
-    }
 }

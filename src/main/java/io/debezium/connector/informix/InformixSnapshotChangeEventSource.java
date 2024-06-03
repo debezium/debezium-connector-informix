@@ -100,7 +100,6 @@ public class InformixSnapshotChangeEventSource extends RelationalSnapshotChangeE
                         LOGGER.info("Locking table {}", tableId);
                         statement.execute(lockingStatement.get());
                     }
-
                 }
             }
         }

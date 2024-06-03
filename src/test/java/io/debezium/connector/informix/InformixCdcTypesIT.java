@@ -14,7 +14,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
-import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -179,7 +178,7 @@ public class InformixCdcTypesIT extends AbstractAsyncEngineConnectorTest {
         String topicName = String.format("testdb.informix.%s", tableName);
         connection.execute(String.format("insert into %s values(%s)", tableName, insertValue));
 
-        waitForAvailableRecords(1, TimeUnit.MINUTES);
+        waitForAvailableRecords();
 
         List<SourceRecord> records = consumeRecordsByTopic(1).recordsForTopic(topicName);
         assertThat(records).isNotNull().hasSize(1);

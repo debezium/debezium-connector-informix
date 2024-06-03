@@ -7,8 +7,6 @@ package io.debezium.connector.informix;
 
 import java.io.PrintWriter;
 import java.sql.Connection;
-import java.sql.DatabaseMetaData;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.time.Instant;
@@ -28,8 +26,6 @@ import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
-import io.debezium.relational.Table;
-import io.debezium.relational.TableEditor;
 import io.debezium.relational.TableId;
 import io.debezium.util.Strings;
 
@@ -80,6 +76,19 @@ public class InformixConnection extends JdbcConnection {
         realDatabaseName = retrieveRealDatabaseName().trim();
     }
 
+    private String retrieveRealDatabaseName() {
+        try {
+            return queryAndMap(GET_DATABASE_NAME, singleResultMapper(rs -> rs.getString(1), "Could not retrieve database name"));
+        }
+        catch (SQLException e) {
+            throw new RuntimeException("Couldn't obtain database name", e);
+        }
+    }
+
+    public String getRealDatabaseName() {
+        return realDatabaseName;
+    }
+
     /**
      * Calculates the highest available Log Sequence Number.
      * Tecnically, the _exact_ highest available LSN is not available in the JDBC session, but the current page of the active
@@ -100,16 +109,33 @@ public class InformixConnection extends JdbcConnection {
         }, "Maximum LSN query must return exactly one value"));
     }
 
-    public String getRealDatabaseName() {
-        return realDatabaseName;
+    /**
+     * Calculates the lowest available Log Sequence Number.
+     * @see InformixConnection#getMaxLsn()
+     * @return the current lowest log sequence number
+     */
+    private Lsn getMinLsn() throws SQLException {
+        return queryAndMap(GET_MIN_LSN, singleResultMapper(rs -> {
+            final Lsn lsn = Lsn.of(rs.getLong("uniqid"), rs.getLong("logpage") << 12);
+            LOGGER.trace("Current minimum lsn is {}", lsn.toLongString());
+            return lsn;
+        }, "Minimum LSN query must return exactly one value"));
     }
 
-    private String retrieveRealDatabaseName() {
+    public boolean validateLogPosition(Partition partition, OffsetContext offset, CommonConnectorConfig config) {
+        final TxLogPosition lastPosition = ((InformixOffsetContext) offset).getChangePosition();
+        final Lsn lastBeginLsn = lastPosition.getBeginLsn();
+        final Lsn restartLsn = lastBeginLsn.isAvailable() ? lastBeginLsn : lastPosition.getCommitLsn();
+        LOGGER.trace("Restart LSN is '{}'", restartLsn);
+
         try {
-            return queryAndMap(GET_DATABASE_NAME, singleResultMapper(rs -> rs.getString(1), "Could not retrieve database name"));
+            final Lsn minLsn = getMinLsn();
+            LOGGER.trace("Lowest available LSN is '{}'", minLsn);
+
+            return restartLsn.isAvailable() && minLsn.isAvailable() && restartLsn.compareTo(minLsn) >= 0;
         }
         catch (SQLException e) {
-            throw new RuntimeException("Couldn't obtain database name", e);
+            throw new DebeziumException("Couldn't obtain lowest available Log Sequence Number", e);
         }
     }
 
@@ -156,22 +182,6 @@ public class InformixConnection extends JdbcConnection {
     public String quotedColumnIdString(String columnName) {
         // TODO: Unless DELIMIDENT is set, column names cannot be quoted
         return columnName;
-    }
-
-    public Table getTableSchemaFromTableId(TableId tableId) throws SQLException {
-        final DatabaseMetaData metadata = connection().getMetaData();
-        try (ResultSet columns = metadata.getColumns(
-                tableId.catalog(),
-                tableId.schema(),
-                tableId.table(),
-                null)) {
-            final TableEditor tableEditor = Table.editor().tableId(tableId);
-            while (columns.next()) {
-                readTableColumn(columns, tableId, null).ifPresent(columnEditor -> tableEditor.addColumns(columnEditor.create()));
-            }
-            tableEditor.setPrimaryKeyNames(readPrimaryKeyNames(metadata, tableId));
-            return tableEditor.create();
-        }
     }
 
     public DataSource datasource() {
@@ -226,33 +236,6 @@ public class InformixConnection extends JdbcConnection {
                 return iface.isInstance(this);
             }
         };
-    }
-
-    public boolean validateLogPosition(Partition partition, OffsetContext offset, CommonConnectorConfig config) {
-
-        final Lsn storedLsn = ((InformixOffsetContext) offset).getChangePosition().getCommitLsn();
-
-        try {
-            final Lsn oldestLsn = getOldestLsn();
-
-            if (oldestLsn == null) {
-                return false;
-            }
-
-            LOGGER.trace("Oldest SCN in logs is '{}'", oldestLsn);
-            return storedLsn == null || oldestLsn.compareTo(storedLsn) < 0;
-        }
-        catch (SQLException e) {
-            throw new DebeziumException("Unable to get last available log position", e);
-        }
-    }
-
-    private Lsn getOldestLsn() throws SQLException {
-        return queryAndMap(GET_MIN_LSN, singleResultMapper(rs -> {
-            final Lsn lsn = Lsn.of(rs.getLong("uniqid"), rs.getLong("logpage") << 12);
-            LOGGER.trace("Current minimum lsn is {}", lsn.toLongString());
-            return lsn;
-        }, "Minimum LSN query must return exactly one value"));
     }
 
 }
