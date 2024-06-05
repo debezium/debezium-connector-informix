@@ -12,67 +12,91 @@ on:
       - 2.*
       - 3.*
     paths-ignore:
-        - '*.md'
+      - '*.md'
 
 jobs:
-  build-core:
+  build_core:
     runs-on: ubuntu-latest
+    outputs:
+      cache-key: ${{ steps.cache-key-generator.outputs.cache-key }}
     steps:
-      - name: Checkout core repository
+      - name: Checkout Action (Core)
         uses: actions/checkout@v4
         with:
           repository: debezium/debezium
           ref: ${{ github.ref }}
           path: core
-      - name: Set up JDK
+
+      - name: Set up Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 17
-      - name: Cache Maven packages
+
+      - name: Cache Maven Repository
         uses: actions/cache@v4
         with:
-          path: ~/.m2
-          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-m2
-      - name: Maven build core
-        run: > 
-          ./core/mvnw clean install -B -f core/pom.xml 
-          -pl debezium-bom,debezium-core,debezium-embedded,debezium-storage/debezium-storage-file,debezium-storage/debezium-storage-kafka -am 
-          -DskipTests=true 
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-m2-${{ hashFiles('core/**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2-${{ hashFiles('core/**/pom.xml') }}
+
+      - name: Build Debezium (Core)
+        run: >
+          ./core/mvnw clean install -B -ntp -f core/pom.xml
+          -pl debezium-assembly-descriptors,debezium-bom,debezium-core,debezium-embedded,:debezium-ide-configs,:debezium-checkstyle,:debezium-revapi,:debezium-storage-file,:debezium-storage-kafka
+          -am
+          -DskipTests=true
           -DskipITs=true
           -Dcheckstyle.skip=true
           -Dformat.skip=true
           -Drevapi.skip=true
-  build-ifx:
-    needs: build-core
-    runs-on: ubuntu-latest
+          -Dhttp.keepAlive=false
+          -Dmaven.wagon.http.pool=false
+          -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+
+      # This job builds and creates/restores the cache based on the hash of the POM files from the core
+      # repository; therefore, we need to output this so that the matrix job can reuse this cache.
+      - name: Generate Cache Key
+        id: cache-key-generator
+        run: echo "cache-key=${{ runner.os }}-m2-${{ hashFiles('core/**/pom.xml') }}" >> "$GITHUB_OUTPUT"
+
+  build_informix:
     strategy:
+      # Runs each combination concurrently
       matrix:
-        informix-plugin: [ "assembly,informix12", "assembly,informix14" ]
+        profile: [ "assembly,informix12", "assembly,informix14" ]
       fail-fast: false
+    name: "Informix - ${{ matrix.profile }}"
+    needs: [ build_core ]
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout informix repository
+      - name: Checkout Action (Informix)
         uses: actions/checkout@v4
         with:
           path: informix
-      - name: Set up JDK
+
+      - name: Set up Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 17
-      - name: Cache Maven packages
+
+      - name: Cache Maven Repository
         uses: actions/cache@v4
         with:
-          path: ~/.m2
-          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-m2
-      - name: Maven build Informix (${{ matrix.informix-plugin }})
+          path: ~/.m2/repository
+          key: ${{ needs.build_core.outputs.cache-key }}
+          restore-keys: ${{ needs.build_core.outputs.cache-key }}
+
+      - name: Build Informix
         run: >
-          ./informix/mvnw clean install -B -f informix/pom.xml
-          -P${{ matrix.informix-plugin }}
+          ./informix/mvnw clean install -B -ntp -f informix/pom.xml 
+          -P${{ matrix.profile }}
           -Dformat.formatter.goal=validate
           -Dformat.imports.goal=check
+          -Dhttp.keepAlive=false
+          -Dmaven.wagon.http.pool=false
+          -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
           -Ddebezium.test.records.waittime=7
           -Ddebezium.test.records.waittime.after.nulls=13
           -DfailFlakyTests=false
