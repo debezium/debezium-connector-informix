@@ -57,7 +57,7 @@ public class InformixConnection extends JdbcConnection {
 
     private static final ConnectionFactory FACTORY = JdbcConnection.patternBasedFactory(
             URL_PATTERN,
-            IfxDriver.class.getName(),
+            IfxDriver.class.getCanonicalName(),
             InformixConnection.class.getClassLoader(),
             JdbcConfiguration.PORT.withDefault(InformixConnectorConfig.PORT.defaultValueAsString()));
 
@@ -81,7 +81,7 @@ public class InformixConnection extends JdbcConnection {
             return queryAndMap(GET_DATABASE_NAME, singleResultMapper(rs -> rs.getString(1), "Could not retrieve database name"));
         }
         catch (SQLException e) {
-            throw new RuntimeException("Couldn't obtain database name", e);
+            throw new DebeziumException("Couldn't obtain database name", e);
         }
     }
 
@@ -186,6 +186,8 @@ public class InformixConnection extends JdbcConnection {
 
     public DataSource datasource() {
         return new DataSource() {
+            private PrintWriter logWriter;
+
             @Override
             public Connection getConnection() throws SQLException {
                 return connection();
@@ -199,12 +201,12 @@ public class InformixConnection extends JdbcConnection {
 
             @Override
             public PrintWriter getLogWriter() {
-                throw new UnsupportedOperationException("getLogWriter");
+                return this.logWriter;
             }
 
             @Override
             public void setLogWriter(PrintWriter out) {
-                throw new UnsupportedOperationException("setLogWriter");
+                this.logWriter = out;
             }
 
             @Override
@@ -214,12 +216,12 @@ public class InformixConnection extends JdbcConnection {
 
             @Override
             public int getLoginTimeout() {
-                return 0;
+                return (int) config().getConnectionTimeout().toSeconds();
             }
 
             @Override
             public java.util.logging.Logger getParentLogger() throws SQLFeatureNotSupportedException {
-                throw new SQLFeatureNotSupportedException("getParentLogger");
+                return java.util.logging.Logger.getLogger("io.debezium.connector.informix");
             }
 
             @Override

@@ -23,9 +23,9 @@ public class NotificationsIT extends AbstractNotificationsIT<InformixConnector> 
     @Before
     public void before() throws SQLException {
         connection = TestHelper.testConnection();
-        connection.execute(
-                "DROP TABLE IF EXISTS tablea",
-                "CREATE TABLE tablea (id int not null, cola varchar(30), primary key(id))");
+
+        TestHelper.dropTable(connection, "tablea");
+        connection.execute("CREATE TABLE tablea (id int not null, cola varchar(30), primary key(id))");
 
         initializeConnectorTestFramework();
         Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
@@ -42,10 +42,9 @@ public class NotificationsIT extends AbstractNotificationsIT<InformixConnector> 
         waitForConnectorShutdown(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
         assertConnectorNotRunning();
         if (connection != null) {
-            connection.rollback()
-                    .execute(
-                            "DROP TABLE tablea")
-                    .close();
+            connection.rollback();
+            TestHelper.dropTable(connection, "tablea");
+            connection.close();
         }
     }
 
@@ -74,6 +73,7 @@ public class NotificationsIT extends AbstractNotificationsIT<InformixConnector> 
         return "COMPLETED";
     }
 
+    @Override
     protected List<String> collections() {
         return List.of("testdb.informix.tablea");
     }

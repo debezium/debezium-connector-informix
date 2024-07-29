@@ -95,6 +95,16 @@ public class TestHelper {
         return new InformixConnection(TestHelper.adminJdbcConfig());
     }
 
+    public static void dropTable(InformixConnection connection, String table) throws SQLException {
+        connection.execute("drop table if exists " + table);
+    }
+
+    public static void dropTables(InformixConnection connection, String... tables) throws SQLException {
+        for (String table : tables) {
+            dropTable(connection, table);
+        }
+    }
+
     private static class LazyConnectionHolder {
         static final InformixConnection INSTANCE = new InformixConnection(TestHelper.defaultJdbcConfig());
     }

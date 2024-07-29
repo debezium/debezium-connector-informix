@@ -123,7 +123,7 @@ public class TransactionMetadataIT extends AbstractAsyncEngineConnectorTest {
     protected String assertBeginTransaction(SourceRecord record) {
         final Struct begin = (Struct) record.value();
         final Struct beginKey = (Struct) record.key();
-        final Map<String, Object> offset = (Map<String, Object>) record.sourceOffset();
+        final Map<String, ?> offset = record.sourceOffset();
 
         assertThat(begin.getString("status")).isEqualTo("BEGIN");
         assertThat(begin.getInt64("event_count")).isNull();
@@ -139,7 +139,7 @@ public class TransactionMetadataIT extends AbstractAsyncEngineConnectorTest {
     protected void assertEndTransaction(SourceRecord record, String beginTxId, long expectedEventCount, Map<String, Number> expectedPerTableCount) {
         final Struct end = (Struct) record.value();
         final Struct endKey = (Struct) record.key();
-        final Map<String, Object> offset = (Map<String, Object>) record.sourceOffset();
+        final Map<String, ?> offset = record.sourceOffset();
         final String expectedId = Arrays.stream(beginTxId.split(":")).findFirst().get();
         final String expectedTxId = String.format("%s:%s", expectedId, offset.get("commit_lsn"));
 
@@ -157,7 +157,7 @@ public class TransactionMetadataIT extends AbstractAsyncEngineConnectorTest {
     @Override
     protected void assertRecordTransactionMetadata(SourceRecord record, String beginTxId, long expectedTotalOrder, long expectedCollectionOrder) {
         final Struct change = ((Struct) record.value()).getStruct("transaction");
-        final Map<String, Object> offset = (Map<String, Object>) record.sourceOffset();
+        final Map<String, ?> offset = record.sourceOffset();
         final String expectedId = Arrays.stream(beginTxId.split(":")).findFirst().get();
         final String expectedTxId = String.format("%s:%s", expectedId, offset.get("commit_lsn"));
 
