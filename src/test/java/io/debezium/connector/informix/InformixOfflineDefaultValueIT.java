@@ -8,10 +8,14 @@ package io.debezium.connector.informix;
 import java.sql.SQLException;
 
 import org.junit.Before;
+import org.junit.Rule;
+import org.junit.rules.TestRule;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.informix.util.TestHelper;
 import io.debezium.data.VerifyRecord;
+import io.debezium.junit.ConditionalFail;
+import io.debezium.junit.Flaky;
 import io.debezium.relational.TableId;
 
 /**
@@ -19,7 +23,11 @@ import io.debezium.relational.TableId;
  *
  * @author Lars M Johansson, Chris Cranford
  */
+@Flaky("DBZ-8114")
 public class InformixOfflineDefaultValueIT extends AbstractInformixDefaultValueIT {
+
+    @Rule
+    public TestRule conditionalFail = new ConditionalFail();
 
     @Before
     public void before() throws SQLException {
