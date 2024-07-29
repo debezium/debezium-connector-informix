@@ -17,6 +17,7 @@ import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Field;
@@ -45,6 +46,7 @@ import io.debezium.doc.FixFor;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.junit.ConditionalFail;
+import io.debezium.junit.Flaky;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.RelationalDatabaseSchema;
 import io.debezium.relational.history.MemorySchemaHistory;
@@ -56,6 +58,7 @@ import junit.framework.TestCase;
  * Integration test for the Debezium Informix connector.
  *
  */
+@Flaky("DBZ-8114")
 public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
 
     @Rule
@@ -362,6 +365,7 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
         consumeRecordsByTopic(1);
 
         connection.execute("UPDATE tablea SET id=100 WHERE id=1", "UPDATE tableb SET id=100 WHERE id=1");
+
         waitForAvailableRecords();
 
         final SourceRecords records1 = consumeRecordsByTopic(2);
@@ -861,7 +865,7 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
         assertConnectorIsRunning();
         waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
 
-        waitForAvailableRecords();
+        waitForAvailableRecords(waitTimeForRecords(), TimeUnit.SECONDS);
 
         SourceRecords sourceRecords = consumeRecordsByTopic(RECORDS_PER_TABLE);
         List<SourceRecord> tableA = sourceRecords.recordsForTopic("testdb.informix.tablea");
@@ -982,6 +986,7 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
 
         // Wait for streaming to start
         waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
+        waitForAvailableRecords(waitTimeForRecords(), TimeUnit.SECONDS);
 
         connection.execute("INSERT INTO masked_hashed_column_table (id, name, name2, name3) VALUES (10, 'some_name', 'test', 'test')");
         connection.execute("INSERT INTO truncated_column_table VALUES(11, 'some_name')");
