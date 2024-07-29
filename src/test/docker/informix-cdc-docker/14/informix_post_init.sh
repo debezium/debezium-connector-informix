@@ -1,11 +1,9 @@
 #!/bin/bash
 
-dbaccess < $INFORMIXDIR/etc/syscdcv1.sql
+dbaccess sysadmin $BASEDIR/sql/informix_extend_root.sql >>$INIT_LOG 2>&1
 
-dbaccess < $INFORMIXDIR/etc/testdb.sql
+dbaccess sysadmin $BASEDIR/sql/informix_sbspace.sql >>$INIT_LOG 2>&1
 
-# cat /dev/null > $INFORMIX_DATA_DIR/spaces/rootdbs.001 > $INFORMIX_DATA_DIR/spaces/rootdbs.002
-# chmod 660 $INFORMIX_DATA_DIR/spaces/rootdbs.001 $INFORMIX_DATA_DIR/spaces/rootdbs.002
-# onspaces -c -d rootdbs1 -p $INFORMIX_DATA_DIR/spaces/rootdbs.001 -o 0 -s 350000
-# onspaces -c -d rootdbs2 -p $INFORMIX_DATA_DIR/spaces/rootdbs.002 -o 0 -s 350000
+dbaccess sysadmin $INFORMIXDIR/etc/syscdcv1.sql >>$INIT_LOG 2>&1
 
+dbaccess sysadmin $INFORMIXDIR/etc/testdb.sql >>$INIT_LOG 2>&1
