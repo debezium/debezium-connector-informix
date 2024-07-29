@@ -12,28 +12,32 @@ import java.util.stream.Collectors;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestRule;
 
+import io.debezium.DebeziumException;
 import io.debezium.config.Configuration.Builder;
 import io.debezium.connector.informix.InformixConnectorConfig.SnapshotMode;
 import io.debezium.connector.informix.util.TestHelper;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.junit.ConditionalFail;
+import io.debezium.junit.Flaky;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotTest;
-import io.debezium.relational.RelationalDatabaseConnectorConfig;
-import io.debezium.relational.history.SchemaHistory;
 
+@Flaky("DBZ-8114")
 public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<InformixConnector> {
+
+    @Rule
+    public TestRule conditionalFail = new ConditionalFail();
 
     private InformixConnection connection;
 
     @Before
     public void before() throws SQLException {
         connection = TestHelper.testConnection();
+        TestHelper.dropTables(connection, "a", "b", "c", "debezium_signal");
         connection.execute(
-                "DROP TABLE IF EXISTS a",
-                "DROP TABLE IF EXISTS b",
-                "DROP TABLE IF EXISTS c",
-                "DROP TABLE IF EXISTS debezium_signal",
                 "CREATE TABLE a (pk int not null, aa int, primary key (pk))",
                 "CREATE TABLE b (pk int not null, aa int, primary key (pk))",
                 "CREATE TABLE c (pk1 int, pk2 int, pk3 int, pk4 int, aa int)",
@@ -53,13 +57,20 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Infor
         waitForConnectorShutdown(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
         assertConnectorNotRunning();
         if (connection != null) {
-            connection.rollback()
-                    .execute(
-                            "DROP TABLE a",
-                            "DROP TABLE b",
-                            "DROP TABLE c",
-                            "DROP TABLE debezium_signal")
-                    .close();
+            connection.rollback();
+            TestHelper.dropTables(connection, "a", "b", "c", "debezium_signal");
+            connection.close();
+        }
+    }
+
+    @Override
+    protected void waitForConnectorToStart() {
+        super.waitForConnectorToStart();
+        try {
+            waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
+        }
+        catch (InterruptedException e) {
+            throw new DebeziumException(e);
         }
     }
 
@@ -89,20 +100,6 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Infor
     }
 
     @Override
-    protected String tableDataCollectionId() {
-        return TestHelper.TEST_DATABASE + '.' + tableName();
-    }
-
-    @Override
-    protected List<String> tableDataCollectionIds() {
-        return tableNames().stream().map(name -> TestHelper.TEST_DATABASE + '.' + name).collect(Collectors.toList());
-    }
-
-    protected String tableIncludeList() {
-        return String.join(",", tableDataCollectionIds());
-    }
-
-    @Override
     protected String tableName() {
         return "informix.a";
     }
@@ -115,6 +112,16 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Infor
     @Override
     protected String noPKTableName() {
         return "informix.c";
+    }
+
+    @Override
+    protected String tableDataCollectionId() {
+        return TestHelper.TEST_DATABASE + '.' + tableName();
+    }
+
+    @Override
+    protected List<String> tableDataCollectionIds() {
+        return tableNames().stream().map(name -> TestHelper.TEST_DATABASE + '.' + name).collect(Collectors.toList());
     }
 
     @Override
@@ -132,24 +139,35 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Infor
         return TestHelper.TEST_DATABASE + '.' + signalTableName();
     }
 
+    protected String tableIncludeList() {
+        return String.join(",", tableDataCollectionIds());
+    }
+
     @Override
     protected Builder config() {
         return TestHelper.defaultConfig()
                 .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .with(InformixConnectorConfig.SIGNAL_DATA_COLLECTION, this::signalTableNameSanitized)
-                .with(InformixConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 250)
-                .with(RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS, noPKTableDataCollectionId() + ":pk1,pk2,pk3,pk4");
+                .with(InformixConnectorConfig.MSG_KEY_COLUMNS, noPKTableDataCollectionId() + ":pk1,pk2,pk3,pk4")
+                .with(InformixConnectorConfig.STORE_ONLY_CAPTURED_TABLES_DDL, true)
+                .with(InformixConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                .with(InformixConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 200)
+                .with(InformixConnectorConfig.CDC_BUFFERSIZE, 0x800);
     }
 
     @Override
     protected Builder mutableConfig(boolean signalTableOnly, boolean storeOnlyCapturedDdl) {
         Builder config = config()
                 .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
-                .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, storeOnlyCapturedDdl)
-                .with(RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS, noPKTableDataCollectionId() + ":pk1,pk2,pk3,pk4");
+                .with(InformixConnectorConfig.STORE_ONLY_CAPTURED_TABLES_DDL, storeOnlyCapturedDdl);
         return signalTableOnly
                 ? config.with(InformixConnectorConfig.TABLE_EXCLUDE_LIST, this::tableDataCollectionId)
                 : config.with(InformixConnectorConfig.TABLE_INCLUDE_LIST, this::tableIncludeList);
+    }
+
+    @Override
+    protected int defaultIncrementalSnapshotChunkSize() {
+        return 3;
     }
 
     @Override

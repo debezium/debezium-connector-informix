@@ -68,6 +68,7 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
          * Perform a snapshot of the schema but no data upon initial startup of a connector.
          * @deprecated to be removed in Debezium 3.0, replaced by {{@link #NO_DATA}}
          */
+        @Deprecated
         SCHEMA_ONLY("schema_only"),
 
         /**
@@ -340,7 +341,7 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
     public static final Field CDC_TIMEOUT = Field.create("cdc.timeout")
             .withDisplayName("CDC Engine timeout")
             .withType(ConfigDef.Type.INT)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 0))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 1))
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
             .withDescription("Specifies a timeout to interrupt blocking to wait on an event, in seconds. "
@@ -359,8 +360,8 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
                     PORT,
                     USER,
                     PASSWORD,
-                    QUERY_TIMEOUT_MS,
-                    DATABASE_NAME)
+                    DATABASE_NAME,
+                    QUERY_TIMEOUT_MS)
             .connector(
                     SNAPSHOT_MODE,
                     SNAPSHOT_ISOLATION_MODE,
@@ -373,7 +374,6 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
                     SCHEMA_EXCLUDE_LIST,
                     INCLUDE_SCHEMA_COMMENTS,
                     INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES,
-                    SNAPSHOT_MAX_THREADS,
                     DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY)
             .create();
 
