@@ -500,6 +500,12 @@
                                                         <source>${project.basedir}/src/test/docker/informix-cdc-docker/12/informix_init.sh</source>
                                                         <outputDirectory>scripts</outputDirectory>
                                                         <lineEnding>unix</lineEnding>
+                                                        <fileMode>755</fileMode>
+                                                    </file>
+                                                    <file>
+                                                        <source>${project.basedir}/src/test/docker/informix-cdc-docker/12/testdb.sql</source>
+                                                        <outputDirectory>informix/etc</outputDirectory>
+                                                        <lineEnding>unix</lineEnding>
                                                     </file>
                                                 </files>
                                             </inline>
@@ -550,6 +556,7 @@
                                                         <source>${project.basedir}/src/test/docker/informix-cdc-docker/14/informix_post_init.sh</source>
                                                         <outputDirectory>config</outputDirectory>
                                                         <lineEnding>unix</lineEnding>
+                                                        <fileMode>755</fileMode>
                                                     </file>
                                                     <file>
                                                         <source>${project.basedir}/src/test/docker/informix-cdc-docker/14/testdb.sql</source>

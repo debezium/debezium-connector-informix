@@ -17,7 +17,7 @@ import io.debezium.pipeline.spi.Offsets;
 import io.debezium.spi.snapshot.Snapshotter;
 
 /**
- * This is a small class used in PostgresConnectorIT to test a custom snapshot
+ * This is a small class used in CustomSnapshotterIT to test a custom snapshot
  *
  * It is tightly coupled to the test there, but needs to be placed here in order
  * to allow for class loading to work
@@ -34,10 +34,8 @@ public class CustomTestSnapshot extends SelectAllSnapshotQuery implements Snapsh
     @Override
     public void injectBeanRegistry(BeanRegistry beanRegistry) {
 
-        Offsets<InformixPartition, InformixOffsetContext> db2OffsetContextOffsets = beanRegistry.lookupByName(StandardBeanNames.OFFSETS, Offsets.class);
-        for (InformixOffsetContext offset : db2OffsetContextOffsets.getOffsets().values()) {
-            hasState = offset != null;
-        }
+        Offsets<InformixPartition, InformixOffsetContext> informixOffsets = beanRegistry.lookupByName(StandardBeanNames.OFFSETS, Offsets.class);
+        hasState = informixOffsets.getTheOnlyOffset() != null;
     }
 
     @Override
