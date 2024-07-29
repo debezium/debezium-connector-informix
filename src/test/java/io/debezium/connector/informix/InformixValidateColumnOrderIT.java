@@ -11,6 +11,7 @@ import java.sql.SQLException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Struct;
@@ -30,15 +31,12 @@ import io.debezium.util.Strings;
 public class InformixValidateColumnOrderIT extends AbstractAsyncEngineConnectorTest {
 
     private static final String testTableName = "test_column_order";
-    private static final Map<String, String> testTableColumns = new LinkedHashMap<>() {
-        {
-            put("id", "int");
-            put("name", "varchar(50)");
-            put("age", "int");
-            put("gender", "char(10)");
-            put("address", "varchar(50)");
-        }
-    };
+    private static final Map<String, String> testTableColumns = Map.of(
+            "id", "int",
+            "name", "varchar(50)",
+            "age", "int",
+            "gender", "char(10)",
+            "address", "varchar(50)");
     private InformixConnection connection;
 
     public static void assertRecordInRightOrder(Struct record, Map<String, String> recordToBeCheck) {
@@ -86,17 +84,15 @@ public class InformixValidateColumnOrderIT extends AbstractAsyncEngineConnectorT
         assertConnectorIsRunning();
 
         waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
+        waitForAvailableRecords(waitTimeForRecords(), TimeUnit.SECONDS);
 
         // insert a record
-        Map<String, String> recordToBeInsert = new LinkedHashMap<>() {
-            {
-                put("id", "1");
-                put("name", "cc");
-                put("age", "18");
-                put("gender", "male");
-                put("address", "ff:ff:ff:ff:ff:ff");
-            }
-        };
+        Map<String, String> recordToBeInsert = Map.of(
+                "id", "1",
+                "name", "cc",
+                "age", "18",
+                "gender", "male",
+                "address", "ff:ff:ff:ff:ff:ff");
         connection.execute(String.format("insert into %s(%s) values(\"%s\")", testTableName,
                 Strings.join(", ", recordToBeInsert.keySet()),
                 Strings.join("\", \"", recordToBeInsert.values())));
@@ -119,15 +115,12 @@ public class InformixValidateColumnOrderIT extends AbstractAsyncEngineConnectorT
     public void testColumnOrderWhileUpdate() throws Exception {
 
         // insert a record for testing update
-        Map<String, String> recordToBeUpdate = new LinkedHashMap<>() {
-            {
-                put("id", "2");
-                put("name", "cc");
-                put("age", "18");
-                put("gender", "male");
-                put("address", "ff:ff:ff:ff:ff:ff");
-            }
-        };
+        Map<String, String> recordToBeUpdate = Map.of(
+                "id", "2",
+                "name", "cc",
+                "age", "18",
+                "gender", "male",
+                "address", "ff:ff:ff:ff:ff:ff");
         connection.execute(String.format("insert into %s(%s) values(\"%s\")", testTableName,
                 Strings.join(", ", recordToBeUpdate.keySet()),
                 Strings.join("\", \"", recordToBeUpdate.values())));
@@ -140,14 +133,15 @@ public class InformixValidateColumnOrderIT extends AbstractAsyncEngineConnectorT
         assertConnectorIsRunning();
 
         waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
+        waitForAvailableRecords(waitTimeForRecords(), TimeUnit.SECONDS);
 
         Map<String, String> recordAfterUpdate = new LinkedHashMap<>(recordToBeUpdate);
         // new value
         recordAfterUpdate.put("address", "00:00:00:00:00:00");
 
         // update
-        connection.execute(String.format("update %s set address = \"%s\" where id = \"%s\"",
-                testTableName, recordAfterUpdate.get("address"), recordToBeUpdate.get("id")));
+        connection.execute(String.format("update %s set address = \"%s\" where id = \"%s\"", testTableName,
+                recordAfterUpdate.get("address"), recordToBeUpdate.get("id")));
 
         waitForAvailableRecords();
 
@@ -170,16 +164,14 @@ public class InformixValidateColumnOrderIT extends AbstractAsyncEngineConnectorT
     public void testColumnOrderWhileDelete() throws Exception {
 
         // insert a record to delete
-        Map<String, String> recordToBeDelete = new LinkedHashMap<>() {
-            {
-                put("id", "3");
-                put("name", "cc");
-                put("age", "18");
-                put("gender", "male");
-                put("address", "ff:ff:ff:ff:ff:ff");
-            }
-        };
-        connection.execute(String.format("insert into %s(%s) values(\"%s\")", testTableName, Strings.join(", ", recordToBeDelete.keySet()),
+        Map<String, String> recordToBeDelete = Map.of(
+                "id", "3",
+                "name", "cc",
+                "age", "18",
+                "gender", "male",
+                "address", "ff:ff:ff:ff:ff:ff");
+        connection.execute(String.format("insert into %s(%s) values(\"%s\")", testTableName,
+                Strings.join(", ", recordToBeDelete.keySet()),
                 Strings.join("\", \"", recordToBeDelete.values())));
 
         final Configuration config = TestHelper.defaultConfig()
@@ -191,6 +183,7 @@ public class InformixValidateColumnOrderIT extends AbstractAsyncEngineConnectorT
         assertConnectorIsRunning();
 
         waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
+        waitForAvailableRecords(waitTimeForRecords(), TimeUnit.SECONDS);
 
         connection.execute(String.format("delete from %s where id = \"%s\"", testTableName, recordToBeDelete.get("id")));
 

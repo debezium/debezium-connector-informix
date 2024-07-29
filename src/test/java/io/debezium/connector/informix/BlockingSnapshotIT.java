@@ -16,14 +16,18 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestRule;
 
+import io.debezium.DebeziumException;
+import io.debezium.config.Configuration;
 import io.debezium.config.Configuration.Builder;
 import io.debezium.connector.informix.InformixConnectorConfig.SnapshotMode;
 import io.debezium.connector.informix.util.TestHelper;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.ConditionalFail;
+import io.debezium.junit.Flaky;
 import io.debezium.pipeline.AbstractBlockingSnapshotTest;
 import io.debezium.relational.history.SchemaHistory;
 
+@Flaky("DBZ-8114")
 public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
 
     @Rule
@@ -34,13 +38,11 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
     @Before
     public void before() throws SQLException {
         connection = TestHelper.testConnection();
+        TestHelper.dropTables(connection, "a", "b", "debezium_signal");
         connection.execute(
-                "DROP TABLE IF EXISTS a",
-                "DROP TABLE IF EXISTS b",
-                "DROP TABLE IF EXISTS debezium_signal",
                 "CREATE TABLE a (pk int not null, aa int, primary key (pk))",
                 "CREATE TABLE b (pk int not null, aa int, primary key (pk))",
-                "CREATE TABLE debezium_signal (id varchar(64), type varchar(32), data varchar(255))");
+                "CREATE TABLE debezium_signal (id varchar(64), type varchar(32), data lvarchar(2048))");
         initializeConnectorTestFramework();
         Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
         Print.disable();
@@ -56,12 +58,20 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
         waitForConnectorShutdown(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
         assertConnectorNotRunning();
         if (connection != null) {
-            connection.rollback()
-                    .execute(
-                            "DROP TABLE a",
-                            "DROP TABLE b",
-                            "DROP TABLE debezium_signal")
-                    .close();
+            connection.rollback();
+            TestHelper.dropTables(connection, "a", "b", "debezium_signal");
+            connection.close();
+        }
+    }
+
+    @Override
+    protected void waitForConnectorToStart() {
+        super.waitForConnectorToStart();
+        try {
+            waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
+        }
+        catch (InterruptedException e) {
+            throw new DebeziumException(e);
         }
     }
 
@@ -86,16 +96,6 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
     }
 
     @Override
-    protected String tableDataCollectionId() {
-        return TestHelper.TEST_DATABASE + '.' + tableName();
-    }
-
-    @Override
-    protected List<String> tableDataCollectionIds() {
-        return tableNames().stream().map(name -> TestHelper.TEST_DATABASE + '.' + name).collect(Collectors.toList());
-    }
-
-    @Override
     protected String tableName() {
         return "informix.a";
     }
@@ -106,13 +106,23 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
     }
 
     @Override
-    protected String signalTableName() {
-        return "informix.debezium_signal";
+    protected String tableDataCollectionId() {
+        return TestHelper.TEST_DATABASE + '.' + tableName();
     }
 
     @Override
     protected String escapedTableDataCollectionId() {
-        return "\\\"testdb\\\".\\\"informix\\\".\\\"a\\\"";
+        return "\\\"" + TestHelper.TEST_DATABASE + "\\\".\\\"informix\\\".\\\"a\\\"";
+    }
+
+    @Override
+    protected List<String> tableDataCollectionIds() {
+        return tableNames().stream().map(name -> TestHelper.TEST_DATABASE + '.' + name).collect(Collectors.toList());
+    }
+
+    @Override
+    protected String signalTableName() {
+        return "informix.debezium_signal";
     }
 
     @Override
@@ -126,6 +136,8 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
                 .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .with(InformixConnectorConfig.SIGNAL_DATA_COLLECTION, this::signalTableNameSanitized)
                 .with(InformixConnectorConfig.SNAPSHOT_MODE_TABLES, this::tableDataCollectionId)
+                .with(InformixConnectorConfig.STORE_ONLY_CAPTURED_TABLES_DDL, true)
+                .with(InformixConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
                 .with(InformixConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 100)
                 .with(InformixConnectorConfig.CDC_BUFFERSIZE, 0x800);
     }
@@ -134,6 +146,12 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
     protected Builder mutableConfig(boolean signalTableOnly, boolean storeOnlyCapturedDdl) {
         return config()
                 .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, storeOnlyCapturedDdl);
+    }
+
+    @Override
+    protected Configuration.Builder historizedMutableConfig(boolean signalTableOnly, boolean storeOnlyCapturedDdl) {
+        return mutableConfig(signalTableOnly, storeOnlyCapturedDdl)
+                .with(InformixConnectorConfig.INCLUDE_SCHEMA_CHANGES, true);
     }
 
     @Override
