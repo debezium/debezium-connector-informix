@@ -8,11 +8,12 @@ package io.debezium.connector.informix;
 import org.junit.Test;
 
 import io.debezium.connector.informix.util.TestHelper;
+import io.debezium.util.Testing;
 
 /**
  * Integration test for {@link InformixConnection}
  */
-public class InformixConnectionIT {
+public class InformixConnectionIT implements Testing {
 
     @Test
     public void shouldEnableDatabaseLogging() throws Exception {

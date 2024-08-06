@@ -25,12 +25,10 @@ if [ ${iter} -gt 120 ]; then
   exit
 fi
 
-dbaccess sysadmin $INFORMIX_DATA_DIR/extend_root.sql >>$INIT_LOG 2>&1
+dbaccess sysadmin $BASEDIR/sql/informix_extend_root.sql >>$INIT_LOG 2>&1
 
-if [ $DB_SBSPACE ]; then
-  dbaccess sysadmin $INFORMIX_DATA_DIR/sbspace.sql >>$INIT_LOG 2>&1
-fi
+dbaccess sysadmin $BASEDIR/sql/informix_sbspace.sql >>$INIT_LOG 2>&1
 
-dbaccess < $INFORMIXDIR/etc/syscdcv1.sql
+dbaccess sysadmin $INFORMIXDIR/etc/syscdcv1.sql >>$INIT_LOG 2>&1
 
-echo 'create database testdb with log;' | dbaccess - -
+dbaccess sysadmin $INFORMIXDIR/etc/testdb.sql >>$INIT_LOG 2>&1
