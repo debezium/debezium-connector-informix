@@ -15,6 +15,6 @@ import io.debezium.connector.common.CdcSourceTaskContext;
  */
 public class InformixTaskContext extends CdcSourceTaskContext {
     public InformixTaskContext(InformixConnectorConfig config, InformixDatabaseSchema schema) {
-        super(config.getContextName(), config.getLogicalName(), config.getCustomMetricTags(), schema::tableIds);
+        super(config, config.getCustomMetricTags(), schema::tableIds);
     }
 }
