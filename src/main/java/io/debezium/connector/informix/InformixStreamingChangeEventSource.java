@@ -69,7 +69,7 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
                 ? new InformixOffsetContext(
                         connectorConfig,
                         TxLogPosition.current(),
-                        false,
+                        null,
                         false)
                 : offsetContext;
     }
