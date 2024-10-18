@@ -130,7 +130,7 @@ public class InformixSnapshotChangeEventSource extends RelationalSnapshotChangeE
                 offset = new InformixOffsetContext(
                         connectorConfig,
                         TxLogPosition.valueOf(jdbcConnection.getMaxLsn()),
-                        false,
+                        null,
                         false);
             }
             ctx.offset = offset;
