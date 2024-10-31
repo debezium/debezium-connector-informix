@@ -129,8 +129,8 @@ public class InformixOffsetContext extends CommonOffsetContext<SourceInfo> {
             final Lsn changeLsn = Lsn.of((String) offset.get(SourceInfo.CHANGE_LSN_KEY));
             final Lsn beginLsn = Lsn.of((String) offset.get(SourceInfo.BEGIN_LSN_KEY));
 
-            SnapshotType snapshot = loadSnapshot((Map<String, Object>) offset);
-            boolean snapshotCompleted = Boolean.TRUE.equals(offset.get(SNAPSHOT_COMPLETED_KEY));
+            final SnapshotType snapshot = loadSnapshot(offset).orElse(null);
+            boolean snapshotCompleted = loadSnapshotCompleted(offset);
 
             return new InformixOffsetContext(connectorConfig, TxLogPosition.valueOf(commitLsn, changeLsn, beginLsn), snapshot, snapshotCompleted,
                     TransactionContext.load(offset), SignalBasedIncrementalSnapshotContext.load(offset, false));
