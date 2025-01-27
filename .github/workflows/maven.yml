@@ -11,6 +11,7 @@ on:
       - main
       - 2.*
       - 3.*
+      - 4.*
     paths-ignore:
       - '*.md'
 
