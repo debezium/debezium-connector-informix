@@ -94,9 +94,12 @@ jobs:
     strategy:
       # Runs each combination concurrently
       matrix:
-        profile: [ "assembly,informix12", "assembly,informix14" ]
+        profile:
+          - 'assembly,informix12'
+          - 'assembly,informix14'
+          - 'assembly,informix15'
       fail-fast: false
-    name: "Informix - ${{ matrix.profile }}"
+    name: 'Informix - ${{ matrix.profile }}'
     needs: [ build_core ]
     runs-on: ubuntu-latest
     steps:
