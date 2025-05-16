@@ -44,6 +44,8 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
 
     protected static final int DEFAULT_CDC_TIMEOUT = 5;
 
+    protected static final boolean DEFAULT_CDC_STOP_ON_CLOSE = true;
+
     /**
      * The set of predefined SnapshotMode options or aliases.
      */
@@ -350,6 +352,16 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
             .withValidation(Field::isNonNegativeInteger)
             .withDefault(DEFAULT_CDC_TIMEOUT);
 
+    public static final Field CDC_STOP_ON_CLOSE = Field.create("cdc.stop.logging.on.close")
+            .withDisplayName("CDC Stop Logging on Close")
+            .withType(ConfigDef.Type.BOOLEAN)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 2))
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("Whether Informix should stop Full Row Logging of watched tables when streaming is closed.")
+            .withValidation(Field::isBoolean)
+            .withDefault(DEFAULT_CDC_STOP_ON_CLOSE);
+
     public static final Field SOURCE_INFO_STRUCT_MAKER = CommonConnectorConfig.SOURCE_INFO_STRUCT_MAKER
             .withDefault(InformixSourceInfoStructMaker.class.getName());
 
@@ -367,7 +379,8 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
                     SNAPSHOT_ISOLATION_MODE,
                     INCREMENTAL_SNAPSHOT_CHUNK_SIZE,
                     CDC_BUFFERSIZE,
-                    CDC_TIMEOUT)
+                    CDC_TIMEOUT,
+                    CDC_STOP_ON_CLOSE)
             .events(SOURCE_INFO_STRUCT_MAKER)
             .excluding(
                     SCHEMA_INCLUDE_LIST,
@@ -392,6 +405,7 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
     private final JdbcConfiguration cdcJdbcConfig;
     private final int cdcBuffersize;
     private final int cdcTimeout;
+    private final boolean stopLoggingOnClose;
 
     private final SnapshotLockingMode snapshotLockingMode;
 
@@ -412,6 +426,7 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
         this.cdcJdbcConfig = JdbcConfiguration.adapt(getJdbcConfig().edit().with(JdbcConfiguration.DATABASE, CDC_DATABASE).build());
         this.cdcBuffersize = config.getInteger(CDC_BUFFERSIZE);
         this.cdcTimeout = config.getInteger(CDC_TIMEOUT);
+        this.stopLoggingOnClose = config.getBoolean(CDC_STOP_ON_CLOSE);
     }
 
     public String getDatabaseName() {
@@ -441,6 +456,10 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
 
     public int getCdcTimeout() {
         return cdcTimeout;
+    }
+
+    public boolean stopLoggingOnClose() {
+        return stopLoggingOnClose;
     }
 
     @Override

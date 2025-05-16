@@ -235,7 +235,8 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
         IfxCDCEngine.Builder builder = IfxCDCEngine
                 .builder(dataConnection.datasource())
                 .buffer(connectorConfig.getCdcBuffersize())
-                .timeout(connectorConfig.getCdcTimeout());
+                .timeout(connectorConfig.getCdcTimeout())
+                .stopLoggingOnClose(connectorConfig.stopLoggingOnClose());
 
         schema.tableIds().forEach((TableId tid) -> {
             String[] colNames = schema.tableFor(tid).retrieveColumnNames().toArray(String[]::new);
