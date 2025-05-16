@@ -480,8 +480,7 @@
             </activation>
             <properties>
                 <informix.version>12</informix.version>
-		<informix.image.registry>quay.io/debezium</informix.image.registry>
-                <informix.image>ibmcom-informix-developer-database</informix.image>
+		        <informix.image.registry>docker.io/ibmcom</informix.image.registry>
                 <informix.image.tag>12.10.FC12W1DE</informix.image.tag>
                 <informix.run.wait.log>Logical Log \d Complete</informix.run.wait.log>
             </properties>
@@ -532,8 +531,6 @@
             </activation>
             <properties>
                 <informix.version>14</informix.version>
-                <informix.image.registry>icr.io/informix</informix.image.registry>
-                <informix.image.tag>14.10.FC9W1DE</informix.image.tag>
                 <informix.run.wait.log>SCHAPI: Started \d dbWorker threads</informix.run.wait.log>
             </properties>
             <build>
@@ -562,6 +559,62 @@
                                                     </file>
                                                     <file>
                                                         <source>${project.basedir}/src/test/docker/informix-cdc-docker/14/testdb.sql</source>
+                                                        <outputDirectory>informix/etc</outputDirectory>
+                                                        <lineEnding>unix</lineEnding>
+                                                    </file>
+                                                </files>
+                                            </inline>
+                                            <targetDir>/opt/ibm</targetDir>
+                                            <user>informix:informix</user>
+                                        </assembly>
+                                    </build>
+                                </image>
+                            </images>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>informix15</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+                <property>
+                    <name>informix15</name>
+                </property>
+            </activation>
+            <properties>
+                <informix.version>15</informix.version>
+                <informix.image>informix-developer-edition-database</informix.image>
+                <informix.image.tag>15.0</informix.image.tag>
+                <informix.run.wait.log>SCHAPI: Started \d dbWorker threads</informix.run.wait.log>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>io.fabric8</groupId>
+                        <artifactId>docker-maven-plugin</artifactId>
+                        <configuration>
+                            <images>
+                                <image>
+                                    <run>
+                                        <env>
+                                            <RUN_FILE_POST_INIT>informix_post_init.sh</RUN_FILE_POST_INIT>
+                                        </env>
+                                    </run>
+                                    <build>
+                                        <assembly>
+                                            <inline>
+                                                <includeBaseDirectory>false</includeBaseDirectory>
+                                                <files>
+                                                    <file>
+                                                        <source>${project.basedir}/src/test/docker/informix-cdc-docker/15/informix_post_init.sh</source>
+                                                        <outputDirectory>config</outputDirectory>
+                                                        <lineEnding>unix</lineEnding>
+                                                        <fileMode>755</fileMode>
+                                                    </file>
+                                                    <file>
+                                                        <source>${project.basedir}/src/test/docker/informix-cdc-docker/15/testdb.sql</source>
                                                         <outputDirectory>informix/etc</outputDirectory>
                                                         <lineEnding>unix</lineEnding>
                                                     </file>
