@@ -195,7 +195,7 @@ public class InformixConnection extends JdbcConnection {
 
             @Override
             public Connection getConnection(String username, String password) throws SQLException {
-                JdbcConfiguration config = JdbcConfiguration.copy(config()).with(JdbcConfiguration.USER, username).with(JdbcConfiguration.PASSWORD, password).build();
+                JdbcConfiguration config = JdbcConfiguration.copy(config()).withUser(username).withPassword(password).build();
                 return FACTORY.connect(config);
             }
 
