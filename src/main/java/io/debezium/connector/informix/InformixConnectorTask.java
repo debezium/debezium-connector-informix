@@ -121,7 +121,7 @@ public class InformixConnectorTask extends BaseSourceTask<InformixPartition, Inf
                 .loggingContextSupplier(() -> taskContext.configureLoggingContext(CONTEXT_NAME))
                 .build();
 
-        errorHandler = new ErrorHandler(InformixConnector.class, connectorConfig, queue, errorHandler);
+        errorHandler = new InformixErrorHandler(connectorConfig, queue, errorHandler);
 
         final InformixEventMetadataProvider metadataProvider = new InformixEventMetadataProvider();
 
