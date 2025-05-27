@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.informix;
 
+import static io.debezium.heartbeat.HeartbeatErrorHandler.DEFAULT_NOOP_ERRORHANDLER;
+
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
@@ -141,7 +143,11 @@ public class InformixConnectorTask extends BaseSourceTask<InformixPartition, Inf
                 connectorConfig.getTableFilters().dataCollectionFilter(),
                 DataChangeEvent::new,
                 null,
-                connectorConfig.createHeartbeat(topicNamingStrategy, schemaNameAdjuster, null, null),
+                connectorConfig.createHeartbeat(
+                        topicNamingStrategy,
+                        schemaNameAdjuster,
+                        () -> new InformixConnection(connectorConfig.getJdbcConfig()),
+                        DEFAULT_NOOP_ERRORHANDLER),
                 schemaNameAdjuster,
                 new InformixTransactionMonitor(
                         connectorConfig,

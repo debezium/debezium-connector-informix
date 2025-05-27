@@ -19,7 +19,6 @@ import io.debezium.config.Field;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.document.Document;
-import io.debezium.heartbeat.DatabaseHeartbeatImpl;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.relational.ColumnFilterMode;
 import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
@@ -292,14 +291,21 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
 
     public static final Field SNAPSHOT_MODE = Field.create("snapshot.mode")
             .withDisplayName("Snapshot mode")
-            .withEnum(SnapshotMode.class, SnapshotMode.INITIAL)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 0))
+            .withEnum(SnapshotMode.class, SnapshotMode.INITIAL)
             .withWidth(Width.SHORT)
-            .withImportance(Importance.LOW)
+            .withImportance(Importance.MEDIUM)
             .withDescription("The criteria for running a snapshot upon startup of the connector. "
-                    + "Options include: "
-                    + "'initial' (the default) to specify the connector should run a snapshot only when no offsets are available for the logical server name; "
-                    + "'schema_only' to specify the connector should run a snapshot of the schema when no offsets are available for the logical server name. ");
+                    + "Select one of the following snapshot options: "
+                    + "'always': The connector runs a snapshot every time that it starts. After the snapshot completes, the connector begins to stream changes from the transaction log.; "
+                    + "'initial' (default): If the connector does not detect any offsets for the logical server name, it runs a snapshot that captures the current full state of the configured tables. After the snapshot completes, the connector begins to stream changes from the transaction log.; "
+                    + "'initial_only': The connector performs a snapshot as it does for the 'initial' option, but after the connector completes the snapshot, it stops, and does not stream changes from the transaction log.; "
+                    + "'schema_only' (deprecated): See no_data; "
+                    + "'no_data': If the connector does not detect any offsets for the logical server name, it runs a snapshot that captures only the schema (table structures), but not any table data. After the snapshot completes, the connector begins to stream changes from the transaction log.; "
+                    + "'recovery': The connector performs a snapshot that captures only the database schema history. The connector then transitions to streaming from the transaction log. Use this setting to restore a corrupted or lost database schema history topic. Do not use if the database schema was modified after the connector stopped.; "
+                    + "'when_needed': After the connector starts, it performs a snapshot only if it detects one of the following circumstances: It cannot detect any topic offsets. Or, a previously recorded offset specifies a log position that is not available on the server.; "
+                    + "'configuration_based': Allows control of snapshot behavior by setting connectors properties prefixed with 'snapshot.mode.configuration.based'.; "
+                    + "'custom': The connector loads a custom class  to specify how the connector performs snapshots. For more information, see Custom snapshotter SPI in the Informix connector documentation.; ");
 
     public static final Field SNAPSHOT_ISOLATION_MODE = Field.create("snapshot.isolation.mode")
             .withDisplayName("Snapshot isolation mode")
@@ -322,7 +328,7 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
             .withEnum(SnapshotLockingMode.class, SnapshotLockingMode.EXCLUSIVE)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 2))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 4))
             .withDescription(
                     "Controls how the connector holds locks on tables while performing the schema snapshot when `snapshot.isolation.mode` is `REPEATABLE_READ` or `EXCLUSIVE`. The 'exclusive' "
                             + "which means the connector will hold a table lock for exclusive table access for just the initial portion of the snapshot "
@@ -365,6 +371,9 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
     public static final Field SOURCE_INFO_STRUCT_MAKER = CommonConnectorConfig.SOURCE_INFO_STRUCT_MAKER
             .withDefault(InformixSourceInfoStructMaker.class.getName());
 
+    public static final Field FIELD_NAME_ADJUSTMENT_MODE = CommonConnectorConfig.FIELD_NAME_ADJUSTMENT_MODE
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 8));
+
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("Informix")
             .type(
@@ -377,17 +386,19 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
             .connector(
                     SNAPSHOT_MODE,
                     SNAPSHOT_ISOLATION_MODE,
+                    SNAPSHOT_QUERY_MODE,
+                    SNAPSHOT_QUERY_MODE_CUSTOM_NAME,
+                    SNAPSHOT_LOCKING_MODE,
+                    SNAPSHOT_LOCKING_MODE_CUSTOM_NAME,
+                    BINARY_HANDLING_MODE,
+                    SCHEMA_NAME_ADJUSTMENT_MODE,
+                    FIELD_NAME_ADJUSTMENT_MODE,
                     INCREMENTAL_SNAPSHOT_CHUNK_SIZE,
                     CDC_BUFFERSIZE,
                     CDC_TIMEOUT,
                     CDC_STOP_ON_CLOSE)
             .events(SOURCE_INFO_STRUCT_MAKER)
-            .excluding(
-                    SCHEMA_INCLUDE_LIST,
-                    SCHEMA_EXCLUDE_LIST,
-                    INCLUDE_SCHEMA_COMMENTS,
-                    INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES,
-                    DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY)
+            .excluding(INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES)
             .create();
 
     protected static ConfigDef configDef() {

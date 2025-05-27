@@ -5,9 +5,6 @@
  */
 package io.debezium.connector.informix;
 
-import static io.debezium.connector.informix.util.TestHelper.TYPE_LENGTH_PARAMETER_KEY;
-import static io.debezium.connector.informix.util.TestHelper.TYPE_NAME_PARAMETER_KEY;
-import static io.debezium.connector.informix.util.TestHelper.TYPE_SCALE_PARAMETER_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 import static org.junit.Assert.assertNull;
@@ -45,6 +42,8 @@ import io.debezium.data.SpecialValueDecimal;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
+import io.debezium.heartbeat.DatabaseHeartbeatImpl;
+import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.junit.ConditionalFail;
 import io.debezium.junit.Flaky;
@@ -78,6 +77,7 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
                 "DROP TABLE IF EXISTS truncate_table",
                 "DROP TABLE IF EXISTS dt_table",
                 "DROP TABLE IF EXISTS always_snapshot",
+                "DROP TABLE IF EXISTS test_heartbeat_table",
                 "CREATE TABLE tablea (id int not null, cola varchar(30), primary key (id))",
                 "CREATE TABLE tableb (id int not null, colb varchar(30), primary key (id))",
                 "CREATE TABLE masked_hashed_column_table (id int not null, name varchar(255), name2 varchar(255), name3 varchar(20), primary key (id))",
@@ -85,6 +85,7 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
                 "CREATE TABLE truncate_table (id int not null, name varchar(20), primary key (id))",
                 "CREATE TABLE dt_table (id int not null, c1 int, c2 int, c3a numeric(5,2), c3b varchar(128), f1 float(14), f2 decimal(8,4), primary key(id))",
                 "CREATE TABLE always_snapshot (id int primary key not null, data varchar(50) not null)",
+                "CREATE TABLE test_heartbeat_table (text varchar(255))",
                 "INSERT INTO tablea VALUES(1, 'a')");
         initializeConnectorTestFramework();
         Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
@@ -109,7 +110,8 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
                             "DROP TABLE truncated_column_table",
                             "DROP TABLE truncate_table",
                             "DROP TABLE dt_table",
-                            "DROP TABLE IF EXISTS always_snapshot")
+                            "DROP TABLE always_snapshot",
+                            "DROP TABLE test_heartbeat_table")
                     .close();
         }
     }
@@ -1079,22 +1081,22 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
         assertThat(before.schema().field("c2").schema().parameters()).isNull();
 
         assertThat(before.schema().field("c3a").schema().parameters())
-                .contains(entry(TYPE_NAME_PARAMETER_KEY, "DECIMAL"),
-                        entry(TYPE_LENGTH_PARAMETER_KEY, "5"),
-                        entry(TYPE_SCALE_PARAMETER_KEY, "2"));
+                .contains(entry(TestHelper.TYPE_NAME_PARAMETER_KEY, "DECIMAL"),
+                        entry(TestHelper.TYPE_LENGTH_PARAMETER_KEY, "5"),
+                        entry(TestHelper.TYPE_SCALE_PARAMETER_KEY, "2"));
 
         assertThat(before.schema().field("c3b").schema().parameters())
-                .contains(entry(TYPE_NAME_PARAMETER_KEY, "VARCHAR"),
-                        entry(TYPE_LENGTH_PARAMETER_KEY, "128"));
+                .contains(entry(TestHelper.TYPE_NAME_PARAMETER_KEY, "VARCHAR"),
+                        entry(TestHelper.TYPE_LENGTH_PARAMETER_KEY, "128"));
 
         assertThat(before.schema().field("f1").schema().parameters())
-                .contains(entry(TYPE_NAME_PARAMETER_KEY, "FLOAT"),
-                        entry(TYPE_LENGTH_PARAMETER_KEY, "17"));
+                .contains(entry(TestHelper.TYPE_NAME_PARAMETER_KEY, "FLOAT"),
+                        entry(TestHelper.TYPE_LENGTH_PARAMETER_KEY, "17"));
 
         assertThat(before.schema().field("f2").schema().parameters())
-                .contains(entry(TYPE_NAME_PARAMETER_KEY, "DECIMAL"),
-                        entry(TYPE_LENGTH_PARAMETER_KEY, "8"),
-                        entry(TYPE_SCALE_PARAMETER_KEY, "4"));
+                .contains(entry(TestHelper.TYPE_NAME_PARAMETER_KEY, "DECIMAL"),
+                        entry(TestHelper.TYPE_LENGTH_PARAMETER_KEY, "8"),
+                        entry(TestHelper.TYPE_SCALE_PARAMETER_KEY, "4"));
     }
 
     @Test
@@ -1204,7 +1206,7 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
     public void shouldCreateSnapshotSchemaOnlyRecovery() throws Exception {
 
         Configuration.Builder builder = TestHelper.defaultConfig()
-                .with(InformixConnectorConfig.SNAPSHOT_MODE, InformixConnectorConfig.SnapshotMode.INITIAL)
+                .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .with(InformixConnectorConfig.TABLE_INCLUDE_LIST, "testdb.informix.tablea")
                 .with(InformixConnectorConfig.SCHEMA_HISTORY, MemorySchemaHistory.class.getName());
 
@@ -1247,7 +1249,7 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
         final String pkField = "id";
 
         Configuration config = TestHelper.defaultConfig()
-                .with(InformixConnectorConfig.SNAPSHOT_MODE, InformixConnectorConfig.SnapshotMode.CUSTOM.getValue())
+                .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.CUSTOM)
                 .with(InformixConnectorConfig.SNAPSHOT_MODE_CUSTOM_NAME, CustomTestSnapshot.class.getName())
                 .with(CommonConnectorConfig.SNAPSHOT_MODE_TABLES, "testdb.informix.tablea,testdb.informix.tableb")
                 .with(CommonConnectorConfig.SNAPSHOT_QUERY_MODE, CommonConnectorConfig.SnapshotQueryMode.CUSTOM)
@@ -1300,7 +1302,7 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
         waitForConnectorShutdown(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
 
         config = TestHelper.defaultConfig()
-                .with(InformixConnectorConfig.SNAPSHOT_MODE, InformixConnectorConfig.SnapshotMode.CUSTOM.getValue())
+                .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.CUSTOM)
                 .with(InformixConnectorConfig.SNAPSHOT_MODE_CUSTOM_NAME, CustomTestSnapshot.class.getName())
                 .with(CommonConnectorConfig.SNAPSHOT_QUERY_MODE, CommonConnectorConfig.SnapshotQueryMode.CUSTOM)
                 .with(CommonConnectorConfig.SNAPSHOT_QUERY_MODE_CUSTOM_NAME, CustomTestSnapshot.class.getName())
@@ -1321,6 +1323,67 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
         VerifyRecord.isValidRead(s1recs.get(1), pkField, 2);
         VerifyRecord.isValidRead(s2recs.get(0), pkField, 1);
         VerifyRecord.isValidRead(s2recs.get(1), pkField, 2);
+    }
+
+    @Test()
+    @FixFor("DBZ-9081")
+    public void testHeartbeatExecuted() throws Exception {
+        final Configuration config = TestHelper.defaultConfig()
+                .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
+                .with(InformixConnectorConfig.TABLE_INCLUDE_LIST, "testdb.informix.tablea")
+                // A low heartbeat interval should make sure that a heartbeat message is emitted at least once during the test.
+                .with(Heartbeat.HEARTBEAT_INTERVAL, "100")
+                .build();
+
+        start(InformixConnector.class, config);
+        assertConnectorIsRunning();
+
+        // Wait for streaming to start
+        waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
+
+        connection.execute("INSERT INTO tablea VALUES (3,'aaa')");
+
+        waitForAvailableRecords();
+
+        SourceRecords sourceRecords = consumeAvailableRecordsByTopic();
+        assertThat(sourceRecords.recordsForTopic("testdb.informix.tablea")).hasSize(1);
+        assertThat(sourceRecords.recordsForTopic("__debezium-heartbeat.testdb")).hasSizeGreaterThan(0);
+    }
+
+    @Test()
+    @FixFor("DBZ-9081")
+    public void testHeartbeatActionQueryExecuted() throws Exception {
+        final Configuration config = TestHelper.defaultConfig()
+                .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
+                .with(InformixConnectorConfig.TABLE_INCLUDE_LIST, "testdb.informix.tablea,testdb.informix.test_heartbeat_table")
+                // A low heartbeat interval should make sure that a heartbeat message is emitted at least once during the test.
+                .with(Heartbeat.HEARTBEAT_INTERVAL, "100")
+                .with(DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY, "INSERT INTO test_heartbeat_table (text) VALUES ('test_heartbeat');")
+                .build();
+
+        start(InformixConnector.class, config);
+        assertConnectorIsRunning();
+
+        // Wait for streaming to start
+        waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
+
+        connection.execute("INSERT INTO tablea VALUES (3,'aaa')");
+
+        waitForAvailableRecords();
+
+        SourceRecords sourceRecords = consumeAvailableRecordsByTopic();
+        assertThat(sourceRecords.recordsForTopic("testdb.informix.tablea")).hasSize(1);
+        int numOfHeartbeats = sourceRecords.recordsForTopic("__debezium-heartbeat.testdb").size();
+        int numOfHeartbeatRecords = sourceRecords.recordsForTopic("testdb.informix.test_heartbeat_table").size();
+        assertThat(numOfHeartbeats).isGreaterThan(0);
+        assertThat(numOfHeartbeatRecords).isGreaterThan(0).isLessThanOrEqualTo(numOfHeartbeats);
+
+        // Confirm that the heartbeat.action.query was executed with the heartbeat. It is difficult to determine the
+        // exact amount of times the heartbeat will fire because the run time of the test will vary, but if there is
+        // anything in test_heartbeat_table then this test is confirmed.
+        int numOfHeartbeatActions = connection.queryAndMap("SELECT COUNT(*) FROM test_heartbeat_table;", rs -> rs.next() ? rs.getInt(1) : 0);
+        assertThat(numOfHeartbeatActions).isGreaterThan(0);
+
     }
 
     private void assertRecord(Struct record, List<SchemaAndValueField> expected) {
