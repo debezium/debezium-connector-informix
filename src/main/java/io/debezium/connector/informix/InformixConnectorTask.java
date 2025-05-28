@@ -10,6 +10,7 @@ import static io.debezium.heartbeat.HeartbeatErrorHandler.DEFAULT_NOOP_ERRORHAND
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.errors.ConnectException;
@@ -184,11 +185,21 @@ public class InformixConnectorTask extends BaseSourceTask<InformixPartition, Inf
     }
 
     @Override
+    protected String connectorName() {
+        return Module.name();
+    }
+
+    @Override
     protected List<SourceRecord> doPoll() throws InterruptedException {
 
         return queue.poll().stream()
                 .map(DataChangeEvent::getRecord)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    protected Optional<ErrorHandler> getErrorHandler() {
+        return Optional.of(errorHandler);
     }
 
     @Override
