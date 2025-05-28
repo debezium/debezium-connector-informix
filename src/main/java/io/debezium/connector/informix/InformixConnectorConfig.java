@@ -298,11 +298,14 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
             .withDescription("The criteria for running a snapshot upon startup of the connector. "
                     + "Select one of the following snapshot options: "
                     + "'always': The connector runs a snapshot every time that it starts. After the snapshot completes, the connector begins to stream changes from the transaction log.; "
-                    + "'initial' (default): If the connector does not detect any offsets for the logical server name, it runs a snapshot that captures the current full state of the configured tables. After the snapshot completes, the connector begins to stream changes from the transaction log. "
+                    + "'initial' (default): If the connector does not detect any offsets for the logical server name, it runs a snapshot that captures the current full state of the configured tables. After the snapshot completes, the connector begins to stream changes from the transaction log.; "
                     + "'initial_only': The connector performs a snapshot as it does for the 'initial' option, but after the connector completes the snapshot, it stops, and does not stream changes from the transaction log.; "
-                    + "'never': The connector does not run a snapshot. Upon first startup, the connector immediately begins reading from the beginning of the transaction log. "
-                    + "'exported': This option is deprecated; use 'initial' instead.; "
-                    + "'custom': The connector loads a custom class  to specify how the connector performs snapshots. For more information, see Custom snapshotter SPI in the PostgreSQL connector documentation.");
+                    + "'schema_only' (deprecated): See no_data; "
+                    + "'no_data': If the connector does not detect any offsets for the logical server name, it runs a snapshot that captures only the schema (table structures), but not any table data. After the snapshot completes, the connector begins to stream changes from the transaction log.; "
+                    + "'recovery': The connector performs a snapshot that captures only the database schema history. The connector then transitions to streaming from the transaction log. Use this setting to restore a corrupted or lost database schema history topic. Do not use if the database schema was modified after the connector stopped.; "
+                    + "'when_needed': After the connector starts, it performs a snapshot only if it detects one of the following circumstances: It cannot detect any topic offsets. Or, a previously recorded offset specifies a log position that is not available on the server.; "
+                    + "'configuration_based': Allows control of snapshot behavior by setting connectors properties prefixed with 'snapshot.mode.configuration.based'.; "
+                    + "'custom': The connector loads a custom class  to specify how the connector performs snapshots. For more information, see Custom snapshotter SPI in the Informix connector documentation.; ");
 
     public static final Field SNAPSHOT_ISOLATION_MODE = Field.create("snapshot.isolation.mode")
             .withDisplayName("Snapshot isolation mode")

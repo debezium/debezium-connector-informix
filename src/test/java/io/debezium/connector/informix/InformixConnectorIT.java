@@ -1347,7 +1347,7 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
 
         SourceRecords sourceRecords = consumeAvailableRecordsByTopic();
         assertThat(sourceRecords.recordsForTopic("testdb.informix.tablea")).hasSize(1);
-        assertThat(sourceRecords.recordsForTopic("__debezium-heartbeat.testdb")).hasSizeGreaterThanOrEqualTo(1);
+        assertThat(sourceRecords.recordsForTopic("__debezium-heartbeat.testdb")).hasSizeGreaterThan(0);
     }
 
     @Test()
@@ -1355,7 +1355,7 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
     public void testHeartbeatActionQueryExecuted() throws Exception {
         final Configuration config = TestHelper.defaultConfig()
                 .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
-                .with(InformixConnectorConfig.TABLE_INCLUDE_LIST, "testdb.informix.tablea")
+                .with(InformixConnectorConfig.TABLE_INCLUDE_LIST, "testdb.informix.tablea,testdb.informix.test_heartbeat_table")
                 // A low heartbeat interval should make sure that a heartbeat message is emitted at least once during the test.
                 .with(Heartbeat.HEARTBEAT_INTERVAL, "100")
                 .with(DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY, "INSERT INTO test_heartbeat_table (text) VALUES ('test_heartbeat');")
@@ -1374,13 +1374,16 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
         SourceRecords sourceRecords = consumeAvailableRecordsByTopic();
         assertThat(sourceRecords.recordsForTopic("testdb.informix.tablea")).hasSize(1);
         int numOfHeartbeats = sourceRecords.recordsForTopic("__debezium-heartbeat.testdb").size();
+        int numOfHeartbeatRecords = sourceRecords.recordsForTopic("testdb.informix.test_heartbeat_table").size();
+        assertThat(numOfHeartbeats).isGreaterThan(0);
+        assertThat(numOfHeartbeatRecords).isGreaterThan(0).isLessThanOrEqualTo(numOfHeartbeats);
 
         // Confirm that the heartbeat.action.query was executed with the heartbeat. It is difficult to determine the
         // exact amount of times the heartbeat will fire because the run time of the test will vary, but if there is
         // anything in test_heartbeat_table then this test is confirmed.
         int numOfHeartbeatActions = connection.queryAndMap("SELECT COUNT(*) FROM test_heartbeat_table;", rs -> rs.next() ? rs.getInt(1) : 0);
+        assertThat(numOfHeartbeatActions).isGreaterThan(0);
 
-        assertThat(numOfHeartbeatActions).isGreaterThanOrEqualTo(numOfHeartbeats);
     }
 
     private void assertRecord(Struct record, List<SchemaAndValueField> expected) {
