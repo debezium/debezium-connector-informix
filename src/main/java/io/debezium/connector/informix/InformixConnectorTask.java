@@ -108,7 +108,7 @@ public class InformixConnectorTask extends BaseSourceTask<InformixPartition, Inf
 
         final SnapshotterService snapshotterService = connectorConfig.getServiceRegistry().tryGetService(SnapshotterService.class);
 
-        validateAndLoadSchemaHistory(connectorConfig, dataConnection::validateLogPosition, previousOffsets, schema,
+        validateSchemaHistory(connectorConfig, dataConnection::validateLogPosition, previousOffsets, schema,
                 snapshotterService.getSnapshotter());
 
         taskContext = new InformixTaskContext(connectorConfig, schema);
