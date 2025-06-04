@@ -135,11 +135,7 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
         return TestHelper.defaultConfig()
                 .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .with(InformixConnectorConfig.SIGNAL_DATA_COLLECTION, this::signalTableNameSanitized)
-                .with(InformixConnectorConfig.SNAPSHOT_MODE_TABLES, this::tableDataCollectionId)
-                .with(InformixConnectorConfig.STORE_ONLY_CAPTURED_TABLES_DDL, true)
-                .with(InformixConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
-                .with(InformixConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 100)
-                .with(InformixConnectorConfig.CDC_BUFFERSIZE, 0x800);
+                .with(InformixConnectorConfig.SNAPSHOT_MODE_TABLES, this::tableDataCollectionId);
     }
 
     @Override

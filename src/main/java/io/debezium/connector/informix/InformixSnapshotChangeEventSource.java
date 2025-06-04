@@ -54,7 +54,7 @@ public class InformixSnapshotChangeEventSource extends RelationalSnapshotChangeE
 
     @Override
     protected SnapshotContext<InformixPartition, InformixOffsetContext> prepare(InformixPartition partition, boolean onDemand) {
-        return new InformixSnapshotContext(partition, jdbcConnection.getRealDatabaseName(), onDemand);
+        return new InformixSnapshotContext(partition, partition.getDatabaseName(), onDemand);
     }
 
     @Override

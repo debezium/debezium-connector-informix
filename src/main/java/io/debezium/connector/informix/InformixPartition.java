@@ -27,6 +27,10 @@ public class InformixPartition extends AbstractPartition implements Partition {
         return Collect.hashMapOf(PARTITION_KEY, databaseName);
     }
 
+    public String getDatabaseName() {
+        return databaseName;
+    }
+
     @Override
     public boolean equals(Object obj) {
         if (this == obj) {
