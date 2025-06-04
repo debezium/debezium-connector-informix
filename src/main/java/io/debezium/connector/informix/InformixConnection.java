@@ -62,31 +62,12 @@ public class InformixConnection extends JdbcConnection {
             JdbcConfiguration.PORT.withDefault(InformixConnectorConfig.PORT.defaultValueAsString()));
 
     /**
-     * actual name of the database, which could differ in casing from the database name given in the connector config.
-     */
-    private final String realDatabaseName;
-
-    /**
      * Creates a new connection using the supplied configuration.
      *
      * @param config {@link Configuration} instance, may not be null.
      */
     public InformixConnection(JdbcConfiguration config) {
         super(config, FACTORY, QUOTED_CHARACTER, QUOTED_CHARACTER);
-        realDatabaseName = retrieveRealDatabaseName().trim();
-    }
-
-    private String retrieveRealDatabaseName() {
-        try {
-            return queryAndMap(GET_DATABASE_NAME, singleResultMapper(rs -> rs.getString(1), "Could not retrieve database name"));
-        }
-        catch (SQLException e) {
-            throw new DebeziumException("Couldn't obtain database name", e);
-        }
-    }
-
-    public String getRealDatabaseName() {
-        return realDatabaseName;
     }
 
     /**

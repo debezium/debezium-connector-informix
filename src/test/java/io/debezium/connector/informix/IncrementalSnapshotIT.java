@@ -148,11 +148,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Infor
         return TestHelper.defaultConfig()
                 .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .with(InformixConnectorConfig.SIGNAL_DATA_COLLECTION, this::signalTableNameSanitized)
-                .with(InformixConnectorConfig.MSG_KEY_COLUMNS, noPKTableDataCollectionId() + ":pk1,pk2,pk3,pk4")
-                .with(InformixConnectorConfig.STORE_ONLY_CAPTURED_TABLES_DDL, true)
-                .with(InformixConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
-                .with(InformixConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 200)
-                .with(InformixConnectorConfig.CDC_BUFFERSIZE, 0x800);
+                .with(InformixConnectorConfig.MSG_KEY_COLUMNS, noPKTableDataCollectionId() + ":pk1,pk2,pk3,pk4");
     }
 
     @Override
@@ -163,11 +159,6 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Infor
         return signalTableOnly
                 ? config.with(InformixConnectorConfig.TABLE_EXCLUDE_LIST, this::tableDataCollectionId)
                 : config.with(InformixConnectorConfig.TABLE_INCLUDE_LIST, this::tableIncludeList);
-    }
-
-    @Override
-    protected int defaultIncrementalSnapshotChunkSize() {
-        return 3;
     }
 
     @Override

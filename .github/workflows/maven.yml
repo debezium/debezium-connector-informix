@@ -103,7 +103,7 @@ jobs:
           -Dhttp.keepAlive=false
           -Dmaven.wagon.http.pool=false
           -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
-          -Ddebezium.test.engine.waittime=13
-          -Ddebezium.test.records.waittime=13
-          -Ddebezium.test.records.waittime.after.nulls=13
+          -Ddebezium.test.engine.waittime=10
+          -Ddebezium.test.records.waittime=10
+          -Ddebezium.test.records.waittime.after.nulls=10
           -DfailFlakyTests=false

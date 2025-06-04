@@ -13,7 +13,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -79,12 +78,6 @@ public class InformixConnectorTask extends BaseSourceTask<InformixPartition, Inf
                 () -> new InformixConnection(connectorConfig.getCdcJdbcConfig()));
         dataConnection = connectionFactory.mainConnection();
         cdcConnection = cdcConnectionFactory.mainConnection();
-        try {
-            dataConnection.setAutoCommit(false);
-        }
-        catch (SQLException e) {
-            throw new ConnectException(e);
-        }
 
         final InformixValueConverters valueConverters = new InformixValueConverters(connectorConfig.getDecimalMode(), connectorConfig.getTemporalPrecisionMode(),
                 connectorConfig.binaryHandlingMode());
