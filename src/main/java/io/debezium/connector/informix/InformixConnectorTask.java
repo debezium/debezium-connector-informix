@@ -24,6 +24,7 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.common.BaseSourceTask;
+import io.debezium.connector.common.DebeziumHeaderProducer;
 import io.debezium.document.DocumentReader;
 import io.debezium.jdbc.DefaultMainConnectionProvidingConnectionFactory;
 import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
@@ -89,6 +90,7 @@ public class InformixConnectorTask extends BaseSourceTask<InformixPartition, Inf
                 connectorConfig.binaryHandlingMode());
         schema = new InformixDatabaseSchema(connectorConfig, topicNamingStrategy, valueConverters, schemaNameAdjuster, dataConnection);
         schema.initializeStorage();
+        taskContext = new InformixTaskContext(connectorConfig, schema);
 
         Offsets<InformixPartition, InformixOffsetContext> previousOffsets = getPreviousOffsets(new InformixPartition.Provider(connectorConfig),
                 new InformixOffsetContext.Loader(connectorConfig));
@@ -100,6 +102,7 @@ public class InformixConnectorTask extends BaseSourceTask<InformixPartition, Inf
         connectorConfig.getBeanRegistry().add(StandardBeanNames.JDBC_CONNECTION, dataConnection);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.VALUE_CONVERTER, valueConverters);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.OFFSETS, previousOffsets);
+        connectorConfig.getBeanRegistry().add(StandardBeanNames.CDC_SOURCE_TASK_CONTEXT, taskContext);
 
         // Service providers
         registerServiceProviders(connectorConfig.getServiceRegistry());
@@ -111,8 +114,6 @@ public class InformixConnectorTask extends BaseSourceTask<InformixPartition, Inf
 
         validateSchemaHistory(connectorConfig, dataConnection::validateLogPosition, previousOffsets, schema,
                 snapshotterService.getSnapshotter());
-
-        taskContext = new InformixTaskContext(connectorConfig, schema);
 
         final Clock clock = Clock.system();
 
@@ -158,7 +159,8 @@ public class InformixConnectorTask extends BaseSourceTask<InformixPartition, Inf
                             queue.enqueue(new DataChangeEvent(record));
                         },
                         topicNamingStrategy.transactionTopic()),
-                signalProcessor);
+                signalProcessor,
+                connectorConfig.getServiceRegistry().tryGetService(DebeziumHeaderProducer.class));
 
         final NotificationService<InformixPartition, InformixOffsetContext> notificationService = new NotificationService<>(
                 getNotificationChannels(),
