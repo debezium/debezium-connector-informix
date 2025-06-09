@@ -172,8 +172,8 @@ public class InformixCdcTransactionEngine implements IfxTransactionEngine {
          */
         tableIdByLabelId = engine.getBuilder().getWatchedTables().stream()
                 .collect(Collectors.toUnmodifiableMap(
-                        o -> String.valueOf(o.getLabel()),
-                        t -> new TableId(t.getDatabaseName(), t.getNamespace(), t.getTableName())));
+                        t -> String.valueOf(t.getLabel()),
+                        t -> TableId.parse("%s.%s.%s".formatted(t.getDatabaseName(), t.getNamespace(), t.getTableName()))));
     }
 
     @Override
