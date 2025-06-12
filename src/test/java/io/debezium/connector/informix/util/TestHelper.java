@@ -18,6 +18,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.config.ConfigurationDefinition;
 import io.debezium.connector.informix.InformixConnection;
 import io.debezium.connector.informix.InformixConnectorConfig;
 import io.debezium.jdbc.JdbcConfiguration;
@@ -56,7 +57,7 @@ public class TestHelper {
     public static final String IS_CDC_ENABLED = "select name, is_logging, is_buff_log, is_ansi from sysmaster:sysdatabases where name='%s'";
 
     public static JdbcConfiguration adminJdbcConfig() {
-        return JdbcConfiguration.copy(Configuration.fromSystemProperties(InformixConnectorConfig.DATABASE_CONFIG_PREFIX))
+        return JdbcConfiguration.copy(Configuration.fromSystemProperties(ConfigurationDefinition.DATABASE_CONFIG_PREFIX))
                 .withDefault(JdbcConfiguration.DATABASE, TEST_DATABASE)
                 .withDefault(JdbcConfiguration.HOSTNAME, "localhost")
                 .withDefault(JdbcConfiguration.PORT, 9088)
@@ -66,7 +67,7 @@ public class TestHelper {
     }
 
     public static JdbcConfiguration defaultJdbcConfig() {
-        return JdbcConfiguration.copy(Configuration.fromSystemProperties(InformixConnectorConfig.DATABASE_CONFIG_PREFIX))
+        return JdbcConfiguration.copy(Configuration.fromSystemProperties(ConfigurationDefinition.DATABASE_CONFIG_PREFIX))
                 .withDefault(JdbcConfiguration.DATABASE, TEST_DATABASE)
                 .withDefault(JdbcConfiguration.HOSTNAME, "localhost")
                 .withDefault(JdbcConfiguration.PORT, 9088)
@@ -81,7 +82,7 @@ public class TestHelper {
      */
     public static Configuration.Builder defaultConfig() {
 
-        return Configuration.copy(defaultJdbcConfig().map(key -> InformixConnectorConfig.DATABASE_CONFIG_PREFIX + key))
+        return Configuration.copy(defaultJdbcConfig().map(key -> ConfigurationDefinition.DATABASE_CONFIG_PREFIX + key))
                 .with(CommonConnectorConfig.TOPIC_PREFIX, TEST_DATABASE)
                 .with(RelationalDatabaseConnectorConfig.SNAPSHOT_LOCK_TIMEOUT_MS, TimeUnit.SECONDS.toMillis(30))
                 .with(InformixConnectorConfig.SCHEMA_HISTORY, FileSchemaHistory.class)
