@@ -14,9 +14,8 @@ Licensed under the [Apache License, Version 2.0](http://www.apache.org/licenses/
 
 Debezium is an open source project that provides a low latency data streaming platform for change data capture (CDC).
 
-This repository contains incubating connector for Informix which is in an **early stage of its development**.
-You are encouraged to explore this connector and test it, but it is not recommended yet for production usage.
-E.g. the format of emitted messages may change, specific features may not be implemented yet etc.
+This repository contains the connector for IBM Informix.
+You are encouraged to explore this connector and test it. Although specific features may not be implemented yet, it should be stable enough for production usage.
 
 Documentation on how to use the connector and the internal workings can be found [here](https://debezium.io/documentation/reference/stable/connectors/informix.html). See in this [Dockerfile](src/test/docker/informix-cdc-docker/14/Dockerfile) how [this script](src/test/docker/informix-cdc-docker/14/informix_post_init.sh) is used to set up the CDC database in the docker Informix instance.
 
