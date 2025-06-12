@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.config.ConfigurationNames;
 import io.debezium.connector.informix.InformixConnection;
 import io.debezium.connector.informix.InformixConnectorConfig;
 import io.debezium.embedded.async.AsyncEngineConfig;
@@ -57,7 +58,7 @@ public class TestHelper {
     public static final String IFX_LOCK_MODE_WAIT = "IFX_LOCK_MODE_WAIT";
 
     public static JdbcConfiguration.Builder adminJdbcConfig() {
-        return JdbcConfiguration.copy(Configuration.fromSystemProperties(InformixConnectorConfig.DATABASE_CONFIG_PREFIX))
+        return JdbcConfiguration.copy(Configuration.fromSystemProperties(ConfigurationNames.DATABASE_CONFIG_PREFIX))
                 .withDefault(JdbcConfiguration.DATABASE, TEST_DATABASE)
                 .withDefault(JdbcConfiguration.HOSTNAME, "localhost")
                 .withDefault(JdbcConfiguration.PORT, 9088)
@@ -66,7 +67,7 @@ public class TestHelper {
     }
 
     public static JdbcConfiguration.Builder defaultJdbcConfig() {
-        return JdbcConfiguration.copy(Configuration.fromSystemProperties(InformixConnectorConfig.DATABASE_CONFIG_PREFIX))
+        return JdbcConfiguration.copy(Configuration.fromSystemProperties(ConfigurationNames.DATABASE_CONFIG_PREFIX))
                 .withDefault(JdbcConfiguration.DATABASE, TEST_DATABASE)
                 .withDefault(JdbcConfiguration.HOSTNAME, "localhost")
                 .withDefault(JdbcConfiguration.PORT, 9088)
@@ -81,7 +82,7 @@ public class TestHelper {
      */
     public static Configuration.Builder defaultConfig() {
 
-        return Configuration.copy(defaultJdbcConfig().build().map(key -> InformixConnectorConfig.DATABASE_CONFIG_PREFIX + key))
+        return Configuration.copy(defaultJdbcConfig().build().map(key -> ConfigurationNames.DATABASE_CONFIG_PREFIX + key))
                 .with(CommonConnectorConfig.EXECUTOR_SHUTDOWN_TIMEOUT_MS, 30_000)
                 .with(AsyncEngineConfig.TASK_MANAGEMENT_TIMEOUT_MS, 30_000)
                 .with(CommonConnectorConfig.TOPIC_PREFIX, TEST_DATABASE)
