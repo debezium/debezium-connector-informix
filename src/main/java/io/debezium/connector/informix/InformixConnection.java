@@ -46,7 +46,7 @@ public class InformixConnection extends JdbcConnection {
 
     private static final String GET_CURRENT_TIMESTAMP = "select sysdate as sysdate from sysmaster:sysdual";
 
-    private static final String QUOTED_CHARACTER = ""; // TODO: Unless DELIMIDENT is set, column names cannot be quoted
+    private static final String QUOTED_CHARACTER = ""; // Unless DELIMIDENT is set, database identifiers cannot be quoted
 
     private static final String URL_PATTERN = "jdbc:informix-sqli://${"
             + JdbcConfiguration.HOSTNAME + "}:${"
@@ -62,31 +62,12 @@ public class InformixConnection extends JdbcConnection {
             JdbcConfiguration.PORT.withDefault(InformixConnectorConfig.PORT.defaultValueAsString()));
 
     /**
-     * actual name of the database, which could differ in casing from the database name given in the connector config.
-     */
-    private final String realDatabaseName;
-
-    /**
      * Creates a new connection using the supplied configuration.
      *
      * @param config {@link Configuration} instance, may not be null.
      */
     public InformixConnection(JdbcConfiguration config) {
         super(config, FACTORY, QUOTED_CHARACTER, QUOTED_CHARACTER);
-        realDatabaseName = retrieveRealDatabaseName().trim();
-    }
-
-    private String retrieveRealDatabaseName() {
-        try {
-            return queryAndMap(GET_DATABASE_NAME, singleResultMapper(rs -> rs.getString(1), "Could not retrieve database name"));
-        }
-        catch (SQLException e) {
-            throw new DebeziumException("Couldn't obtain database name", e);
-        }
-    }
-
-    public String getRealDatabaseName() {
-        return realDatabaseName;
     }
 
     /**
@@ -162,26 +143,24 @@ public class InformixConnection extends JdbcConnection {
 
     @Override
     public String quotedTableIdString(TableId tableId) {
-        // TODO: Unless DELIMIDENT is set, table names cannot be quoted
-        StringBuilder builder = new StringBuilder();
+        // Unless DELIMIDENT is set, database identifiers cannot be quoted
+        StringBuilder quoted = new StringBuilder();
 
-        String catalogName = tableId.catalog();
-        if (!Strings.isNullOrBlank(catalogName)) {
-            builder.append(catalogName).append(':');
+        if (!Strings.isNullOrBlank(tableId.catalog())) {
+            quoted.append(InformixIdentifierQuoter.quoteIfNecessary(tableId.catalog())).append(':');
         }
 
-        String schemaName = tableId.schema();
-        if (!Strings.isNullOrBlank(schemaName)) {
-            builder.append(schemaName).append('.');
+        if (!Strings.isNullOrBlank(tableId.schema())) {
+            quoted.append(InformixIdentifierQuoter.quoteIfNecessary(tableId.schema())).append('.');
         }
 
-        return builder.append(tableId.table()).toString();
+        return quoted.append(InformixIdentifierQuoter.quoteIfNecessary(tableId.table())).toString();
     }
 
     @Override
     public String quotedColumnIdString(String columnName) {
-        // TODO: Unless DELIMIDENT is set, column names cannot be quoted
-        return columnName;
+        // Unless DELIMIDENT is set, column names cannot be quoted
+        return InformixIdentifierQuoter.quoteIfNecessary(columnName);
     }
 
     public DataSource datasource() {

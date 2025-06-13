@@ -54,7 +54,7 @@ public class InformixSnapshotChangeEventSource extends RelationalSnapshotChangeE
 
     @Override
     protected SnapshotContext<InformixPartition, InformixOffsetContext> prepare(InformixPartition partition, boolean onDemand) {
-        return new InformixSnapshotContext(partition, jdbcConnection.getRealDatabaseName(), onDemand);
+        return new InformixSnapshotContext(partition, partition.getDatabaseName(), onDemand);
     }
 
     @Override
@@ -91,10 +91,9 @@ public class InformixSnapshotChangeEventSource extends RelationalSnapshotChangeE
                         throw new InterruptedException("Interrupted while locking table " + tableId);
                     }
 
-                    String fullTableName = String.format("%s.%s", tableId.schema(), tableId.table());
                     Optional<String> lockingStatement = snapshotterService.getSnapshotLock().tableLockingStatement(
                             connectorConfig.snapshotLockTimeout(),
-                            fullTableName);
+                            jdbcConnection.quotedTableIdString(tableId));
 
                     if (lockingStatement.isPresent()) {
                         LOGGER.info("Locking table {}", tableId);
@@ -211,8 +210,7 @@ public class InformixSnapshotChangeEventSource extends RelationalSnapshotChangeE
     @Override
     protected Optional<String> getSnapshotSelect(RelationalSnapshotContext<InformixPartition, InformixOffsetContext> snapshotContext, TableId tableId,
                                                  List<String> columns) {
-        String fullTableName = String.format("%s.%s", tableId.schema(), tableId.table());
-        return snapshotterService.getSnapshotQuery().snapshotQuery(fullTableName, columns);
+        return snapshotterService.getSnapshotQuery().snapshotQuery(jdbcConnection.quotedTableIdString(tableId), columns);
     }
 
     /**
