@@ -55,24 +55,22 @@ public class TestHelper {
      */
     public static final String IS_CDC_ENABLED = "select name, is_logging, is_buff_log, is_ansi from sysmaster:sysdatabases where name='%s'";
 
-    public static JdbcConfiguration adminJdbcConfig() {
+    public static JdbcConfiguration.Builder adminJdbcConfig() {
         return JdbcConfiguration.copy(Configuration.fromSystemProperties(InformixConnectorConfig.DATABASE_CONFIG_PREFIX))
                 .withDefault(JdbcConfiguration.DATABASE, TEST_DATABASE)
                 .withDefault(JdbcConfiguration.HOSTNAME, "localhost")
                 .withDefault(JdbcConfiguration.PORT, 9088)
                 .withDefault(JdbcConfiguration.USER, "informix")
-                .withDefault(JdbcConfiguration.PASSWORD, "in4mix")
-                .build();
+                .withDefault(JdbcConfiguration.PASSWORD, "in4mix");
     }
 
-    public static JdbcConfiguration defaultJdbcConfig() {
+    public static JdbcConfiguration.Builder defaultJdbcConfig() {
         return JdbcConfiguration.copy(Configuration.fromSystemProperties(InformixConnectorConfig.DATABASE_CONFIG_PREFIX))
                 .withDefault(JdbcConfiguration.DATABASE, TEST_DATABASE)
                 .withDefault(JdbcConfiguration.HOSTNAME, "localhost")
                 .withDefault(JdbcConfiguration.PORT, 9088)
                 .withDefault(JdbcConfiguration.USER, "informix")
-                .withDefault(JdbcConfiguration.PASSWORD, "in4mix")
-                .build();
+                .withDefault(JdbcConfiguration.PASSWORD, "in4mix");
     }
 
     /**
@@ -81,7 +79,7 @@ public class TestHelper {
      */
     public static Configuration.Builder defaultConfig() {
 
-        return Configuration.copy(defaultJdbcConfig().map(key -> InformixConnectorConfig.DATABASE_CONFIG_PREFIX + key))
+        return Configuration.copy(defaultJdbcConfig().build().map(key -> InformixConnectorConfig.DATABASE_CONFIG_PREFIX + key))
                 .with(CommonConnectorConfig.TOPIC_PREFIX, TEST_DATABASE)
                 .with(RelationalDatabaseConnectorConfig.SNAPSHOT_LOCK_TIMEOUT_MS, TimeUnit.SECONDS.toMillis(30))
                 .with(InformixConnectorConfig.SCHEMA_HISTORY, FileSchemaHistory.class)
@@ -92,7 +90,7 @@ public class TestHelper {
     }
 
     public static InformixConnection adminConnection() {
-        return new InformixConnection(TestHelper.adminJdbcConfig());
+        return new InformixConnection(TestHelper.adminJdbcConfig().build());
     }
 
     public static void dropTable(InformixConnection connection, String table) throws SQLException {
@@ -106,7 +104,7 @@ public class TestHelper {
     }
 
     private static class LazyConnectionHolder {
-        static final InformixConnection INSTANCE = new InformixConnection(TestHelper.defaultJdbcConfig());
+        static final InformixConnection INSTANCE = new InformixConnection(TestHelper.defaultJdbcConfig().build());
     }
 
     public static InformixConnection testConnection() {

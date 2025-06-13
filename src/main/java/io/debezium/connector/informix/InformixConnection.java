@@ -46,7 +46,7 @@ public class InformixConnection extends JdbcConnection {
 
     private static final String GET_CURRENT_TIMESTAMP = "select sysdate as sysdate from sysmaster:sysdual";
 
-    private static final String QUOTED_CHARACTER = ""; // TODO: Unless DELIMIDENT is set, column names cannot be quoted
+    private static final String QUOTED_CHARACTER = ""; // Unless DELIMIDENT is set, database identifiers cannot be quoted
 
     private static final String URL_PATTERN = "jdbc:informix-sqli://${"
             + JdbcConfiguration.HOSTNAME + "}:${"
@@ -162,26 +162,24 @@ public class InformixConnection extends JdbcConnection {
 
     @Override
     public String quotedTableIdString(TableId tableId) {
-        // TODO: Unless DELIMIDENT is set, table names cannot be quoted
-        StringBuilder builder = new StringBuilder();
+        // Unless DELIMIDENT is set, database identifiers cannot be quoted
+        StringBuilder quoted = new StringBuilder();
 
-        String catalogName = tableId.catalog();
-        if (!Strings.isNullOrBlank(catalogName)) {
-            builder.append(catalogName).append(':');
+        if (!Strings.isNullOrBlank(tableId.catalog())) {
+            quoted.append(InformixIdentifierQuoter.quoteIfNecessary(tableId.catalog())).append(':');
         }
 
-        String schemaName = tableId.schema();
-        if (!Strings.isNullOrBlank(schemaName)) {
-            builder.append(schemaName).append('.');
+        if (!Strings.isNullOrBlank(tableId.schema())) {
+            quoted.append(InformixIdentifierQuoter.quoteIfNecessary(tableId.schema())).append('.');
         }
 
-        return builder.append(tableId.table()).toString();
+        return quoted.append(InformixIdentifierQuoter.quoteIfNecessary(tableId.table())).toString();
     }
 
     @Override
     public String quotedColumnIdString(String columnName) {
-        // TODO: Unless DELIMIDENT is set, column names cannot be quoted
-        return columnName;
+        // Unless DELIMIDENT is set, column names cannot be quoted
+        return InformixIdentifierQuoter.quoteIfNecessary(columnName);
     }
 
     public DataSource datasource() {

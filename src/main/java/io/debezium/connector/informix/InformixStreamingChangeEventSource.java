@@ -238,8 +238,8 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
                 .timeout(connectorConfig.getCdcTimeout());
 
         schema.tableIds().forEach((TableId tid) -> {
-            String[] colNames = schema.tableFor(tid).retrieveColumnNames().toArray(String[]::new);
-            builder.watchTable(tid.identifier(), colNames);
+            String[] colNames = schema.tableFor(tid).retrieveColumnNames().stream().map(dataConnection::quotedColumnIdString).toArray(String[]::new);
+            builder.watchTable(dataConnection.quotedTableIdString(tid), colNames);
         });
 
         if (startLsn.isAvailable()) {

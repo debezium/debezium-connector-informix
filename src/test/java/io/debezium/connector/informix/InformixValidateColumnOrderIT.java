@@ -93,9 +93,9 @@ public class InformixValidateColumnOrderIT extends AbstractAsyncEngineConnectorT
                 "age", "18",
                 "gender", "male",
                 "address", "ff:ff:ff:ff:ff:ff");
-        connection.execute(String.format("insert into %s(%s) values(\"%s\")", testTableName,
+        connection.execute(String.format("insert into %s(%s) values('%s')", testTableName,
                 Strings.join(", ", recordToBeInsert.keySet()),
-                Strings.join("\", \"", recordToBeInsert.values())));
+                Strings.join("', '", recordToBeInsert.values())));
 
         waitForAvailableRecords();
 
@@ -121,9 +121,9 @@ public class InformixValidateColumnOrderIT extends AbstractAsyncEngineConnectorT
                 "age", "18",
                 "gender", "male",
                 "address", "ff:ff:ff:ff:ff:ff");
-        connection.execute(String.format("insert into %s(%s) values(\"%s\")", testTableName,
+        connection.execute(String.format("insert into %s(%s) values('%s')", testTableName,
                 Strings.join(", ", recordToBeUpdate.keySet()),
-                Strings.join("\", \"", recordToBeUpdate.values())));
+                Strings.join("', '", recordToBeUpdate.values())));
 
         final Configuration config = TestHelper.defaultConfig()
                 .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
@@ -140,7 +140,7 @@ public class InformixValidateColumnOrderIT extends AbstractAsyncEngineConnectorT
         recordAfterUpdate.put("address", "00:00:00:00:00:00");
 
         // update
-        connection.execute(String.format("update %s set address = \"%s\" where id = \"%s\"", testTableName,
+        connection.execute(String.format("update %s set address = '%s' where id = '%s'", testTableName,
                 recordAfterUpdate.get("address"), recordToBeUpdate.get("id")));
 
         waitForAvailableRecords();
@@ -170,9 +170,9 @@ public class InformixValidateColumnOrderIT extends AbstractAsyncEngineConnectorT
                 "age", "18",
                 "gender", "male",
                 "address", "ff:ff:ff:ff:ff:ff");
-        connection.execute(String.format("insert into %s(%s) values(\"%s\")", testTableName,
+        connection.execute(String.format("insert into %s(%s) values('%s')", testTableName,
                 Strings.join(", ", recordToBeDelete.keySet()),
-                Strings.join("\", \"", recordToBeDelete.values())));
+                Strings.join("', '", recordToBeDelete.values())));
 
         final Configuration config = TestHelper.defaultConfig()
                 .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
@@ -185,7 +185,7 @@ public class InformixValidateColumnOrderIT extends AbstractAsyncEngineConnectorT
         waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
         waitForAvailableRecords(waitTimeForRecords(), TimeUnit.SECONDS);
 
-        connection.execute(String.format("delete from %s where id = \"%s\"", testTableName, recordToBeDelete.get("id")));
+        connection.execute(String.format("delete from %s where id = '%s'", testTableName, recordToBeDelete.get("id")));
 
         waitForAvailableRecords();
 
