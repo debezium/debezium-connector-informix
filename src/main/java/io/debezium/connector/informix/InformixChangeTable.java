@@ -5,9 +5,10 @@
  */
 package io.debezium.connector.informix;
 
+import io.debezium.relational.ChangeTable;
 import io.debezium.relational.TableId;
 
-public class InformixChangeTable {
+public class InformixChangeTable extends ChangeTable {
 
     private static final String CDC_SCHEMA = "syscdcsv1";
 
@@ -24,19 +25,13 @@ public class InformixChangeTable {
     /**
      * The table in the CDC schema that captures changes, suitably quoted for Informix
      */
-    private final String captureInstance;
-
-    private int changeTableObjectId;
-    private TableId sourceTableId;
-    private TableId changeTableId;
+    private final String ifxCaptureInstance;
 
     public InformixChangeTable(TableId sourceTableId, String captureInstance, int changeTableObjectId, Lsn startLsn, Lsn stopLsn) {
-        this.sourceTableId = sourceTableId;
-        this.changeTableObjectId = changeTableObjectId;
+        super(captureInstance, sourceTableId, resolveChangeTableId(sourceTableId, captureInstance, CDC_SCHEMA), changeTableObjectId);
         this.startLsn = startLsn;
         this.stopLsn = stopLsn;
-        this.captureInstance = captureInstance;
-        this.changeTableId = (sourceTableId != null) ? new TableId(InformixChangeTable.CDC_SCHEMA, sourceTableId.schema(), captureInstance) : null;
+        this.ifxCaptureInstance = InformixIdentifierQuoter.quoteIfNecessary(captureInstance);
     }
 
     public InformixChangeTable(String captureInstance, int changeTableObjectId, Lsn startLsn, Lsn stopLsn) {
@@ -44,7 +39,7 @@ public class InformixChangeTable {
     }
 
     public String getCaptureInstance() {
-        return captureInstance;
+        return ifxCaptureInstance;
     }
 
     public Lsn getStartLsn() {
@@ -59,16 +54,8 @@ public class InformixChangeTable {
         this.stopLsn = stopLsn;
     }
 
-    public TableId getSourceTableId() {
-        return sourceTableId;
-    }
-
-    public TableId getChangeTableId() {
-        return changeTableId;
-    }
-
-    public int getChangeTableObjectId() {
-        return changeTableObjectId;
+    private static TableId resolveChangeTableId(TableId sourceTableId, String captureInstance, String cdcSchema) {
+        return sourceTableId != null ? new TableId(CDC_SCHEMA, sourceTableId.schema(), InformixIdentifierQuoter.quoteIfNecessary(captureInstance)) : null;
     }
 
     @Override

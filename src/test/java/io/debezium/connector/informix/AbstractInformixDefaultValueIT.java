@@ -87,11 +87,6 @@ public abstract class AbstractInformixDefaultValueIT extends AbstractAsyncEngine
     @Test
     @FixFor("DBZ-4990")
     public void shouldHandleNumericDefaultTypes() throws Exception {
-        // TODO: remove once https://github.com/Apicurio/apicurio-registry/issues/2990 is fixed
-        if (VerifyRecord.isApucurioAvailable()) {
-            skipAvroValidation();
-        }
-
         List<ColumnDefinition> columnDefinitions = List.of(
                 new ColumnDefinition("val_bigint", "BIGINT",
                         "1", "2",
@@ -120,10 +115,6 @@ public abstract class AbstractInformixDefaultValueIT extends AbstractAsyncEngine
     @Test
     @FixFor("DBZ-4990")
     public void shouldHandleFloatPointDefaultTypes() throws Exception {
-        // TODO: remove once https://github.com/Apicurio/apicurio-registry/issues/2980 is fixed
-        if (VerifyRecord.isApucurioAvailable()) {
-            skipAvroValidation();
-        }
 
         List<ColumnDefinition> columnDefinitions = Arrays.asList(
                 new ColumnDefinition("val_double", "DOUBLE PRECISION",
