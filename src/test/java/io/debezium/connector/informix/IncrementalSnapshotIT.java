@@ -25,7 +25,6 @@ import io.debezium.junit.ConditionalFail;
 import io.debezium.junit.Flaky;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotTest;
 
-@Flaky("DBZ-8114")
 public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<InformixConnector> {
 
     @Rule

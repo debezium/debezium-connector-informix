@@ -58,7 +58,6 @@ import junit.framework.TestCase;
  * Integration test for the Debezium Informix connector.
  *
  */
-@Flaky("DBZ-8114")
 public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
 
     @Rule

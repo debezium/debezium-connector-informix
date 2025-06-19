@@ -27,7 +27,6 @@ import io.debezium.junit.Flaky;
 import io.debezium.pipeline.AbstractBlockingSnapshotTest;
 import io.debezium.relational.history.SchemaHistory;
 
-@Flaky("DBZ-8114")
 public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
 
     @Rule

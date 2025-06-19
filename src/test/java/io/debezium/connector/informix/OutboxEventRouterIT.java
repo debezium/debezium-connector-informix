@@ -27,7 +27,6 @@ import io.debezium.transforms.outbox.EventRouter;
  *
  * @author Chris Cranford, Lars M Johansson
  */
-@Flaky("DBZ-8114")
 public class OutboxEventRouterIT extends AbstractEventRouterTest<InformixConnector> {
 
     private static final String SETUP_OUTBOX_TABLE = "CREATE TABLE outbox (" +
