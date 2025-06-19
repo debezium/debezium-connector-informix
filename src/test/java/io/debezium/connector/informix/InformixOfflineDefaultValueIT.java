@@ -23,7 +23,6 @@ import io.debezium.relational.TableId;
  *
  * @author Lars M Johansson, Chris Cranford
  */
-@Flaky("DBZ-8114")
 public class InformixOfflineDefaultValueIT extends AbstractInformixDefaultValueIT {
 
     @Rule

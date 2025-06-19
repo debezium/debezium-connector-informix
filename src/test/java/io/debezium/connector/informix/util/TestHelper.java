@@ -11,7 +11,9 @@ import java.nio.file.Path;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.time.Duration;
 
+import org.awaitility.Durations;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,6 +21,8 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.informix.InformixConnection;
 import io.debezium.connector.informix.InformixConnectorConfig;
+import io.debezium.embedded.EmbeddedEngineConfig;
+import io.debezium.embedded.async.AsyncEngineConfig;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.storage.file.history.FileSchemaHistory;
 import io.debezium.util.Testing;
@@ -81,6 +85,8 @@ public class TestHelper {
     public static Configuration.Builder defaultConfig() {
 
         return Configuration.copy(defaultJdbcConfig().build().map(key -> InformixConnectorConfig.DATABASE_CONFIG_PREFIX + key))
+                .with(CommonConnectorConfig.EXECUTOR_SHUTDOWN_TIMEOUT_MS, 30_000)
+                .with(AsyncEngineConfig.TASK_MANAGEMENT_TIMEOUT_MS, 30_000)
                 .with(CommonConnectorConfig.TOPIC_PREFIX, TEST_DATABASE)
                 .with(CommonConnectorConfig.DRIVER_CONFIG_PREFIX + IFX_LOCK_MODE_WAIT, 10)
                 .with(InformixConnectorConfig.SCHEMA_HISTORY, FileSchemaHistory.class)
