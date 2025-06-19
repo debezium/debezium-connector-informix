@@ -58,7 +58,6 @@ import junit.framework.TestCase;
  * Integration test for the Debezium Informix connector.
  *
  */
-@Flaky("DBZ-8114")
 public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
 
     @Rule
@@ -936,18 +935,21 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
+    @Flaky("DBZ-8114")
     @FixFor("DBZ-1128")
     public void restartInTheMiddleOfTxAfterSnapshot() throws Exception {
         restartInTheMiddleOfTx(true, false);
     }
 
     @Test
+    @Flaky("DBZ-8114")
     @FixFor("DBZ-1128")
     public void restartInTheMiddleOfTxAfterCompletedTx() throws Exception {
         restartInTheMiddleOfTx(false, true);
     }
 
     @Test
+    @Flaky("DBZ-8114")
     @FixFor("DBZ-1128")
     public void restartInTheMiddleOfTx() throws Exception {
         restartInTheMiddleOfTx(false, false);
@@ -1326,6 +1328,7 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test()
+    @Flaky("DBZ-9081")
     @FixFor("DBZ-9081")
     public void testHeartbeatExecuted() throws Exception {
         final Configuration config = TestHelper.defaultConfig()
@@ -1351,6 +1354,7 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test()
+    @Flaky("DBZ-9081")
     @FixFor("DBZ-9081")
     public void testHeartbeatActionQueryExecuted() throws Exception {
         final Configuration config = TestHelper.defaultConfig()
