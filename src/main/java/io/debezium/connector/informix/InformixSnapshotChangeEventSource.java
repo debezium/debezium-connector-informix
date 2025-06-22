@@ -109,8 +109,8 @@ public class InformixSnapshotChangeEventSource extends RelationalSnapshotChangeE
 
     private String quoteTableName(TableId tableId) {
         return "%s.%s".formatted(
-                InformixIdentifierQuoter.quoteIfNecessary(tableId.schema()),
-                InformixIdentifierQuoter.quoteIfNecessary(tableId.table()));
+                jdbcConnection.quoteIdentifier(tableId.schema()),
+                jdbcConnection.quoteIdentifier(tableId.table()));
     }
 
     @Override
