@@ -158,7 +158,7 @@ public class InformixConnection extends JdbcConnection {
     }
 
     @Override
-    public String quotedColumnIdString(String columnName) {
+    public String quoteIdentifier(String columnName) {
         // Unless DELIMIDENT is set, column names cannot be quoted
         return InformixIdentifierQuoter.quoteIfNecessary(columnName);
     }
