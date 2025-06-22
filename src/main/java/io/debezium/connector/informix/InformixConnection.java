@@ -147,14 +147,14 @@ public class InformixConnection extends JdbcConnection {
         StringBuilder quoted = new StringBuilder();
 
         if (!Strings.isNullOrBlank(tableId.catalog())) {
-            quoted.append(InformixIdentifierQuoter.quoteIfNecessary(tableId.catalog())).append(':');
+            quoted.append(quoteIdentifier(tableId.catalog())).append(':');
         }
 
         if (!Strings.isNullOrBlank(tableId.schema())) {
-            quoted.append(InformixIdentifierQuoter.quoteIfNecessary(tableId.schema())).append('.');
+            quoted.append(quoteIdentifier(tableId.schema())).append('.');
         }
 
-        return quoted.append(InformixIdentifierQuoter.quoteIfNecessary(tableId.table())).toString();
+        return quoted.append(quoteIdentifier(tableId.table())).toString();
     }
 
     @Override

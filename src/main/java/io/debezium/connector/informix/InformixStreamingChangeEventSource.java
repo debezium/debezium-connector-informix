@@ -239,7 +239,7 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
                 .stopLoggingOnClose(connectorConfig.stopLoggingOnClose());
 
         schema.tableIds().forEach((TableId tid) -> {
-            String[] colNames = schema.tableFor(tid).retrieveColumnNames().stream().map(dataConnection::quotedColumnIdString).toArray(String[]::new);
+            String[] colNames = schema.tableFor(tid).retrieveColumnNames().stream().map(dataConnection::quoteIdentifier).toArray(String[]::new);
             builder.watchTable(dataConnection.quotedTableIdString(tid), colNames);
         });
 
