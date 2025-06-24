@@ -38,7 +38,7 @@ jobs:
       # repository; therefore, we need to output this so that the matrix job can reuse this cache.
       - name: Generate Cache Key
         id: cache-key-generator
-        run: echo "cache-key=${{ runner.os }}-m2-${{ hashFiles('core/**/pom.xml') }}" >> "$GITHUB_OUTPUT"
+        run: echo "cache-key=${{ runner.os }}-m2-${{ hashFiles('core/**/pom.xml','core/**/*.java') }}" >> "$GITHUB_OUTPUT"
 
       - name: Cache Maven Repository
         id: cache-check
