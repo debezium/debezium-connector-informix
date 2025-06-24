@@ -34,17 +34,25 @@ jobs:
           distribution: temurin
           java-version: 21
 
+      # This job builds and creates/restores the cache based on the hash of the POM files from the core
+      # repository; therefore, we need to output this so that the matrix job can reuse this cache.
+      - name: Generate Cache Key
+        id: cache-key-generator
+        run: echo "cache-key=${{ runner.os }}-m2-${{ hashFiles('core/**/pom.xml','core/**/*.java') }}" >> "$GITHUB_OUTPUT"
+
       - name: Cache Maven Repository
+        id: cache-check
         uses: actions/cache@v4
         with:
           path: ~/.m2/repository
-          key: ${{ runner.os }}-m2-${{ hashFiles('core/**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-m2-${{ hashFiles('core/**/pom.xml') }}
+          key: ${{ steps.cache-key-generator.outputs.cache-key }}
+          restore-keys: ${{ steps.cache-key-generator.outputs.cache-key }}
 
       - name: Build Debezium (Core)
+        if: steps.cache-check.outputs.cache-hit != 'true'
         run: >
           ./core/mvnw clean install -B -ntp -f core/pom.xml
-          -pl debezium-assembly-descriptors,debezium-bom,debezium-core,debezium-embedded,:debezium-ide-configs,:debezium-checkstyle,:debezium-revapi
+          -pl debezium-assembly-descriptors,debezium-bom,debezium-core,debezium-embedded,:debezium-storage-file,:debezium-storage-kafka,:debezium-ide-configs,:debezium-checkstyle,:debezium-revapi
           -am
           -DskipTests=true
           -DskipITs=true
@@ -54,12 +62,6 @@ jobs:
           -Dhttp.keepAlive=false
           -Dmaven.wagon.http.pool=false
           -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
-
-      # This job builds and creates/restores the cache based on the hash of the POM files from the core
-      # repository; therefore, we need to output this so that the matrix job can reuse this cache.
-      - name: Generate Cache Key
-        id: cache-key-generator
-        run: echo "cache-key=${{ runner.os }}-m2-${{ hashFiles('core/**/pom.xml') }}" >> "$GITHUB_OUTPUT"
 
   build_informix:
     strategy:
@@ -98,6 +100,7 @@ jobs:
           -Dhttp.keepAlive=false
           -Dmaven.wagon.http.pool=false
           -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
-          -Ddebezium.test.records.waittime=7
-          -Ddebezium.test.records.waittime.after.nulls=15
+          -Ddebezium.test.engine.waittime=10
+          -Ddebezium.test.records.waittime=10
+          -Ddebezium.test.records.waittime.after.nulls=10
           -DfailFlakyTests=false
