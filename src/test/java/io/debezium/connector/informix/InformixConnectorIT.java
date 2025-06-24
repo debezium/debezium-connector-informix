@@ -59,7 +59,6 @@ import junit.framework.TestCase;
  * Integration test for the Debezium Informix connector.
  *
  */
-@Flaky("DBZ-8114")
 public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
 
     @Rule
@@ -934,18 +933,21 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
+    @Flaky("DBZ-8114")
     @FixFor("DBZ-1128")
     public void restartInTheMiddleOfTxAfterSnapshot() throws Exception {
         restartInTheMiddleOfTx(true, false);
     }
 
     @Test
+    @Flaky("DBZ-8114")
     @FixFor("DBZ-1128")
     public void restartInTheMiddleOfTxAfterCompletedTx() throws Exception {
         restartInTheMiddleOfTx(false, true);
     }
 
     @Test
+    @Flaky("DBZ-8114")
     @FixFor("DBZ-1128")
     public void restartInTheMiddleOfTx() throws Exception {
         restartInTheMiddleOfTx(false, false);
@@ -1204,7 +1206,7 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
     public void shouldCreateSnapshotSchemaOnlyRecovery() throws Exception {
 
         Configuration.Builder builder = TestHelper.defaultConfig()
-                .with(InformixConnectorConfig.SNAPSHOT_MODE, InformixConnectorConfig.SnapshotMode.INITIAL)
+                .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .with(InformixConnectorConfig.TABLE_INCLUDE_LIST, "testdb.informix.tablea")
                 .with(InformixConnectorConfig.SCHEMA_HISTORY, MemorySchemaHistory.class.getName());
 
@@ -1247,7 +1249,7 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
         final String pkField = "id";
 
         Configuration config = TestHelper.defaultConfig()
-                .with(InformixConnectorConfig.SNAPSHOT_MODE, InformixConnectorConfig.SnapshotMode.CUSTOM.getValue())
+                .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.CUSTOM)
                 .with(InformixConnectorConfig.SNAPSHOT_MODE_CUSTOM_NAME, CustomTestSnapshot.class.getName())
                 .with(CommonConnectorConfig.SNAPSHOT_MODE_TABLES, "testdb.informix.tablea,testdb.informix.tableb")
                 .with(CommonConnectorConfig.SNAPSHOT_QUERY_MODE, CommonConnectorConfig.SnapshotQueryMode.CUSTOM)
@@ -1300,7 +1302,7 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
         waitForConnectorShutdown(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
 
         config = TestHelper.defaultConfig()
-                .with(InformixConnectorConfig.SNAPSHOT_MODE, InformixConnectorConfig.SnapshotMode.CUSTOM.getValue())
+                .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.CUSTOM)
                 .with(InformixConnectorConfig.SNAPSHOT_MODE_CUSTOM_NAME, CustomTestSnapshot.class.getName())
                 .with(CommonConnectorConfig.SNAPSHOT_QUERY_MODE, CommonConnectorConfig.SnapshotQueryMode.CUSTOM)
                 .with(CommonConnectorConfig.SNAPSHOT_QUERY_MODE_CUSTOM_NAME, CustomTestSnapshot.class.getName())
