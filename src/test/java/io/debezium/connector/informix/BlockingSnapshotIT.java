@@ -23,11 +23,9 @@ import io.debezium.connector.informix.InformixConnectorConfig.SnapshotMode;
 import io.debezium.connector.informix.util.TestHelper;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.ConditionalFail;
-import io.debezium.junit.Flaky;
 import io.debezium.pipeline.AbstractBlockingSnapshotTest;
 import io.debezium.relational.history.SchemaHistory;
 
-@Flaky("DBZ-8114")
 public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
 
     @Rule
@@ -135,11 +133,7 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
         return TestHelper.defaultConfig()
                 .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .with(InformixConnectorConfig.SIGNAL_DATA_COLLECTION, this::signalTableNameSanitized)
-                .with(InformixConnectorConfig.SNAPSHOT_MODE_TABLES, this::tableDataCollectionId)
-                .with(InformixConnectorConfig.STORE_ONLY_CAPTURED_TABLES_DDL, true)
-                .with(InformixConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
-                .with(InformixConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 100)
-                .with(InformixConnectorConfig.CDC_BUFFERSIZE, 0x800);
+                .with(InformixConnectorConfig.SNAPSHOT_MODE_TABLES, this::tableDataCollectionId);
     }
 
     @Override

@@ -22,10 +22,8 @@ import io.debezium.connector.informix.InformixConnectorConfig.SnapshotMode;
 import io.debezium.connector.informix.util.TestHelper;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.ConditionalFail;
-import io.debezium.junit.Flaky;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotTest;
 
-@Flaky("DBZ-8114")
 public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<InformixConnector> {
 
     @Rule
@@ -148,11 +146,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Infor
         return TestHelper.defaultConfig()
                 .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .with(InformixConnectorConfig.SIGNAL_DATA_COLLECTION, this::signalTableNameSanitized)
-                .with(InformixConnectorConfig.MSG_KEY_COLUMNS, noPKTableDataCollectionId() + ":pk1,pk2,pk3,pk4")
-                .with(InformixConnectorConfig.STORE_ONLY_CAPTURED_TABLES_DDL, true)
-                .with(InformixConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
-                .with(InformixConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 200)
-                .with(InformixConnectorConfig.CDC_BUFFERSIZE, 0x800);
+                .with(InformixConnectorConfig.MSG_KEY_COLUMNS, noPKTableDataCollectionId() + ":pk1,pk2,pk3,pk4");
     }
 
     @Override
@@ -163,11 +157,6 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Infor
         return signalTableOnly
                 ? config.with(InformixConnectorConfig.TABLE_EXCLUDE_LIST, this::tableDataCollectionId)
                 : config.with(InformixConnectorConfig.TABLE_INCLUDE_LIST, this::tableIncludeList);
-    }
-
-    @Override
-    protected int defaultIncrementalSnapshotChunkSize() {
-        return 3;
     }
 
     @Override
@@ -183,7 +172,6 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Infor
     @Test
     @Ignore("Informix does not support DDL operations on tables defined for replication")
     @Override
-    public void snapshotPreceededBySchemaChange() throws Exception {
-        super.snapshotPreceededBySchemaChange();
+    public void snapshotPreceededBySchemaChange() {
     }
 }
