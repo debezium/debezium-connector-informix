@@ -60,7 +60,7 @@ public class InformixReselectColumnsProcessorIT extends AbstractReselectProcesso
     protected Configuration.Builder getConfigurationBuilder() {
         return TestHelper.defaultConfig()
                 .with(InformixConnectorConfig.CUSTOM_POST_PROCESSORS, "reselector")
-                .with("reselector.type", ReselectColumnsPostProcessor.class.getName());
+                .with("post.processors.reselector.type", ReselectColumnsPostProcessor.class.getName());
     }
 
     @Override
