@@ -1,7 +1,7 @@
 
 [![License](http://img.shields.io/:license-apache%202.0-brightgreen.svg)](http://www.apache.org/licenses/LICENSE-2.0.html)
 [![Maven Central](https://img.shields.io/maven-central/v/io.debezium/debezium-connector-informix?versionPrefix=3.1)](https://search.maven.org/#search|ga|1|g:io.debezium+a:debezium-connector-informix)
-[![Build Status](https://github.com/debezium/debezium-connector-informix/actions/workflows/maven.yml/badge.svg)](https://github.com/debezium/debezium-connector-informix/actions)
+[![Build Status](https://github.com/debezium/debezium-connector-informix/actions/workflows/maven.yml/badge.svg)](https://github.com/debezium/debezium-connector-informix/actions/workflows/maven.yml)
 [![User chat](https://img.shields.io/badge/chat-users-brightgreen.svg)](https://gitter.im/debezium/user)
 [![Developer chat](https://img.shields.io/badge/chat-devs-brightgreen.svg)](https://gitter.im/debezium/dev)
 [![Google Group](https://img.shields.io/:mailing%20list-debezium-brightgreen.svg)](https://groups.google.com/forum/#!forum/debezium)
