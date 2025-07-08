@@ -8,6 +8,7 @@ package io.debezium.connector.informix;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.relational.HistorizedRelationalDatabaseSchema;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -32,7 +33,7 @@ public class InformixDatabaseSchema extends HistorizedRelationalDatabaseSchema {
 
     public InformixDatabaseSchema(InformixConnectorConfig connectorConfig, TopicNamingStrategy<TableId> topicNamingStrategy,
                                   InformixValueConverters valueConverters, SchemaNameAdjuster schemaNameAdjuster,
-                                  InformixConnection connection) {
+                                  InformixConnection connection, CustomConverterRegistry customConverterRegistry) {
         super(
                 connectorConfig,
                 topicNamingStrategy,
@@ -42,7 +43,7 @@ public class InformixDatabaseSchema extends HistorizedRelationalDatabaseSchema {
                         valueConverters,
                         new InformixDefaultValueConverter(valueConverters, connection),
                         schemaNameAdjuster,
-                        connectorConfig.customConverterRegistry(),
+                        customConverterRegistry,
                         connectorConfig.getSourceInfoStructMaker().schema(),
                         connectorConfig.getFieldNamer(),
                         connectorConfig.multiPartitionMode()),
