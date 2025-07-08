@@ -122,7 +122,7 @@ public class InformixSnapshotChangeEventSource extends RelationalSnapshotChangeE
             throws SQLException {
         InformixOffsetContext offset = ctx.offset;
         if (offset == null) {
-            if (previousOffset != null) {
+            if (previousOffset != null && !snapshotterService.getSnapshotter().shouldStreamEventsStartingFromSnapshot()) {
                 offset = previousOffset;
             }
             else {
