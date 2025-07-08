@@ -35,6 +35,7 @@ import io.debezium.pipeline.metrics.DefaultChangeEventSourceMetricsFactory;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.signal.SignalProcessor;
 import io.debezium.pipeline.spi.Offsets;
+import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.snapshot.SnapshotterService;
@@ -81,12 +82,17 @@ public class InformixConnectorTask extends BaseSourceTask<InformixPartition, Inf
 
         final InformixValueConverters valueConverters = new InformixValueConverters(connectorConfig.getDecimalMode(), connectorConfig.getTemporalPrecisionMode(),
                 connectorConfig.binaryHandlingMode());
-        schema = new InformixDatabaseSchema(connectorConfig, topicNamingStrategy, valueConverters, schemaNameAdjuster, dataConnection);
-        schema.initializeStorage();
-        taskContext = new InformixTaskContext(connectorConfig, schema);
 
         Offsets<InformixPartition, InformixOffsetContext> previousOffsets = getPreviousOffsets(new InformixPartition.Provider(connectorConfig),
                 new InformixOffsetContext.Loader(connectorConfig));
+        // Service providers
+        registerServiceProviders(connectorConfig.getServiceRegistry());
+
+        CustomConverterRegistry customConverterRegistry = connectorConfig.getServiceRegistry().tryGetService(CustomConverterRegistry.class);
+
+        schema = new InformixDatabaseSchema(connectorConfig, topicNamingStrategy, valueConverters, schemaNameAdjuster, dataConnection, customConverterRegistry);
+        schema.initializeStorage();
+        taskContext = new InformixTaskContext(connectorConfig, schema);
 
         // Manual Bean Registration
         connectorConfig.getBeanRegistry().add(StandardBeanNames.CONFIGURATION, config);
@@ -96,9 +102,6 @@ public class InformixConnectorTask extends BaseSourceTask<InformixPartition, Inf
         connectorConfig.getBeanRegistry().add(StandardBeanNames.VALUE_CONVERTER, valueConverters);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.OFFSETS, previousOffsets);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.CDC_SOURCE_TASK_CONTEXT, taskContext);
-
-        // Service providers
-        registerServiceProviders(connectorConfig.getServiceRegistry());
 
         final InformixPartition partition = previousOffsets.getTheOnlyPartition();
         final InformixOffsetContext previousOffset = previousOffsets.getTheOnlyOffset();
