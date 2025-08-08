@@ -18,8 +18,9 @@ import com.informix.stream.impl.IfxStreamException;
 import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
-import io.debezium.connector.base.ChangeEventQueueConfig;
-import io.debezium.connector.base.DefaultChangeEventQueue;
+import io.debezium.connector.base.ChangeEventQueue;
+import io.debezium.connector.base.DefaultQueueProvider;
+import io.debezium.pipeline.DataChangeEvent;
 
 public class InformixErrorHandlerTest {
 
@@ -27,7 +28,7 @@ public class InformixErrorHandlerTest {
             new InformixConnectorConfig(Configuration.create()
                     .with(CommonConnectorConfig.TOPIC_PREFIX, "informix")
                     .build()),
-            new DefaultChangeEventQueue<>(ChangeEventQueueConfig.builder().build()), null);
+            new ChangeEventQueue.Builder<DataChangeEvent>().queueProvider(new DefaultQueueProvider<>(1000)).build(), null);
 
     @Test
     public void communicationExceptionIsRetryable() {
