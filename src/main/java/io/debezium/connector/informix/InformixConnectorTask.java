@@ -22,6 +22,7 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
+import io.debezium.connector.base.DefaultQueueProvider;
 import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.connector.common.DebeziumHeaderProducer;
 import io.debezium.document.DocumentReader;
@@ -119,6 +120,7 @@ public class InformixConnectorTask extends BaseSourceTask<InformixPartition, Inf
                 .maxBatchSize(connectorConfig.getMaxBatchSize())
                 .maxQueueSize(connectorConfig.getMaxQueueSize())
                 .loggingContextSupplier(() -> taskContext.configureLoggingContext(CONTEXT_NAME))
+                .queueProvider(new DefaultQueueProvider<>(connectorConfig.getMaxQueueSize()))
                 .build();
 
         errorHandler = new InformixErrorHandler(connectorConfig, queue, errorHandler);
