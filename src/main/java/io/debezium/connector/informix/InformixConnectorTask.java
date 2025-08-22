@@ -13,6 +13,9 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import io.debezium.heartbeat.DebeziumHeartbeatFactory;
+import io.debezium.heartbeat.Heartbeat;
+import io.debezium.heartbeat.HeartbeatFactory;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -143,11 +146,12 @@ public class InformixConnectorTask extends BaseSourceTask<InformixPartition, Inf
                 connectorConfig.getTableFilters().dataCollectionFilter(),
                 DataChangeEvent::new,
                 null,
-                connectorConfig.createHeartbeat(
-                        topicNamingStrategy,
-                        schemaNameAdjuster,
+                new HeartbeatFactory<>().getScheduledHeartbeat(
+                        connectorConfig,
                         () -> new InformixConnection(connectorConfig.getJdbcConfig()),
-                        DEFAULT_NOOP_ERRORHANDLER),
+                        DEFAULT_NOOP_ERRORHANDLER,
+                        queue
+                ),
                 schemaNameAdjuster,
                 new InformixTransactionMonitor(
                         connectorConfig,
