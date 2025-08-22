@@ -13,9 +13,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import io.debezium.heartbeat.DebeziumHeartbeatFactory;
-import io.debezium.heartbeat.Heartbeat;
-import io.debezium.heartbeat.HeartbeatFactory;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,6 +26,7 @@ import io.debezium.connector.base.DefaultQueueProvider;
 import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.connector.common.DebeziumHeaderProducer;
 import io.debezium.document.DocumentReader;
+import io.debezium.heartbeat.HeartbeatFactory;
 import io.debezium.jdbc.DefaultMainConnectionProvidingConnectionFactory;
 import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
@@ -150,8 +148,7 @@ public class InformixConnectorTask extends BaseSourceTask<InformixPartition, Inf
                         connectorConfig,
                         () -> new InformixConnection(connectorConfig.getJdbcConfig()),
                         DEFAULT_NOOP_ERRORHANDLER,
-                        queue
-                ),
+                        queue),
                 schemaNameAdjuster,
                 new InformixTransactionMonitor(
                         connectorConfig,
