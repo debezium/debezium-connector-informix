@@ -92,11 +92,6 @@
                 <artifactId>debezium-storage-file</artifactId>
                 <version>${version.debezium}</version>
             </dependency>
-            <dependency>
-                <groupId>io.debezium</groupId>
-                <artifactId>debezium-common</artifactId>
-                <version>${version.debezium}</version>
-            </dependency>
 
             <!-- Building -->
             <dependency>
@@ -535,7 +530,7 @@
         <profile>
             <id>informix14</id>
             <activation>
-                <activeByDefault>true</activeByDefault>
+                <activeByDefault>false</activeByDefault>
                 <property>
                     <name>informix14</name>
                 </property>
