@@ -270,8 +270,9 @@
                             <name>${docker.dbs}:${informix.version}</name>
                             <run>
                                 <env>
-                                    <SIZE>medium</SIZE>
                                     <LICENSE>accept</LICENSE>
+                                    <SIZE>medium</SIZE>
+                                    <TYPE>oltp</TYPE>
                                     <USEOSTIME>1</USEOSTIME>
                                     <DB_SBSPACE>1</DB_SBSPACE>
                                 </env>
@@ -480,7 +481,7 @@
             </activation>
             <properties>
                 <informix.version>12</informix.version>
-		<informix.image.registry>quay.io/debezium</informix.image.registry>
+                <informix.image.registry>quay.io/debezium</informix.image.registry>
                 <informix.image>ibmcom-informix-developer-database</informix.image>
                 <informix.image.tag>12.10.FC12W1DE</informix.image.tag>
                 <informix.run.wait.log>Logical Log \d Complete</informix.run.wait.log>
