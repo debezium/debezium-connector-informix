@@ -8,9 +8,9 @@ package io.debezium.connector.informix;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.sql.SQLException;
 import java.util.Arrays;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
@@ -89,24 +89,24 @@ public abstract class AbstractInformixDefaultValueIT extends AbstractAsyncEngine
     public void shouldHandleNumericDefaultTypes() throws Exception {
         List<ColumnDefinition> columnDefinitions = List.of(
                 new ColumnDefinition("val_bigint", "BIGINT",
-                        "1", "2",
-                        1L, 2L,
+                        "123456", "234567",
+                        123_456L, 234_567L,
                         AssertionType.FIELD_DEFAULT_EQUAL),
                 new ColumnDefinition("val_integer", "INTEGER",
-                        "1", "2",
-                        1, 2,
+                        "123", "234",
+                        123, 234,
                         AssertionType.FIELD_DEFAULT_EQUAL),
                 new ColumnDefinition("val_smallint", "SMALLINT",
                         "1", "2",
                         (short) 1, (short) 2,
                         AssertionType.FIELD_DEFAULT_EQUAL),
                 new ColumnDefinition("val_decimal", "DECIMAL(5,0)",
-                        "314", "628",
-                        BigDecimal.valueOf(314), BigDecimal.valueOf(628),
+                        "12345", "23456",
+                        BigDecimal.valueOf(12_345), BigDecimal.valueOf(23_456),
                         AssertionType.FIELD_DEFAULT_EQUAL),
                 new ColumnDefinition("val_numeric", "NUMERIC(5,0)",
-                        "314", "628",
-                        BigDecimal.valueOf(314), BigDecimal.valueOf(628),
+                        "12345", "23456",
+                        BigDecimal.valueOf(12_345), BigDecimal.valueOf(23_456),
                         AssertionType.FIELD_DEFAULT_EQUAL));
 
         shouldHandleDefaultValuesCommon(columnDefinitions);
@@ -118,24 +118,23 @@ public abstract class AbstractInformixDefaultValueIT extends AbstractAsyncEngine
 
         List<ColumnDefinition> columnDefinitions = Arrays.asList(
                 new ColumnDefinition("val_double", "DOUBLE PRECISION",
-                        "3.14", "6.28",
-                        3.14d, 6.28d,
-                        AssertionType.FIELD_DEFAULT_EQUAL),
+                        "3.141592653589793", "2.718281828459045",
+                        Math.PI, Math.E, AssertionType.FIELD_DEFAULT_EQUAL),
                 new ColumnDefinition("val_float", "FLOAT",
-                        "3.14", "6.28",
-                        3.14d, 6.28d,
-                        AssertionType.FIELD_DEFAULT_EQUAL),
+                        "3.141592653589793", "2.718281828459045",
+                        Math.PI, Math.E, AssertionType.FIELD_DEFAULT_EQUAL),
                 new ColumnDefinition("val_real", "REAL",
-                        "3.14", "6.28",
-                        3.14f, 6.28f,
+                        "3.14159274", "2.71828175",
+                        (float) Math.PI, (float) Math.E, AssertionType.FIELD_DEFAULT_EQUAL),
+                new ColumnDefinition("val_decimal", "DECIMAL(7,5)",
+                        "3.14159", "2.71828",
+                        BigDecimal.valueOf(Math.PI).setScale(5, RoundingMode.HALF_EVEN),
+                        BigDecimal.valueOf(Math.E).setScale(5, RoundingMode.HALF_EVEN),
                         AssertionType.FIELD_DEFAULT_EQUAL),
-                new ColumnDefinition("val_decimal", "DECIMAL(5,2)",
-                        "3.14", "6.28",
-                        BigDecimal.valueOf(3.14), BigDecimal.valueOf(6.28),
-                        AssertionType.FIELD_DEFAULT_EQUAL),
-                new ColumnDefinition("val_numeric", "NUMERIC(5,2)",
-                        "3.14", "6.28",
-                        BigDecimal.valueOf(3.14), BigDecimal.valueOf(6.28),
+                new ColumnDefinition("val_numeric", "NUMERIC(7,5)",
+                        "3.14159", "2.71828",
+                        BigDecimal.valueOf(Math.PI).setScale(5, RoundingMode.HALF_EVEN),
+                        BigDecimal.valueOf(Math.E).setScale(5, RoundingMode.HALF_EVEN),
                         AssertionType.FIELD_DEFAULT_EQUAL));
 
         shouldHandleDefaultValuesCommon(columnDefinitions);
@@ -173,6 +172,10 @@ public abstract class AbstractInformixDefaultValueIT extends AbstractAsyncEngine
     @FixFor("DBZ-4990")
     public void shouldHandleDateTimeDefaultTypes() throws Exception {
         List<ColumnDefinition> columnDefinitions = Arrays.asList(
+                new ColumnDefinition("val_date_y2", "DATE",
+                        "'24-01-01'", "'49-02-03'",
+                        19723, 28888,
+                        AssertionType.FIELD_DEFAULT_EQUAL),
                 new ColumnDefinition("val_date", "DATE",
                         "'2024-01-01'", "'2024-01-02'",
                         19723, 19724,
@@ -414,9 +417,7 @@ public abstract class AbstractInformixDefaultValueIT extends AbstractAsyncEngine
         // Build SQL
         final StringBuilder alterSql = new StringBuilder();
         alterSql.append("ALTER TABLE %table% ");
-        Iterator<ColumnDefinition> iterator = columnDefinitions.iterator();
-        while (iterator.hasNext()) {
-            final ColumnDefinition column = iterator.next();
+        for (ColumnDefinition column : columnDefinitions) {
             alterSql.append("ADD (")
                     .append("a").append(column.name)
                     .append(" ").append(column.definition)
@@ -501,9 +502,7 @@ public abstract class AbstractInformixDefaultValueIT extends AbstractAsyncEngine
      * @param expectedValue the expected value in the field's default and "after" struct
      */
     private static void assertSchemaFieldWithSameDefaultAndValue(SourceRecord record, String fieldName, Object expectedValue) {
-        assertSchemaFieldValueWithDefault(record, fieldName, expectedValue, r -> {
-            assertThat(r).as("Unexpected field value: " + fieldName).isEqualTo(expectedValue);
-        });
+        assertSchemaFieldValueWithDefault(record, fieldName, expectedValue, r -> assertThat(r).as("Unexpected field value: " + fieldName).isEqualTo(expectedValue));
     }
 
     /**
@@ -515,9 +514,7 @@ public abstract class AbstractInformixDefaultValueIT extends AbstractAsyncEngine
      */
     // asserts that the field schema has no default value and an emitted value
     private static void assertSchemaFieldNoDefaultWithValue(SourceRecord record, String fieldName, Object fieldValue) {
-        assertSchemaFieldValueWithDefault(record, fieldName, null, r -> {
-            assertThat(r).as("Unexpected field value: " + fieldName).isEqualTo(fieldValue);
-        });
+        assertSchemaFieldValueWithDefault(record, fieldName, null, r -> assertThat(r).as("Unexpected field value: " + fieldName).isEqualTo(fieldValue));
     }
 
     private static void assertSchemaFieldValueWithDefault(SourceRecord record, String fieldName, Object expectedDefault, Consumer<Object> valueCheck) {
@@ -552,9 +549,7 @@ public abstract class AbstractInformixDefaultValueIT extends AbstractAsyncEngine
     }
 
     private static void assertSchemaFieldDefaultAndNonNullValue(SourceRecord record, String fieldName, Object defaultValue) {
-        assertSchemaFieldValueWithDefault(record, fieldName, defaultValue, r -> {
-            assertThat(r).as("Unexpected field value: " + fieldName).isNotNull();
-        });
+        assertSchemaFieldValueWithDefault(record, fieldName, defaultValue, r -> assertThat(r).as("Unexpected field value: " + fieldName).isNotNull());
     }
 
     /**
