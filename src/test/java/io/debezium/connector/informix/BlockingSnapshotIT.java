@@ -26,7 +26,7 @@ import io.debezium.junit.ConditionalFail;
 import io.debezium.pipeline.AbstractBlockingSnapshotTest;
 import io.debezium.relational.history.SchemaHistory;
 
-public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
+public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest<InformixConnector> {
 
     @Rule
     public TestRule conditionalFail = new ConditionalFail();
