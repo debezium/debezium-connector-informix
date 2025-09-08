@@ -10,7 +10,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.util.Arrays;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
@@ -173,6 +172,10 @@ public abstract class AbstractInformixDefaultValueIT extends AbstractAsyncEngine
     @FixFor("DBZ-4990")
     public void shouldHandleDateTimeDefaultTypes() throws Exception {
         List<ColumnDefinition> columnDefinitions = Arrays.asList(
+                new ColumnDefinition("val_date_y2", "DATE",
+                        "'24-01-01'", "'49-02-03'",
+                        19723, 28888,
+                        AssertionType.FIELD_DEFAULT_EQUAL),
                 new ColumnDefinition("val_date", "DATE",
                         "'2024-01-01'", "'2024-01-02'",
                         19723, 19724,
@@ -414,9 +417,7 @@ public abstract class AbstractInformixDefaultValueIT extends AbstractAsyncEngine
         // Build SQL
         final StringBuilder alterSql = new StringBuilder();
         alterSql.append("ALTER TABLE %table% ");
-        Iterator<ColumnDefinition> iterator = columnDefinitions.iterator();
-        while (iterator.hasNext()) {
-            final ColumnDefinition column = iterator.next();
+        for (ColumnDefinition column : columnDefinitions) {
             alterSql.append("ADD (")
                     .append("a").append(column.name)
                     .append(" ").append(column.definition)
@@ -501,9 +502,7 @@ public abstract class AbstractInformixDefaultValueIT extends AbstractAsyncEngine
      * @param expectedValue the expected value in the field's default and "after" struct
      */
     private static void assertSchemaFieldWithSameDefaultAndValue(SourceRecord record, String fieldName, Object expectedValue) {
-        assertSchemaFieldValueWithDefault(record, fieldName, expectedValue, r -> {
-            assertThat(r).as("Unexpected field value: " + fieldName).isEqualTo(expectedValue);
-        });
+        assertSchemaFieldValueWithDefault(record, fieldName, expectedValue, r -> assertThat(r).as("Unexpected field value: " + fieldName).isEqualTo(expectedValue));
     }
 
     /**
@@ -515,9 +514,7 @@ public abstract class AbstractInformixDefaultValueIT extends AbstractAsyncEngine
      */
     // asserts that the field schema has no default value and an emitted value
     private static void assertSchemaFieldNoDefaultWithValue(SourceRecord record, String fieldName, Object fieldValue) {
-        assertSchemaFieldValueWithDefault(record, fieldName, null, r -> {
-            assertThat(r).as("Unexpected field value: " + fieldName).isEqualTo(fieldValue);
-        });
+        assertSchemaFieldValueWithDefault(record, fieldName, null, r -> assertThat(r).as("Unexpected field value: " + fieldName).isEqualTo(fieldValue));
     }
 
     private static void assertSchemaFieldValueWithDefault(SourceRecord record, String fieldName, Object expectedDefault, Consumer<Object> valueCheck) {
@@ -552,9 +549,7 @@ public abstract class AbstractInformixDefaultValueIT extends AbstractAsyncEngine
     }
 
     private static void assertSchemaFieldDefaultAndNonNullValue(SourceRecord record, String fieldName, Object defaultValue) {
-        assertSchemaFieldValueWithDefault(record, fieldName, defaultValue, r -> {
-            assertThat(r).as("Unexpected field value: " + fieldName).isNotNull();
-        });
+        assertSchemaFieldValueWithDefault(record, fieldName, defaultValue, r -> assertThat(r).as("Unexpected field value: " + fieldName).isNotNull());
     }
 
     /**

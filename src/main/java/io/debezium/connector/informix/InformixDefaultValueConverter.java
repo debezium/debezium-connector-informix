@@ -103,9 +103,9 @@ public class InformixDefaultValueConverter implements DefaultValueConverter {
 
         // Other numerical values
         result.put(Types.DECIMAL, nullableDefaultValueMapper(numericDefaultValueMapper()));
-        result.put(Types.DOUBLE, nullableDefaultValueMapper((c, v) -> Double.parseDouble(v)));
-        result.put(Types.FLOAT, nullableDefaultValueMapper((c, v) -> Double.parseDouble(v)));
-        result.put(Types.REAL, nullableDefaultValueMapper((c, v) -> Float.parseFloat(v)));
+        result.put(Types.DOUBLE, nullableDefaultValueMapper(floatingPointDefaultValueMapper()));
+        result.put(Types.FLOAT, nullableDefaultValueMapper(floatingPointDefaultValueMapper()));
+        result.put(Types.REAL, nullableDefaultValueMapper(floatingPointDefaultValueMapper()));
 
         // Date and time
         result.put(Types.DATE, nullableDefaultValueMapper(castTemporalFunctionCall(connection, Types.DATE)));
@@ -155,9 +155,15 @@ public class InformixDefaultValueConverter implements DefaultValueConverter {
 
     public static DefaultValueMapper numericDefaultValueMapper() {
         return (column, value) -> {
-            BigDecimal decimal = new BigDecimal(value);
+            BigDecimal decimal = new BigDecimal(value.replace(',', '.'));
             return column.scale().<Number> map(decimal::setScale).orElseGet(decimal::toBigIntegerExact);
         };
+    }
+
+    private static DefaultValueMapper floatingPointDefaultValueMapper() {
+        return (c, v) -> c.jdbcType() == Types.REAL
+                ? Float.parseFloat(v.replace(',', '.'))
+                : Double.parseDouble(v.replace(',', '.'));
     }
 
     private static DefaultValueMapper castTemporalFunctionCall(InformixConnection connection, int jdbcType) {
@@ -170,21 +176,12 @@ public class InformixDefaultValueConverter implements DefaultValueConverter {
                 String[] typeExpr = column.typeExpression().trim().split("[\\s()]");
                 StringBuilder dateTimeStr = new StringBuilder("1970-01-01 00:00:00");
                 if ("DATETIME".equalsIgnoreCase(typeExpr[0])) {
-                    int scale;
-                    switch (typeExpr.length) {
-                        case 5:
-                            scale = Integer.parseInt(typeExpr[4]);
-                            break;
-                        case 4:
-                            scale = "FRACTION".equalsIgnoreCase(typeExpr[3]) ? 3 : 0;
-                            break;
-                        case 2:
-                            scale = Integer.parseInt(typeExpr[1]);
-                            break;
-                        case 1:
-                        default:
-                            scale = 3;
-                    }
+                    int scale = switch (typeExpr.length) {
+                        case 5 -> Integer.parseInt(typeExpr[4]);
+                        case 4 -> "FRACTION".equalsIgnoreCase(typeExpr[3]) ? 3 : 0;
+                        case 2 -> Integer.parseInt(typeExpr[1]);
+                        default -> 3;
+                    };
                     if (scale > 0) {
                         dateTimeStr.append('.').append("0".repeat(scale));
                     }
@@ -194,25 +191,23 @@ public class InformixDefaultValueConverter implements DefaultValueConverter {
                 return column.isOptional() ? null : Timestamp.valueOf(defaultVal);
             }
             else {
-                switch (jdbcType) {
-                    case Types.DATE:
-                        return JdbcConnection.querySingleValue(
+                return switch (jdbcType) {
+                    case Types.DATE ->
+                        JdbcConnection.querySingleValue(
                                 connection.connection(),
                                 "SELECT DATE('" + value + "') FROM sysmaster:sysdual",
                                 st -> {
                                 },
                                 rs -> rs.getDate(1));
-                    case Types.TIME:
-                    case Types.TIMESTAMP:
-                        return JdbcConnection.querySingleValue(
+                    case Types.TIME, Types.TIMESTAMP ->
+                        JdbcConnection.querySingleValue(
                                 connection.connection(),
                                 "SELECT DATETIME(" + value + ") " + column.typeExpression().substring(9).toUpperCase() + " FROM sysmaster:sysdual",
                                 st -> {
                                 },
                                 rs -> rs.getTimestamp(1));
-                    default:
-                        throw new DebeziumException("Unexpected JDBC type '" + jdbcType + "' for default value resolution: " + value);
-                }
+                    default -> throw new DebeziumException("Unexpected JDBC type '" + jdbcType + "' for default value resolution: " + value);
+                };
             }
         };
     }
