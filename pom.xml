@@ -499,6 +499,12 @@
                         <configuration>
                             <images>
                                 <image>
+                                    <run>
+                                        <env>
+                                            <DBDATE>MDY2.</DBDATE>
+                                            <DBCENTURY>C</DBCENTURY>
+                                        </env>
+                                    </run>
                                     <build>
                                         <assembly>
                                             <inline>
@@ -553,6 +559,7 @@
                                 <image>
                                     <run>
                                         <env>
+                                            <DBMONEY>€,¢</DBMONEY>
                                             <RUN_FILE_POST_INIT>informix_post_init.sh</RUN_FILE_POST_INIT>
                                         </env>
                                     </run>
