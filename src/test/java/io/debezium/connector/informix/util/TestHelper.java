@@ -82,7 +82,7 @@ public class TestHelper {
 
         return Configuration.copy(defaultJdbcConfig().build().map(key -> InformixConnectorConfig.DATABASE_CONFIG_PREFIX + key))
                 .with(CommonConnectorConfig.TOPIC_PREFIX, TEST_DATABASE)
-                .with(CommonConnectorConfig.DRIVER_CONFIG_PREFIX + IFX_LOCK_MODE_WAIT, 10)
+                .with(CommonConnectorConfig.DRIVER_CONFIG_PREFIX + IFX_LOCK_MODE_WAIT, 30)
                 .with(InformixConnectorConfig.SCHEMA_HISTORY, FileSchemaHistory.class)
                 .with(FileSchemaHistory.FILE_PATH, SCHEMA_HISTORY_PATH)
                 .with(InformixConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
