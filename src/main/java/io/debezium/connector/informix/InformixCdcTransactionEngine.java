@@ -20,8 +20,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.OptionalLong;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
+
+import javax.cache.Cache;
+import javax.cache.CacheManager;
+import javax.cache.Caching;
+import javax.cache.spi.CachingProvider;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,20 +52,19 @@ public class InformixCdcTransactionEngine implements IfxTransactionEngine {
     private static final Logger LOGGER = LoggerFactory.getLogger(InformixCdcTransactionEngine.class);
     private static final String PROCESSING_RECORD = "Processing {} record";
     private static final String MISSING_TRANSACTION_START_FOR_RECORD = "Missing transaction start for record: {}";
-    protected final Map<Integer, TransactionHolder> transactionMap;
+    protected final CacheManager cacheManager;
+    protected final ChangeEventSourceContext context;
     protected final IfxCDCEngine engine;
-    private final ChangeEventSourceContext context;
-    protected EnumSet<IfmxStreamRecordType> operationFilters;
-    protected EnumSet<IfmxStreamRecordType> transactionFilters;
-    protected boolean returnEmptyTransactions;
-    private Map<String, TableId> tableIdByLabelId;
+    protected Cache<Integer, TransactionHolder> transactionCache;
+    protected EnumSet<IfmxStreamRecordType> operationFilters = EnumSet.of(INSERT, DELETE, BEFORE_UPDATE, AFTER_UPDATE, TRUNCATE);
+    protected EnumSet<IfmxStreamRecordType> transactionFilters = EnumSet.of(COMMIT, ROLLBACK);
+    protected Map<String, TableId> tableIdByLabelId;
+    protected boolean returnEmptyTransactions = true;
 
     public InformixCdcTransactionEngine(ChangeEventSourceContext context, IfxCDCEngine engine) {
+        CachingProvider cachingProvider = Caching.getCachingProvider();
+        cacheManager = cachingProvider.getCacheManager();
         this.context = context;
-        this.operationFilters = EnumSet.of(INSERT, DELETE, BEFORE_UPDATE, AFTER_UPDATE, TRUNCATE);
-        this.transactionFilters = EnumSet.of(COMMIT, ROLLBACK);
-        this.transactionMap = new ConcurrentHashMap<>();
-        this.returnEmptyTransactions = true;
         this.engine = engine;
     }
 
@@ -69,7 +73,7 @@ public class InformixCdcTransactionEngine implements IfxTransactionEngine {
         IfmxStreamRecord streamRecord;
         while (context.isRunning() && (streamRecord = engine.getRecord()) != null) {
 
-            TransactionHolder holder = transactionMap.get(streamRecord.getTransactionId());
+            TransactionHolder holder = transactionCache.get(streamRecord.getTransactionId());
             if (holder != null) {
                 LOGGER.debug("Processing [{}] record for transaction id: {}", streamRecord.getType(), streamRecord.getTransactionId());
             }
@@ -77,7 +81,7 @@ public class InformixCdcTransactionEngine implements IfxTransactionEngine {
                 case BEGIN:
                     holder = new TransactionHolder();
                     holder.beginRecord = (IfxCDCBeginTransactionRecord) streamRecord;
-                    transactionMap.put(streamRecord.getTransactionId(), holder);
+                    transactionCache.put(streamRecord.getTransactionId(), holder);
                     LOGGER.debug("Watching transaction id: {}", streamRecord.getTransactionId());
                     break;
                 case INSERT:
@@ -126,7 +130,7 @@ public class InformixCdcTransactionEngine implements IfxTransactionEngine {
                     LOGGER.warn("Unknown operation for record: {}", streamRecord);
             }
             if (holder != null && holder.closingRecord != null) {
-                transactionMap.remove(streamRecord.getTransactionId());
+                transactionCache.remove(streamRecord.getTransactionId());
                 if (!holder.records.isEmpty() || returnEmptyTransactions) {
                     return new InformixStreamTransactionRecord(holder.beginRecord, holder.closingRecord, holder.records);
                 }
@@ -167,6 +171,8 @@ public class InformixCdcTransactionEngine implements IfxTransactionEngine {
     public void init() throws SQLException, IfxStreamException {
         engine.init();
 
+        transactionCache = cacheManager.getCache("TransactionCache");
+
         /*
          * Build Map of Label_id to TableId.
          */
@@ -178,11 +184,17 @@ public class InformixCdcTransactionEngine implements IfxTransactionEngine {
 
     @Override
     public void close() throws IfxStreamException {
-        engine.close();
+        if (engine != null)
+            engine.close();
+        if (transactionCache != null)
+            transactionCache.close();
     }
 
     public OptionalLong getLowestBeginSequence() {
-        return transactionMap.values().stream().mapToLong(t -> t.beginRecord.getSequenceId()).min();
+
+        return StreamSupport.stream(transactionCache.spliterator(), true)
+                .map(Cache.Entry::getValue)
+                .mapToLong(t -> t.beginRecord.getSequenceId()).min();
     }
 
     public Map<String, TableId> getTableIdByLabelId() {
