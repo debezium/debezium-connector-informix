@@ -1,0 +1,7 @@
+hazelcast:
+  cache:
+    "transaction-cache":
+      key-type:
+        class-name: java.lang.Object
+      value-type:
+        class-name: java.lang.Object

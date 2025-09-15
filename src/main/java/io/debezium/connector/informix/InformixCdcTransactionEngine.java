@@ -13,6 +13,8 @@ import static com.informix.stream.api.IfmxStreamRecordType.INSERT;
 import static com.informix.stream.api.IfmxStreamRecordType.ROLLBACK;
 import static com.informix.stream.api.IfmxStreamRecordType.TRUNCATE;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -26,7 +28,6 @@ import java.util.stream.StreamSupport;
 import javax.cache.Cache;
 import javax.cache.CacheManager;
 import javax.cache.Caching;
-import javax.cache.spi.CachingProvider;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,15 +56,24 @@ public class InformixCdcTransactionEngine implements IfxTransactionEngine {
     protected final CacheManager cacheManager;
     protected final ChangeEventSourceContext context;
     protected final IfxCDCEngine engine;
+    protected final InformixConnectorConfig connectorConfig;
     protected Cache<Integer, TransactionHolder> transactionCache;
     protected EnumSet<IfmxStreamRecordType> operationFilters = EnumSet.of(INSERT, DELETE, BEFORE_UPDATE, AFTER_UPDATE, TRUNCATE);
     protected EnumSet<IfmxStreamRecordType> transactionFilters = EnumSet.of(COMMIT, ROLLBACK);
     protected Map<String, TableId> tableIdByLabelId;
     protected boolean returnEmptyTransactions = true;
 
-    public InformixCdcTransactionEngine(ChangeEventSourceContext context, IfxCDCEngine engine) {
-        CachingProvider cachingProvider = Caching.getCachingProvider();
-        cacheManager = cachingProvider.getCacheManager();
+    public InformixCdcTransactionEngine(ChangeEventSourceContext context, IfxCDCEngine engine, InformixConnectorConfig connectorConfig) {
+        this.connectorConfig = connectorConfig;
+        CacheManager cacheManager;
+        try {
+            URI jCacheUri = this.getClass().getClassLoader().getResource(connectorConfig.getJCacheUri()).toURI();
+            cacheManager = Caching.getCachingProvider(connectorConfig.getJCacheProviderClassName()).getCacheManager(jCacheUri, null);
+        }
+        catch (URISyntaxException e) {
+            cacheManager = Caching.getCachingProvider().getCacheManager();
+        }
+        this.cacheManager = cacheManager;
         this.context = context;
         this.engine = engine;
     }
@@ -171,7 +181,7 @@ public class InformixCdcTransactionEngine implements IfxTransactionEngine {
     public void init() throws SQLException, IfxStreamException {
         engine.init();
 
-        transactionCache = cacheManager.getCache("TransactionCache");
+        transactionCache = cacheManager.getCache(connectorConfig.getTransactionCacheName());
 
         /*
          * Build Map of Label_id to TableId.
@@ -188,6 +198,8 @@ public class InformixCdcTransactionEngine implements IfxTransactionEngine {
             engine.close();
         if (transactionCache != null)
             transactionCache.close();
+        if (cacheManager != null)
+            cacheManager.close();
     }
 
     public OptionalLong getLowestBeginSequence() {

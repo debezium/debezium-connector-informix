@@ -134,6 +134,11 @@
                 <type>test-jar</type>
                 <scope>test</scope>
             </dependency>
+            <dependency>
+                <groupId>org.glassfish.jaxb</groupId>
+                <artifactId>jaxb-runtime</artifactId>
+                <version>2.3.9</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -174,6 +179,11 @@
         </dependency>
         <!-- Distributed Caching -->
         <dependency>
+            <groupId>javax.cache</groupId>
+            <artifactId>cache-api</artifactId>
+            <version>1.1.1</version>
+        </dependency>
+        <dependency>
             <groupId>com.github.ben-manes.caffeine</groupId>
             <artifactId>caffeine</artifactId>
             <version>3.2.2</version>
@@ -184,9 +194,22 @@
             <version>3.2.2</version>
         </dependency>
         <dependency>
-            <groupId>javax.cache</groupId>
-            <artifactId>cache-api</artifactId>
-            <version>1.1.1</version>
+            <groupId>org.ehcache</groupId>
+            <artifactId>ehcache</artifactId>
+            <version>3.11.1</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.ehcache</groupId>
+            <artifactId>jcache</artifactId>
+            <version>1.0.1</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.hazelcast</groupId>
+            <artifactId>hazelcast</artifactId>
+            <version>5.5.0</version>
+            <scope>test</scope>
         </dependency>
 
         <!-- Building -->
