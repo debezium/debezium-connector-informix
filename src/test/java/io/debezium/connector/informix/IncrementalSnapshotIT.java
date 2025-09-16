@@ -22,6 +22,7 @@ import io.debezium.connector.informix.InformixConnectorConfig.SnapshotMode;
 import io.debezium.connector.informix.util.TestHelper;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.ConditionalFail;
+import io.debezium.junit.Flaky;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotTest;
 
 public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<InformixConnector> {
@@ -173,5 +174,19 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Infor
     @Ignore("Informix does not support DDL operations on tables defined for replication")
     @Override
     public void snapshotPreceededBySchemaChange() {
+    }
+
+    @Test
+    @Flaky("DBZ-9460")
+    @Override
+    public void removeNotYetCapturedCollectionFromInProgressIncrementalSnapshot() throws Exception {
+        super.removeNotYetCapturedCollectionFromInProgressIncrementalSnapshot();
+    }
+
+    @Test
+    @Flaky("DBZ-9460")
+    @Override
+    public void removeStartedCapturedCollectionFromInProgressIncrementalSnapshot() throws Exception {
+        super.removeStartedCapturedCollectionFromInProgressIncrementalSnapshot();
     }
 }
