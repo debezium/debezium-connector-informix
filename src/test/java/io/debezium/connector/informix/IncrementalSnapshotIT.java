@@ -177,14 +177,14 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Infor
     }
 
     @Test
-    @Flaky("DBZ-9460")
+    @Flaky("DBZ-9475")
     @Override
     public void removeNotYetCapturedCollectionFromInProgressIncrementalSnapshot() throws Exception {
         super.removeNotYetCapturedCollectionFromInProgressIncrementalSnapshot();
     }
 
     @Test
-    @Flaky("DBZ-9460")
+    @Flaky("DBZ-9475")
     @Override
     public void removeStartedCapturedCollectionFromInProgressIncrementalSnapshot() throws Exception {
         super.removeStartedCapturedCollectionFromInProgressIncrementalSnapshot();
