@@ -1,7 +1,14 @@
 hazelcast:
+  jet:
+    enabled: true
   cache:
     "transaction-cache":
       key-type:
         class-name: java.lang.Object
       value-type:
         class-name: java.lang.Object
+      in-memory-format: OBJECT
+      eviction:
+        size: 1000000
+        max-size-policy: ENTRY_COUNT
+        eviction-policy: LFU

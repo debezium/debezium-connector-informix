@@ -177,6 +177,7 @@
             <artifactId>slf4j-api</artifactId>
             <scope>provided</scope>
         </dependency>
+
         <!-- Distributed Caching -->
         <dependency>
             <groupId>javax.cache</groupId>
@@ -194,22 +195,34 @@
             <version>3.2.2</version>
         </dependency>
         <dependency>
+            <groupId>com.hazelcast</groupId>
+            <artifactId>hazelcast</artifactId>
+            <version>5.5.0</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>org.ehcache</groupId>
             <artifactId>ehcache</artifactId>
             <version>3.11.1</version>
             <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>javax.cache</groupId>
+                    <artifactId>cache-api</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.ehcache</groupId>
             <artifactId>jcache</artifactId>
             <version>1.0.1</version>
             <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.hazelcast</groupId>
-            <artifactId>hazelcast</artifactId>
-            <version>5.5.0</version>
-            <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>javax.cache</groupId>
+                    <artifactId>cache-api</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <!-- Building -->

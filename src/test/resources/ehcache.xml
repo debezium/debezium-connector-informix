@@ -1,0 +1,12 @@
+<ehcache>
+    <diskStore path="java.io.tmpdir"/>
+    <cache name="transaction-cache"
+           maxElementsInMemory="100000"
+           eternal="false"
+           timeToIdleSeconds="360"
+           timeToLiveSeconds="360"
+           maxEntriesLocalDisk="1000000"
+           diskExpiryThreadIntervalSeconds="360"
+           memoryStoreEvictionPolicy="LFU">
+    </cache>
+</ehcache>

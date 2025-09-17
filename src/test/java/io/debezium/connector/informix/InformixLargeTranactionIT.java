@@ -67,16 +67,9 @@ public class InformixLargeTranactionIT extends AbstractAsyncEngineConnectorTest 
         }
     }
 
-    @Test
-    public void testLargeTransactionWithHazelcast() throws Exception {
-        final int RECORDS_PER_TABLE = 1000;
+    private void testLargeTransaction(Configuration config) throws InterruptedException, SQLException {
+        final int RECORDS_PER_TABLE = 100_000;
         final int ID_START = 1;
-        final Configuration config = TestHelper.defaultConfig()
-                .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
-                .with(InformixConnectorConfig.TABLE_INCLUDE_LIST, "testdb.informix.tableb")
-                .with(InformixConnectorConfig.JCACHE_PROVIDER_CLASSNAME, "com.hazelcast.cache.HazelcastMemberCachingProvider")
-                .with(InformixConnectorConfig.JCACHE_URI, "hazelcast.yaml")
-                .build();
 
         start(InformixConnector.class, config);
         assertConnectorIsRunning();
@@ -101,40 +94,39 @@ public class InformixLargeTranactionIT extends AbstractAsyncEngineConnectorTest 
         assertThat(tableB).hasSize(RECORDS_PER_TABLE);
         assertNoRecordsToConsume();
     }
+
     @Test
     public void testLargeTransactionWithCaffeine() throws Exception {
-        final int RECORDS_PER_TABLE = 10_000;
-        final int ID_START = 1;
         final Configuration config = TestHelper.defaultConfig()
                 .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .with(InformixConnectorConfig.TABLE_INCLUDE_LIST, "testdb.informix.tableb")
-//                .with(InformixConnectorConfig.JCACHE_PROVIDER_CLASSNAME, "org.ehcache.jsr107.EhcacheCachingProvider")
-//                .with(InformixConnectorConfig.JCACHE_URI, "ehcache.xml")
-//                .with(InformixConnectorConfig.TRANSACTION_CACHE_NAME, "TransactionCache")
                 .build();
 
-        start(InformixConnector.class, config);
-        assertConnectorIsRunning();
+        testLargeTransaction(config);
+    }
 
-        // Wait for streaming to start
-        waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
+    @Test
+    public void testLargeTransactionWithHazelcast() throws Exception {
+        final Configuration config = TestHelper.defaultConfig()
+                .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
+                .with(InformixConnectorConfig.TABLE_INCLUDE_LIST, "testdb.informix.tableb")
+                .with(InformixConnectorConfig.JCACHE_PROVIDER_CLASSNAME, "com.hazelcast.cache.HazelcastMemberCachingProvider")
+                .with(InformixConnectorConfig.JCACHE_URI, "hazelcast.yaml")
+                .build();
 
-        connection.setAutoCommit(false);
-        for (int i = 0; i < RECORDS_PER_TABLE; i++) {
-            final int id = ID_START + i;
-            connection.executeWithoutCommitting("INSERT INTO tablea VALUES(" + id + ", 'a')");
-            connection.executeWithoutCommitting("INSERT INTO tableb VALUES(" + id + ", 'b')");
-        }
-        connection.commit();
+        testLargeTransaction(config);
+    }
 
-        waitForAvailableRecords();
+    @Test
+    public void testLargeTransactionWithEhCache() throws Exception {
+        final Configuration config = TestHelper.defaultConfig()
+                .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
+                .with(InformixConnectorConfig.TABLE_INCLUDE_LIST, "testdb.informix.tableb")
+                .with(InformixConnectorConfig.JCACHE_PROVIDER_CLASSNAME, "org.ehcache.jcache.JCacheCachingProvider")
+                .with(InformixConnectorConfig.JCACHE_URI, "ehcache.xml")
+                .build();
 
-        final SourceRecords records = consumeRecordsByTopic(RECORDS_PER_TABLE);
-        final List<SourceRecord> tableA = records.recordsForTopic("testdb.informix.tablea");
-        final List<SourceRecord> tableB = records.recordsForTopic("testdb.informix.tableb");
-        assertThat(tableA).isNullOrEmpty();
-        assertThat(tableB).hasSize(RECORDS_PER_TABLE);
-        assertNoRecordsToConsume();
+        testLargeTransaction(config);
     }
 
     private void assertRecord(Struct record, List<SchemaAndValueField> expected) {
