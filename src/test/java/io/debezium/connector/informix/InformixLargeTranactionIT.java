@@ -10,7 +10,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.sql.SQLException;
 import java.util.List;
 
-import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.Before;
@@ -21,7 +20,6 @@ import org.junit.rules.TestRule;
 import io.debezium.config.Configuration;
 import io.debezium.connector.informix.InformixConnectorConfig.SnapshotMode;
 import io.debezium.connector.informix.util.TestHelper;
-import io.debezium.data.SchemaAndValueField;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.ConditionalFail;
 
@@ -46,7 +44,7 @@ public class InformixLargeTranactionIT extends AbstractAsyncEngineConnectorTest 
                 "CREATE TABLE tableb (id int not null, colb varchar(30), primary key (id))");
         initializeConnectorTestFramework();
         Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
-        Print.enable();
+        Print.disable();
     }
 
     @After
@@ -96,10 +94,23 @@ public class InformixLargeTranactionIT extends AbstractAsyncEngineConnectorTest 
     }
 
     @Test
+    public void testLargeTransactionWithDefault() throws Exception {
+        final Configuration config = TestHelper.defaultConfig()
+                .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
+                .with(InformixConnectorConfig.TABLE_INCLUDE_LIST, "testdb.informix.tableb")
+                .build();
+
+        testLargeTransaction(config);
+    }
+
+    @Test
     public void testLargeTransactionWithCaffeine() throws Exception {
         final Configuration config = TestHelper.defaultConfig()
                 .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .with(InformixConnectorConfig.TABLE_INCLUDE_LIST, "testdb.informix.tableb")
+                .with(InformixConnectorConfig.JCACHE_PROVIDER_CLASSNAME, "com.github.benmanes.caffeine.jcache.spi.CaffeineCachingProvider")
+                .with(InformixConnectorConfig.JCACHE_URI, "caffeine.conf")
+                .with(InformixConnectorConfig.TRANSACTION_CACHE_NAME, "transaction-cache")
                 .build();
 
         testLargeTransaction(config);
@@ -112,6 +123,7 @@ public class InformixLargeTranactionIT extends AbstractAsyncEngineConnectorTest 
                 .with(InformixConnectorConfig.TABLE_INCLUDE_LIST, "testdb.informix.tableb")
                 .with(InformixConnectorConfig.JCACHE_PROVIDER_CLASSNAME, "com.hazelcast.cache.HazelcastMemberCachingProvider")
                 .with(InformixConnectorConfig.JCACHE_URI, "hazelcast.yaml")
+                .with(InformixConnectorConfig.TRANSACTION_CACHE_NAME, "transaction-cache")
                 .build();
 
         testLargeTransaction(config);
@@ -124,12 +136,10 @@ public class InformixLargeTranactionIT extends AbstractAsyncEngineConnectorTest 
                 .with(InformixConnectorConfig.TABLE_INCLUDE_LIST, "testdb.informix.tableb")
                 .with(InformixConnectorConfig.JCACHE_PROVIDER_CLASSNAME, "org.ehcache.jcache.JCacheCachingProvider")
                 .with(InformixConnectorConfig.JCACHE_URI, "ehcache.xml")
+                .with(InformixConnectorConfig.TRANSACTION_CACHE_NAME, "transaction-cache")
                 .build();
 
         testLargeTransaction(config);
     }
 
-    private void assertRecord(Struct record, List<SchemaAndValueField> expected) {
-        expected.forEach(schemaAndValueField -> schemaAndValueField.assertFor(record));
-    }
 }

@@ -45,10 +45,6 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
 
     protected static final boolean DEFAULT_CDC_STOP_ON_CLOSE = true;
 
-    protected static final String DEFAULT_JCACHE_PROVIDER_CLASSNAME = "com.github.benmanes.caffeine.jcache.spi.CaffeineCachingProvider";
-
-    protected static final String DEFAULT_JCACHE_URI = "caffeine.conf";
-
     protected static final String DEFAULT_TRANSACTION_CACHE_NAME = "transaction-cache";
 
     /**
@@ -380,22 +376,20 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 3))
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
-            .withDescription("JCache Provider Classname, for caching transactions in a potentially distributed or disk offloading cache instead of heap memory.")
-            .withDefault(DEFAULT_JCACHE_PROVIDER_CLASSNAME);
+            .withDescription("JCache Provider Classname, for caching transactions in a potentially distributed or disk offloading cache instead of heap memory.");
 
     public static final Field JCACHE_URI = Field.create("javax.cache.uri")
             .withDisplayName("JCache URI")
             .withType(ConfigDef.Type.STRING)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 3))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 4))
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
-            .withDescription("URI of configuration resource for JCache Provider.")
-            .withDefault(DEFAULT_JCACHE_URI);
+            .withDescription("URI of configuration resource for JCache Provider.");
 
     public static final Field TRANSACTION_CACHE_NAME = Field.create("transaction.cache.name")
             .withDisplayName("Transaction Cache Name")
             .withType(ConfigDef.Type.STRING)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 4))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 5))
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
             .withDescription("Name of transaction cache configured in JCache URI resource.")
@@ -430,7 +424,9 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
                     CDC_BUFFERSIZE,
                     CDC_TIMEOUT,
                     CDC_STOP_ON_CLOSE,
-                    JCACHE_URI)
+                    JCACHE_PROVIDER_CLASSNAME,
+                    JCACHE_URI,
+                    TRANSACTION_CACHE_NAME)
             .events(SOURCE_INFO_STRUCT_MAKER)
             .excluding(INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES)
             .create();

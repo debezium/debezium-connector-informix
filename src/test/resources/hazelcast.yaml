@@ -1,6 +1,4 @@
 hazelcast:
-  jet:
-    enabled: true
   cache:
     "transaction-cache":
       key-type:
