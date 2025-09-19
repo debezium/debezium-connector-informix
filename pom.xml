@@ -270,8 +270,9 @@
                             <name>${docker.dbs}:${informix.version}</name>
                             <run>
                                 <env>
-                                    <SIZE>medium</SIZE>
                                     <LICENSE>accept</LICENSE>
+                                    <SIZE>small</SIZE>
+                                    <TYPE>oltp</TYPE>
                                     <USEOSTIME>1</USEOSTIME>
                                     <DB_SBSPACE>1</DB_SBSPACE>
                                 </env>
@@ -493,6 +494,12 @@
                         <configuration>
                             <images>
                                 <image>
+                                    <run>
+                                        <env>
+                                            <DBDATE>MDY2.</DBDATE>
+                                            <DBCENTURY>C</DBCENTURY>
+                                        </env>
+                                    </run>
                                     <build>
                                         <assembly>
                                             <inline>
@@ -546,6 +553,7 @@
                                 <image>
                                     <run>
                                         <env>
+                                            <DBMONEY>€,¢</DBMONEY>
                                             <RUN_FILE_POST_INIT>informix_post_init.sh</RUN_FILE_POST_INIT>
                                         </env>
                                     </run>
