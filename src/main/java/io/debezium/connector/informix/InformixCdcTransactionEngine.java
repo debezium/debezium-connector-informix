@@ -15,9 +15,7 @@ import static com.informix.stream.api.IfmxStreamRecordType.TRUNCATE;
 
 import java.net.URI;
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.EnumSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalLong;
@@ -60,8 +58,8 @@ public class InformixCdcTransactionEngine implements IfxTransactionEngine {
     protected final InformixConnectorConfig connectorConfig;
     protected final Optional<CachingProvider> cachingProvider;
     protected final Optional<CacheManager> cacheManager;
-    protected Optional<Cache<Integer, TransactionHolder>> transactionCache;
-    protected Map<Integer, TransactionHolder> transactionMap = new ConcurrentSkipListMap<>();
+    protected Optional<Cache<Integer, InformixTransactionHolder>> transactionCache;
+    protected Map<Integer, InformixTransactionHolder> transactionMap = new ConcurrentSkipListMap<>();
     protected EnumSet<IfmxStreamRecordType> operationFilters = EnumSet.of(INSERT, DELETE, BEFORE_UPDATE, AFTER_UPDATE, TRUNCATE);
     protected EnumSet<IfmxStreamRecordType> transactionFilters = EnumSet.of(COMMIT, ROLLBACK);
     protected Map<String, TableId> tableIdByLabelId;
@@ -89,13 +87,13 @@ public class InformixCdcTransactionEngine implements IfxTransactionEngine {
         IfmxStreamRecord streamRecord;
         while (context.isRunning() && (streamRecord = engine.getRecord()) != null) {
 
-            TransactionHolder holder = getTransactionHolder(streamRecord.getTransactionId());
+            InformixTransactionHolder holder = getTransactionHolder(streamRecord.getTransactionId());
             if (holder != null) {
                 LOGGER.debug("Processing [{}] record for transaction id: {}", streamRecord.getType(), streamRecord.getTransactionId());
             }
             switch (streamRecord.getType()) {
                 case BEGIN:
-                    holder = new TransactionHolder();
+                    holder = new InformixTransactionHolder();
                     holder.beginRecord = (IfxCDCBeginTransactionRecord) streamRecord;
                     putTransactionHolder(streamRecord.getTransactionId(), holder);
                     LOGGER.debug("Watching transaction id: {}", streamRecord.getTransactionId());
@@ -156,12 +154,12 @@ public class InformixCdcTransactionEngine implements IfxTransactionEngine {
         return null;
     }
 
-    private TransactionHolder getTransactionHolder(int transactionId) {
+    private InformixTransactionHolder getTransactionHolder(int transactionId) {
         return transactionCache.map(cache -> cache.get(transactionId))
                 .orElse(transactionMap.get(transactionId));
     }
 
-    private void putTransactionHolder(int transactionId, TransactionHolder holder) {
+    private void putTransactionHolder(int transactionId, InformixTransactionHolder holder) {
         transactionCache.ifPresentOrElse(cache -> cache.put(transactionId, holder),
                 () -> transactionMap.put(transactionId, holder));
     }
@@ -233,9 +231,4 @@ public class InformixCdcTransactionEngine implements IfxTransactionEngine {
         return tableIdByLabelId;
     }
 
-    protected static class TransactionHolder {
-        final List<IfmxStreamRecord> records = new ArrayList<>();
-        IfxCDCBeginTransactionRecord beginRecord;
-        IfmxStreamRecord closingRecord;
-    }
 }

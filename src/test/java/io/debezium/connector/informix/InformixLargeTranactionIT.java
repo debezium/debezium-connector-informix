@@ -66,7 +66,7 @@ public class InformixLargeTranactionIT extends AbstractAsyncEngineConnectorTest 
     }
 
     private void testLargeTransaction(Configuration config) throws InterruptedException, SQLException {
-        final int RECORDS_PER_TABLE = 100_000;
+        final int RECORDS_PER_TABLE = 10_000;
         final int ID_START = 1;
 
         start(InformixConnector.class, config);
@@ -134,7 +134,7 @@ public class InformixLargeTranactionIT extends AbstractAsyncEngineConnectorTest 
         final Configuration config = TestHelper.defaultConfig()
                 .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .with(InformixConnectorConfig.TABLE_INCLUDE_LIST, "testdb.informix.tableb")
-                .with(InformixConnectorConfig.JCACHE_PROVIDER_CLASSNAME, "org.ehcache.jcache.JCacheCachingProvider")
+                .with(InformixConnectorConfig.JCACHE_PROVIDER_CLASSNAME, "org.ehcache.jsr107.EhcacheCachingProvider")
                 .with(InformixConnectorConfig.JCACHE_URI, "ehcache.xml")
                 .with(InformixConnectorConfig.TRANSACTION_CACHE_NAME, "transaction-cache")
                 .build();

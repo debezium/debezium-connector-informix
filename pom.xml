@@ -135,9 +135,14 @@
                 <scope>test</scope>
             </dependency>
             <dependency>
+                <groupId>javax.cache</groupId>
+                <artifactId>cache-api</artifactId>
+                <version>1.1.1</version>
+            </dependency>
+            <dependency>
                 <groupId>org.glassfish.jaxb</groupId>
                 <artifactId>jaxb-runtime</artifactId>
-                <version>2.3.9</version>
+                <version>[3,3.1)</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -182,7 +187,6 @@
         <dependency>
             <groupId>javax.cache</groupId>
             <artifactId>cache-api</artifactId>
-            <version>1.1.1</version>
         </dependency>
 
         <!-- Building -->
@@ -250,6 +254,7 @@
             <artifactId>mockito-core</artifactId>
             <scope>test</scope>
         </dependency>
+
         <!-- Distributed Caching - Test -->
         <dependency>
             <groupId>com.github.ben-manes.caffeine</groupId>
@@ -273,24 +278,15 @@
             <groupId>org.ehcache</groupId>
             <artifactId>ehcache</artifactId>
             <version>3.11.1</version>
+            <classifier>jakarta</classifier>
             <scope>test</scope>
-            <exclusions>
-                <exclusion>
-                    <groupId>javax.cache</groupId>
-                    <artifactId>cache-api</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
         <dependency>
-            <groupId>org.ehcache</groupId>
-            <artifactId>jcache</artifactId>
-            <version>1.0.1</version>
+            <groupId>org.ehcache.modules</groupId>
+            <artifactId>ehcache-107</artifactId>
+            <version>3.11.1</version>
             <scope>test</scope>
             <exclusions>
-                <exclusion>
-                    <groupId>javax.cache</groupId>
-                    <artifactId>cache-api</artifactId>
-                </exclusion>
             </exclusions>
         </dependency>
 

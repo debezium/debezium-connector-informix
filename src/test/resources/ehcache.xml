@@ -1,9 +1,12 @@
-<ehcache>
-    <diskStore path="java.io.tmpdir"/>
-    <cache name="transaction-cache"
-           maxElementsInMemory="1000000"
-           timeToIdleSeconds="1000"
-           timeToLiveSeconds="1000"
-           memoryStoreEvictionPolicy="LFU">
+<config
+        xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance'
+        xmlns='http://www.ehcache.org/v3'
+        xsi:schemaLocation="http://www.ehcache.org/v3 http://www.ehcache.org/schema/ehcache-core-3.0.xsd">
+    <cache alias="transaction-cache">
+        <key-type>java.lang.Integer</key-type>
+        <value-type>io.debezium.connector.informix.InformixTransactionHolder</value-type>
+        <resources>
+            <heap unit="entries">100000</heap>
+        </resources>
     </cache>
-</ehcache>
+</config>
