@@ -3,10 +3,10 @@
         xmlns='http://www.ehcache.org/v3'
         xsi:schemaLocation="http://www.ehcache.org/v3 http://www.ehcache.org/schema/ehcache-core-3.0.xsd">
     <cache alias="transaction-cache">
-        <key-type>java.lang.Integer</key-type>
-        <value-type>io.debezium.connector.informix.InformixTransactionHolder</value-type>
+        <key-type>java.lang.Long</key-type>
+        <value-type>com.informix.stream.api.IfmxStreamRecord</value-type>
         <resources>
-            <heap unit="entries">100000</heap>
+            <heap unit="entries">10000</heap>
         </resources>
     </cache>
 </config>

@@ -2,11 +2,11 @@ hazelcast:
   cache:
     "transaction-cache":
       key-type:
-        class-name: java.lang.Integer
+        class-name: java.lang.Long
       value-type:
-        class-name: io.debezium.connector.informix.InformixTransactionHolder
+        class-name: com.informix.stream.api.IfmxStreamRecord
       in-memory-format: OBJECT
       eviction:
-        size: 100000
+        size: 10000
         max-size-policy: ENTRY_COUNT
         eviction-policy: LFU
