@@ -94,7 +94,7 @@ public class InformixConnectorTask extends BaseSourceTask<InformixPartition, Inf
 
         schema = new InformixDatabaseSchema(connectorConfig, topicNamingStrategy, valueConverters, schemaNameAdjuster, dataConnection, customConverterRegistry);
         schema.initializeStorage();
-        taskContext = new InformixTaskContext(connectorConfig, schema);
+        taskContext = new InformixTaskContext(connectorConfig);
 
         // Manual Bean Registration
         connectorConfig.getBeanRegistry().add(StandardBeanNames.CONFIGURATION, config);
