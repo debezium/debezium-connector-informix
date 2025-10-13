@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.informix;
 
+import io.debezium.config.Configuration;
 import io.debezium.connector.common.CdcSourceTaskContext;
 
 /**
@@ -13,8 +14,8 @@ import io.debezium.connector.common.CdcSourceTaskContext;
  * @author Jiri Pechanec, Lars M Johansson
  *
  */
-public class InformixTaskContext extends CdcSourceTaskContext {
-    public InformixTaskContext(InformixConnectorConfig config) {
-        super(config, config.getCustomMetricTags());
+public class InformixTaskContext extends CdcSourceTaskContext<InformixConnectorConfig> {
+    public InformixTaskContext(Configuration rawConfig, InformixConnectorConfig config) {
+        super(rawConfig, config, config.getCustomMetricTags());
     }
 }
