@@ -276,12 +276,13 @@
                     <watchInterval>500</watchInterval>
                     <logDate>default</logDate>
                     <verbose>true</verbose>
+                    <imagePullPolicy>IfNotPresent</imagePullPolicy>
+                    <containerNamePattern>%e</containerNamePattern>
                     <images>
                         <!-- Images based on "${informix.image}" Docker image -->
                         <image>
                             <name>${docker.dbs}:${informix.version}</name>
                             <run>
-                                <namingStrategy>none</namingStrategy>
                                 <env>
                                     <LICENSE>accept</LICENSE>
                                     <SIZE>small</SIZE>
