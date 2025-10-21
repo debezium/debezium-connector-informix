@@ -40,6 +40,11 @@
         <informix.run.wait.log>SCHAPI: Started \d dbWorker threads</informix.run.wait.log>
         <informix.init.script.name>informix_post_init.sh</informix.init.script.name>
         <informix.output.directory>config</informix.output.directory>
+        <!-- Default values for the database -->
+        <informix.db.date>MDY4/</informix.db.date>
+        <informix.db.century>R</informix.db.century>
+        <informix.db.money>$</informix.db.money>
+        <!-- -->
         <docker.dbs>debezium/informix-test-database</docker.dbs>
         <docker.filter>${docker.dbs}:${informix.version}</docker.filter>
         <docker.skip>false</docker.skip>
@@ -289,9 +294,9 @@
                                     <TYPE>oltp</TYPE>
                                     <USEOSTIME>1</USEOSTIME>
                                     <DB_SBSPACE>1</DB_SBSPACE>
-                                    <DBDATE>MDY2.</DBDATE>
-                                    <DBCENTURY>C</DBCENTURY>
-                                    <DBMONEY>€,¢</DBMONEY>
+                                    <DBDATE>${informix.db.date}</DBDATE>
+                                    <DBCENTURY>${informix.db.century}</DBCENTURY>
+                                    <DBMONEY>${informix.db.money}</DBMONEY>
                                     <RUN_FILE_POST_INIT>informix_post_init.sh</RUN_FILE_POST_INIT>
                                 </env>
                                 <ports>
@@ -519,6 +524,8 @@
                 <informix.image.registry>quay.io/debezium</informix.image.registry>
                 <informix.init.script.name>informix_init.sh</informix.init.script.name>
                 <informix.output.directory>scripts</informix.output.directory>
+                <informix.db.date>MDY2.</informix.db.date>
+                <informix.db.century>C</informix.db.century>
             </properties>
         </profile>
         <profile>
@@ -527,6 +534,7 @@
                 <informix.version>14</informix.version>
                 <informix.image>informix-developer-database</informix.image>
                 <informix.image.tag>14.10.FC9W1DE</informix.image.tag>
+                <informix.db.money>€,¢</informix.db.money>
             </properties>
         </profile>
         <profile>
