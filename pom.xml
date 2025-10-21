@@ -37,6 +37,14 @@
         <informix.image.tag>14.10.FC9W1DE</informix.image.tag>
         <informix.version>14</informix.version>
         <informix.init.timeout>300000</informix.init.timeout> <!-- five minutes max -->
+        <informix.run.wait.log>SCHAPI: Started \d dbWorker threads</informix.run.wait.log>
+        <informix.init.script.name>informix_post_init.sh</informix.init.script.name>
+        <informix.output.directory>config</informix.output.directory>
+        <!-- Default values for the database -->
+        <informix.db.date>MDY4/</informix.db.date>
+        <informix.db.century>R</informix.db.century>
+        <informix.db.money>$.</informix.db.money>
+        <!-- -->
         <docker.dbs>debezium/informix-test-database</docker.dbs>
         <docker.filter>${docker.dbs}:${informix.version}</docker.filter>
         <docker.skip>false</docker.skip>
@@ -45,6 +53,7 @@
         <!-- Apicurio container properties -->
         <apicurio.port>8080</apicurio.port>
         <apicurio.init.timeout>60000</apicurio.init.timeout> <!-- 60 seconds -->
+        <apicurio.image>quay.io/apicurio/apicurio-registry-mem</apicurio.image>
     </properties>
 
     <repositories>
@@ -90,11 +99,6 @@
             <dependency>
                 <groupId>io.debezium</groupId>
                 <artifactId>debezium-storage-file</artifactId>
-                <version>${version.debezium}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.debezium</groupId>
-                <artifactId>debezium-common</artifactId>
                 <version>${version.debezium}</version>
             </dependency>
 
@@ -243,6 +247,11 @@
             <artifactId>mockito-core</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>io.strimzi</groupId>
+            <artifactId>strimzi-test-container</artifactId>
+            <scope>test</scope>
+        </dependency>
 
         <!-- Required by VerifyRecord -->
         <dependency>
@@ -280,10 +289,15 @@
                             <name>${docker.dbs}:${informix.version}</name>
                             <run>
                                 <env>
-                                    <SIZE>medium</SIZE>
                                     <LICENSE>accept</LICENSE>
+                                    <SIZE>medium</SIZE>
+                                    <TYPE>oltp</TYPE>
                                     <USEOSTIME>1</USEOSTIME>
                                     <DB_SBSPACE>1</DB_SBSPACE>
+                                    <DBDATE>${informix.db.date}</DBDATE>
+                                    <DBCENTURY>${informix.db.century}</DBCENTURY>
+                                    <DBMONEY>${informix.db.money}</DBMONEY>
+                                    <RUN_FILE_POST_INIT>informix_post_init.sh</RUN_FILE_POST_INIT>
                                 </env>
                                 <ports>
                                     <port>${informix.port}:9088</port>
@@ -303,6 +317,26 @@
                                 <runCmds>
                                     <run>sed -Ei 's/^(USEOSTIME)\s+\S/\1 1/' /opt/ibm/informix/etc/onconfig.std</run>
                                 </runCmds>
+                                <assembly>
+                                    <inline>
+                                        <includeBaseDirectory>false</includeBaseDirectory>
+                                        <files>
+                                            <file>
+                                                <source>${project.basedir}/src/test/docker/informix-cdc-docker/${informix.version}/${informix.init.script.name}</source>
+                                                <outputDirectory>${informix.output.directory}</outputDirectory>
+                                                <lineEnding>unix</lineEnding>
+                                                <fileMode>755</fileMode>
+                                            </file>
+                                            <file>
+                                                <source>${project.basedir}/src/test/docker/informix-cdc-docker/${informix.version}/testdb.sql</source>
+                                                <outputDirectory>informix/etc</outputDirectory>
+                                                <lineEnding>unix</lineEnding>
+                                            </file>
+                                        </files>
+                                    </inline>
+                                    <targetDir>/opt/ibm</targetDir>
+                                    <user>informix:informix</user>
+                                </assembly>
                             </build>
                             <external>
                                 <type>properties</type>
@@ -310,7 +344,7 @@
                             </external>
                         </image>
                         <image>
-                            <name>quay.io/apicurio/apicurio-registry-mem:${version.apicurio}</name>
+                            <name>${apicurio.image}:${version.apicurio}</name>
                             <run>
                                 <namingStrategy>none</namingStrategy>
                                 <ports>
@@ -482,169 +516,34 @@
         </profile>
         <profile>
             <id>informix12</id>
-            <activation>
-                <activeByDefault>false</activeByDefault>
-                <property>
-                    <name>informix12</name>
-                </property>
-            </activation>
             <properties>
                 <informix.version>12</informix.version>
-                <informix.image.registry>quay.io/debezium</informix.image.registry>
                 <informix.image>ibmcom-informix-developer-database</informix.image>
                 <informix.image.tag>12.10.FC12W1DE</informix.image.tag>
                 <informix.run.wait.log>Logical Log \d Complete</informix.run.wait.log>
+                <informix.image.registry>quay.io/debezium</informix.image.registry>
+                <informix.init.script.name>informix_init.sh</informix.init.script.name>
+                <informix.output.directory>scripts</informix.output.directory>
+                <informix.db.date>MDY2.</informix.db.date>
+                <informix.db.century>C</informix.db.century>
             </properties>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>io.fabric8</groupId>
-                        <artifactId>docker-maven-plugin</artifactId>
-                        <configuration>
-                            <images>
-                                <image>
-                                    <build>
-                                        <assembly>
-                                            <inline>
-                                                <includeBaseDirectory>false</includeBaseDirectory>
-                                                <files>
-                                                    <file>
-                                                        <source>${project.basedir}/src/test/docker/informix-cdc-docker/12/informix_init.sh</source>
-                                                        <outputDirectory>scripts</outputDirectory>
-                                                        <lineEnding>unix</lineEnding>
-                                                        <fileMode>755</fileMode>
-                                                    </file>
-                                                    <file>
-                                                        <source>${project.basedir}/src/test/docker/informix-cdc-docker/12/testdb.sql</source>
-                                                        <outputDirectory>informix/etc</outputDirectory>
-                                                        <lineEnding>unix</lineEnding>
-                                                    </file>
-                                                </files>
-                                            </inline>
-                                            <targetDir>/opt/ibm</targetDir>
-                                            <user>informix:informix</user>
-                                        </assembly>
-                                    </build>
-                                </image>
-                            </images>
-                        </configuration>
-                    </plugin>
-                </plugins>
-            </build>
         </profile>
         <profile>
             <id>informix14</id>
-            <activation>
-                <activeByDefault>true</activeByDefault>
-                <property>
-                    <name>informix14</name>
-                </property>
-            </activation>
             <properties>
                 <informix.version>14</informix.version>
-                <informix.image.registry>icr.io/informix</informix.image.registry>
                 <informix.image>informix-developer-database</informix.image>
                 <informix.image.tag>14.10.FC9W1DE</informix.image.tag>
-                <informix.run.wait.log>SCHAPI: Started \d dbWorker threads</informix.run.wait.log>
+                <informix.db.money>€,¢</informix.db.money>
             </properties>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>io.fabric8</groupId>
-                        <artifactId>docker-maven-plugin</artifactId>
-                        <configuration>
-                            <images>
-                                <image>
-                                    <run>
-                                        <env>
-                                            <RUN_FILE_POST_INIT>informix_post_init.sh</RUN_FILE_POST_INIT>
-                                        </env>
-                                    </run>
-                                    <build>
-                                        <assembly>
-                                            <inline>
-                                                <includeBaseDirectory>false</includeBaseDirectory>
-                                                <files>
-                                                    <file>
-                                                        <source>${project.basedir}/src/test/docker/informix-cdc-docker/14/informix_post_init.sh</source>
-                                                        <outputDirectory>config</outputDirectory>
-                                                        <lineEnding>unix</lineEnding>
-                                                        <fileMode>755</fileMode>
-                                                    </file>
-                                                    <file>
-                                                        <source>${project.basedir}/src/test/docker/informix-cdc-docker/14/testdb.sql</source>
-                                                        <outputDirectory>informix/etc</outputDirectory>
-                                                        <lineEnding>unix</lineEnding>
-                                                    </file>
-                                                </files>
-                                            </inline>
-                                            <targetDir>/opt/ibm</targetDir>
-                                            <user>informix:informix</user>
-                                        </assembly>
-                                    </build>
-                                </image>
-                            </images>
-                        </configuration>
-                    </plugin>
-                </plugins>
-            </build>
         </profile>
         <profile>
             <id>informix15</id>
-            <activation>
-                <activeByDefault>true</activeByDefault>
-                <property>
-                    <name>informix15</name>
-                </property>
-            </activation>
             <properties>
                 <informix.version>15</informix.version>
-                <informix.image.registry>icr.io/informix</informix.image.registry>
                 <informix.image>informix-developer-edition-database</informix.image>
                 <informix.image.tag>15.0</informix.image.tag>
-                <informix.run.wait.log>SCHAPI: Started \d dbWorker threads</informix.run.wait.log>
             </properties>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>io.fabric8</groupId>
-                        <artifactId>docker-maven-plugin</artifactId>
-                        <configuration>
-                            <images>
-                                <image>
-                                    <run>
-                                        <env>
-                                            <RUN_FILE_POST_INIT>informix_post_init.sh</RUN_FILE_POST_INIT>
-                                        </env>
-                                    </run>
-                                    <build>
-                                        <assembly>
-                                            <inline>
-                                                <includeBaseDirectory>false</includeBaseDirectory>
-                                                <files>
-                                                    <file>
-                                                        <source>${project.basedir}/src/test/docker/informix-cdc-docker/15/informix_post_init.sh</source>
-                                                        <outputDirectory>config</outputDirectory>
-                                                        <lineEnding>unix</lineEnding>
-                                                        <fileMode>755</fileMode>
-                                                    </file>
-                                                    <file>
-                                                        <source>${project.basedir}/src/test/docker/informix-cdc-docker/15/testdb.sql</source>
-                                                        <outputDirectory>informix/etc</outputDirectory>
-                                                        <lineEnding>unix</lineEnding>
-                                                    </file>
-                                                </files>
-                                            </inline>
-                                            <targetDir>/opt/ibm</targetDir>
-                                            <user>informix:informix</user>
-                                        </assembly>
-                                    </build>
-                                </image>
-                            </images>
-                        </configuration>
-                    </plugin>
-                </plugins>
-            </build>
         </profile>
         <profile>
             <id>apicurio</id>
@@ -669,7 +568,7 @@
                 </plugins>
             </build>
             <properties>
-                <docker.filter>${docker.dbs}:${informix.version},quay.io/apicurio/apicurio-registry-mem:${version.apicurio}</docker.filter>
+                <docker.filter>${docker.dbs}:${informix.version},${apicurio.image}:${version.apicurio}</docker.filter>
             </properties>
         </profile>
     </profiles>
