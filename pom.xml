@@ -43,7 +43,7 @@
         <!-- Default values for the database -->
         <informix.db.date>MDY4/</informix.db.date>
         <informix.db.century>R</informix.db.century>
-        <informix.db.money>$</informix.db.money>
+        <informix.db.money>$.</informix.db.money>
         <!-- -->
         <docker.dbs>debezium/informix-test-database</docker.dbs>
         <docker.filter>${docker.dbs}:${informix.version}</docker.filter>
