@@ -276,11 +276,6 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
 
         if (!recover) {
             updateChangePosition(offsetContext, endSeq, beginSeq, transactionId, Math.min(restartSeq, beginSeq));
-            dispatcher.dispatchTransactionStartedEvent(
-                    partition,
-                    String.valueOf(transactionId),
-                    offsetContext,
-                    Instant.ofEpochSecond(beginTs));
         }
 
         long end = System.nanoTime();
@@ -295,6 +290,12 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
 
             Map<String, IfmxReadableType> before = null;
             Map<String, TableId> label2TableId = engine.getTableIdByLabelId();
+
+            dispatcher.dispatchTransactionStartedEvent(
+                    partition,
+                    String.valueOf(transactionId),
+                    offsetContext,
+                    Instant.ofEpochSecond(beginTs));
 
             for (IfmxStreamRecord streamRecord : transactionRecord.getRecords()) {
                 start = System.nanoTime();
