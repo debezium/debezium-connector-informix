@@ -119,6 +119,51 @@ public class TransactionMetadataIT extends AbstractAsyncEngineConnectorTest {
                 Collect.hashMapOf("testdb.informix.tablea", RECORDS_PER_TABLE, "testdb.informix.tableb", RECORDS_PER_TABLE));
     }
 
+    @Test
+    public void transactionMetadataWithRollback() throws Exception {
+
+        final Configuration config = TestHelper.defaultConfig()
+                .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(InformixConnectorConfig.PROVIDE_TRANSACTION_METADATA, true)
+                .build();
+
+        start(InformixConnector.class, config);
+
+        assertConnectorIsRunning();
+
+        // Wait for snapshot completion
+        waitForSnapshotToBeCompleted(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
+
+        consumeRecordsByTopic(1);
+
+        waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
+
+        connection.setAutoCommit(false);
+
+        connection.executeWithoutCommitting("INSERT INTO tablea VALUES(1000, 'a')");
+        connection.executeWithoutCommitting("INSERT INTO tableb VALUES(1000, 'b')");
+        connection.rollback();
+
+        connection.executeWithoutCommitting("INSERT INTO tablea VALUES(1001, 'a')");
+        connection.executeWithoutCommitting("INSERT INTO tableb VALUES(1001, 'b')");
+        connection.commit();
+
+        waitForAvailableRecords();
+
+        // BEGIN, data, END
+        final SourceRecords records = consumeRecordsByTopic(4);
+        final List<SourceRecord> tableA = records.recordsForTopic("testdb.informix.tablea");
+        final List<SourceRecord> tableB = records.recordsForTopic("testdb.informix.tableb");
+        final List<SourceRecord> tx = records.recordsForTopic("testdb.transaction");
+        assertThat(tableA).hasSize(1);
+        assertThat(tableB).hasSize(1);
+        assertThat(tx).hasSize(2);
+
+        final List<SourceRecord> all = records.allRecordsInOrder();
+        final String txId = assertBeginTransaction(all.get(0));
+        assertEndTransaction(all.get(3), txId, 2, Collect.hashMapOf("testdb.informix.tablea", 1, "testdb.informix.tableb", 1));
+    }
+
     @Override
     protected String assertBeginTransaction(SourceRecord record) {
         final Struct begin = (Struct) record.value();
