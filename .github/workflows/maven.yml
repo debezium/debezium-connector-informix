@@ -22,7 +22,7 @@ jobs:
       cache-key: ${{ steps.cache-key-generator.outputs.cache-key }}
     steps:
       - name: Checkout Action (Core)
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           repository: debezium/debezium
           ref: ${{ github.ref }}
@@ -77,7 +77,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action (Informix)
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           path: informix
 
