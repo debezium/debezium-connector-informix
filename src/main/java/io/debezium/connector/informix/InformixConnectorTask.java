@@ -200,7 +200,7 @@ public class InformixConnectorTask extends BaseSourceTask<InformixPartition, Inf
 
     @Override
     protected Optional<ErrorHandler> getErrorHandler() {
-        return Optional.of(errorHandler);
+        return Optional.ofNullable(errorHandler);
     }
 
     @Override
