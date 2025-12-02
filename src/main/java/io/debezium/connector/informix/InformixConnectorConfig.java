@@ -496,8 +496,8 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
 
     @Override
     public boolean isSignalDataCollection(DataCollectionId dataCollectionId) {
-        String signalingDataCollection = getSignalingDataCollectionId();
-        return signalingDataCollection != null && !signalingDataCollection.isEmpty() && dataCollectionId.identifier().endsWith(signalingDataCollection);
+        return getSignalingDataCollectionTableIds().stream()
+                .anyMatch(id -> id.equals(dataCollectionId));
     }
 
     @Override

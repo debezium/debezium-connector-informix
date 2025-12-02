@@ -83,13 +83,15 @@ public class InformixChangeEventSourceFactory implements ChangeEventSourceFactor
 
         // If no data collection id is provided, don't return an instance as the implementation requires
         // that a signal data collection id be provided to work.
-        return Optional.ofNullable(configuration.getSignalingDataCollectionId())
-                .map(s -> new SignalBasedIncrementalSnapshotChangeEventSource<>(
-                        configuration,
-                        connectionFactory.mainConnection(),
-                        dispatcher, schema, clock,
-                        snapshotProgressListener,
-                        dataChangeEventListener,
-                        notificationService));
+        if (configuration.getSignalingDataCollectionIds().isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.of(new SignalBasedIncrementalSnapshotChangeEventSource<>(
+                configuration,
+                connectionFactory.mainConnection(),
+                dispatcher, schema, clock,
+                snapshotProgressListener,
+                dataChangeEventListener,
+                notificationService));
     }
 }
