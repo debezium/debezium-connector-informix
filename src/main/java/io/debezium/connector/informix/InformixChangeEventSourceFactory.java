@@ -12,7 +12,6 @@ import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
-import io.debezium.pipeline.source.snapshot.incremental.SignalBasedIncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.ChangeEventSourceFactory;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
@@ -76,20 +75,33 @@ public class InformixChangeEventSourceFactory implements ChangeEventSourceFactor
     }
 
     @Override
-    public Optional<IncrementalSnapshotChangeEventSource<InformixPartition, ? extends DataCollectionId>> getIncrementalSnapshotChangeEventSource(InformixOffsetContext offsetContext,
+    public Optional<IncrementalSnapshotChangeEventSource<InformixPartition, ? extends DataCollectionId>> getIncrementalSnapshotChangeEventSource(
+                                                                                                                                                 InformixOffsetContext offsetContext,
                                                                                                                                                  SnapshotProgressListener<InformixPartition> snapshotProgressListener,
                                                                                                                                                  DataChangeEventListener<InformixPartition> dataChangeEventListener,
                                                                                                                                                  NotificationService<InformixPartition, InformixOffsetContext> notificationService) {
 
-        // If no data collection id is provided, don't return an instance as the implementation requires
-        // that a signal data collection id be provided to work.
-        return Optional.ofNullable(configuration.getSignalingDataCollectionId())
-                .map(s -> new SignalBasedIncrementalSnapshotChangeEventSource<>(
-                        configuration,
-                        connectionFactory.mainConnection(),
-                        dispatcher, schema, clock,
-                        snapshotProgressListener,
-                        dataChangeEventListener,
-                        notificationService));
+        // If no signal data collection is configured, incremental snapshots are not supported
+        if (configuration.getSignalingDataCollectionId() == null) {
+            return Optional.empty();
+        }
+
+        // Create secondary database connection if configured
+        InformixConnection snapshotConnection = createSnapshotConnection();
+
+        return Optional.of(new InformixSignalBasedIncrementalSnapshotChangeEventSource(
+                configuration,
+                connectionFactory.mainConnection(), // Primary connection for signals/status
+                snapshotConnection, // Snapshot connection for data reads (may be same as primary)
+                dispatcher, schema, clock,
+                snapshotProgressListener,
+                dataChangeEventListener,
+                notificationService));
+    }
+
+    private InformixConnection createSnapshotConnection() {
+        return configuration.getSnapshotDatabaseConfig()
+                .map(InformixConnection::new)
+                .orElse(connectionFactory.mainConnection());
     }
 }
