@@ -8,16 +8,15 @@ package io.debezium.connector.informix;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Schema;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.rules.TestRule;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.extension.ExtendWith;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.informix.InformixConnectorConfig.SnapshotMode;
 import io.debezium.connector.informix.util.TestHelper;
 import io.debezium.jdbc.JdbcConnection;
-import io.debezium.junit.ConditionalFail;
+import io.debezium.junit.ConditionalFailExtension;
 import io.debezium.junit.Flaky;
 import io.debezium.transforms.outbox.AbstractEventRouterTest;
 import io.debezium.transforms.outbox.EventRouter;
@@ -28,6 +27,7 @@ import io.debezium.transforms.outbox.EventRouter;
  * @author Chris Cranford, Lars M Johansson
  */
 @Flaky("DBZ-8114")
+@ExtendWith(ConditionalFailExtension.class)
 public class OutboxEventRouterIT extends AbstractEventRouterTest<InformixConnector> {
 
     private static final String SETUP_OUTBOX_TABLE = "CREATE TABLE outbox (" +
@@ -37,12 +37,9 @@ public class OutboxEventRouterIT extends AbstractEventRouterTest<InformixConnect
             "type varchar(255) not null, " +
             "payload lvarchar(4000))";
 
-    @Rule
-    public TestRule conditionalFail = new ConditionalFail();
-
     private InformixConnection connection;
 
-    @Before
+    @BeforeEach
     @Override
     public void beforeEach() throws Exception {
         connection = TestHelper.testConnection();
@@ -53,10 +50,8 @@ public class OutboxEventRouterIT extends AbstractEventRouterTest<InformixConnect
         super.beforeEach();
     }
 
-    @After
-    @Override
+    @AfterEach
     public void afterEach() throws Exception {
-        super.afterEach();
         waitForConnectorShutdown(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
         assertConnectorNotRunning();
         if (connection != null && connection.isConnected()) {

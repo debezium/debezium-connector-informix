@@ -19,9 +19,9 @@ import java.util.function.Consumer;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.informix.util.TestHelper;
@@ -45,7 +45,7 @@ public abstract class AbstractInformixDefaultValueIT extends AbstractAsyncEngine
     private InformixConnection connection;
     private Configuration config;
 
-    @Before
+    @BeforeEach
     public void before() throws SQLException {
         connection = TestHelper.testConnection();
 
@@ -56,7 +56,7 @@ public abstract class AbstractInformixDefaultValueIT extends AbstractAsyncEngine
         Print.enable();
     }
 
-    @After
+    @AfterEach
     public void after() throws SQLException {
         /*
          * Since all DDL operations are forbidden during Informix CDC,

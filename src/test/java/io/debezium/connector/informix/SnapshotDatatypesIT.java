@@ -7,10 +7,9 @@ package io.debezium.connector.informix;
 
 import java.sql.SQLException;
 
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Rule;
-import org.junit.rules.TestName;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.TestInfo;
 
 import io.debezium.config.Configuration;
 import io.debezium.config.Configuration.Builder;
@@ -25,10 +24,9 @@ import io.debezium.util.Testing;
  */
 public class SnapshotDatatypesIT extends AbstractInformixDatatypesTest {
 
-    @Rule
-    public TestName name = new TestName();
+    private String testMethodName;
 
-    @BeforeClass
+    @BeforeAll
     public static void beforeClass() throws SQLException {
         AbstractInformixDatatypesTest.beforeClass();
         createTables();
@@ -40,8 +38,9 @@ public class SnapshotDatatypesIT extends AbstractInformixDatatypesTest {
         insertClobTypes();
     }
 
-    @Before
-    public void before() throws Exception {
+    @BeforeEach
+    public void before(TestInfo testInfo) throws Exception {
+        testMethodName = testInfo.getTestMethod().get().getName();
         init(TemporalPrecisionMode.ADAPTIVE);
     }
 
@@ -67,7 +66,7 @@ public class SnapshotDatatypesIT extends AbstractInformixDatatypesTest {
     }
 
     private String getTableIncludeList() {
-        switch (name.getMethodName()) {
+        switch (testMethodName) {
             case "stringTypes":
                 return "testdb.informix.type_string";
             case "fpTypes":
@@ -83,7 +82,7 @@ public class SnapshotDatatypesIT extends AbstractInformixDatatypesTest {
             case "clobTypes":
                 return "testdb.informix.type_clob";
             default:
-                throw new IllegalArgumentException("Unexpected test method: " + name.getMethodName());
+                throw new IllegalArgumentException("Unexpected test method: " + testMethodName);
         }
     }
 

@@ -12,9 +12,9 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -28,7 +28,7 @@ public class InformixDelimitedIdentifiersIT extends AbstractAsyncEngineConnector
 
     private InformixConnection connection;
 
-    @Before
+    @BeforeEach
     public void before() throws SQLException {
         connection = new InformixConnection(TestHelper.defaultJdbcConfig().with(DELIMIDENT, 1).build());
         connection.execute(
@@ -49,7 +49,7 @@ public class InformixDelimitedIdentifiersIT extends AbstractAsyncEngineConnector
         Print.enable();
     }
 
-    @After
+    @AfterEach
     public void after() throws SQLException {
         /*
          * Since all DDL operations are forbidden during Informix CDC,

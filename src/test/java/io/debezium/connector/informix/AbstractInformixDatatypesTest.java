@@ -20,9 +20,9 @@ import java.util.List;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.config.Configuration.Builder;
@@ -226,13 +226,13 @@ public abstract class AbstractInformixDatatypesTest extends AbstractAsyncEngineC
 
     private static InformixConnection connection;
 
-    @BeforeClass
+    @BeforeAll
     public static void beforeClass() throws SQLException {
         connection = TestHelper.testConnection();
         dropTables();
     }
 
-    @AfterClass
+    @AfterAll
     public static void afterClass() throws SQLException {
         if (connection != null) {
             connection.rollback();

@@ -9,30 +9,27 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Ignore;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TestRule;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
 import io.debezium.DebeziumException;
 import io.debezium.config.Configuration.Builder;
 import io.debezium.connector.informix.InformixConnectorConfig.SnapshotMode;
 import io.debezium.connector.informix.util.TestHelper;
 import io.debezium.jdbc.JdbcConnection;
-import io.debezium.junit.ConditionalFail;
+import io.debezium.junit.ConditionalFailExtension;
 import io.debezium.junit.Flaky;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotTest;
 
+@ExtendWith(ConditionalFailExtension.class)
 public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<InformixConnector> {
-
-    @Rule
-    public TestRule conditionalFail = new ConditionalFail();
 
     private InformixConnection connection;
 
-    @Before
+    @BeforeEach
     public void before() throws SQLException {
         connection = TestHelper.testConnection();
         TestHelper.dropTables(connection, "a", "b", "c", "debezium_signal");
@@ -46,7 +43,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Infor
         Print.disable();
     }
 
-    @After
+    @AfterEach
     public void after() throws SQLException {
         /*
          * Since all DDL operations are forbidden during Informix CDC,
@@ -171,7 +168,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Infor
     }
 
     @Test
-    @Ignore("Informix does not support DDL operations on tables defined for replication")
+    @Disabled("Informix does not support DDL operations on tables defined for replication")
     @Override
     public void snapshotPreceededBySchemaChange() {
     }
