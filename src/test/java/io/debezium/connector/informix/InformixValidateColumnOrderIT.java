@@ -16,9 +16,9 @@ import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -43,7 +43,7 @@ public class InformixValidateColumnOrderIT extends AbstractAsyncEngineConnectorT
         recordToBeCheck.keySet().forEach(field -> assertThat(record.get(field).toString().trim()).isEqualTo(recordToBeCheck.get(field)));
     }
 
-    @Before
+    @BeforeEach
     public void before() throws SQLException {
         connection = TestHelper.testConnection();
 
@@ -57,7 +57,7 @@ public class InformixValidateColumnOrderIT extends AbstractAsyncEngineConnectorT
         Print.enable();
     }
 
-    @After
+    @AfterEach
     public void after() throws SQLException {
         /*
          * Since all DDL operations are forbidden during Informix CDC,

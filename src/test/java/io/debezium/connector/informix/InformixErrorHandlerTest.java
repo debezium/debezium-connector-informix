@@ -10,7 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.net.ConnectException;
 import java.sql.SQLException;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import com.informix.asf.IfxASFException;
 import com.informix.stream.impl.IfxStreamException;

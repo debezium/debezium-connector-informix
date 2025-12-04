@@ -7,7 +7,8 @@ package io.debezium.connector.informix;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
-import static org.junit.Assert.assertNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 import java.math.BigDecimal;
 import java.sql.SQLException;
@@ -22,11 +23,10 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TestRule;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -45,27 +45,23 @@ import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.heartbeat.DatabaseHeartbeatImpl;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
-import io.debezium.junit.ConditionalFail;
+import io.debezium.junit.ConditionalFailExtension;
 import io.debezium.junit.Flaky;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.RelationalDatabaseSchema;
 import io.debezium.relational.history.MemorySchemaHistory;
 import io.debezium.schema.DatabaseSchema;
 
-import junit.framework.TestCase;
-
 /**
  * Integration test for the Debezium Informix connector.
  *
  */
+@ExtendWith(ConditionalFailExtension.class)
 public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
-
-    @Rule
-    public TestRule conditionalFail = new ConditionalFail();
 
     private InformixConnection connection;
 
-    @Before
+    @BeforeEach
     public void before() throws SQLException {
         connection = TestHelper.testConnection();
         connection.execute(
@@ -91,7 +87,7 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
         Print.enable();
     }
 
-    @After
+    @AfterEach
     public void after() throws SQLException {
         /*
          * Since all DDL operations are forbidden during Informix CDC,
@@ -1171,11 +1167,11 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
         SourceRecords sourceRecords = consumeRecordsByTopic(expectedRecordCount);
         assertThat(sourceRecords.recordsForTopic("testdb.informix.always_snapshot")).hasSize(expectedRecordCount);
         Struct struct = (Struct) ((Struct) sourceRecords.allRecordsInOrder().get(0).value()).get(FieldName.AFTER);
-        TestCase.assertEquals(1, struct.get("id"));
-        TestCase.assertEquals("Test1", struct.get("data"));
+        assertEquals(1, struct.get("id"));
+        assertEquals("Test1", struct.get("data"));
         struct = (Struct) ((Struct) sourceRecords.allRecordsInOrder().get(1).value()).get(FieldName.AFTER);
-        TestCase.assertEquals(2, struct.get("id"));
-        TestCase.assertEquals("Test2", struct.get("data"));
+        assertEquals(2, struct.get("id"));
+        assertEquals("Test2", struct.get("data"));
 
         stopConnector();
         assertConnectorNotRunning();
@@ -1196,11 +1192,11 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
         // Check we get up-to-date data in the snapshot.
         assertThat(sourceRecords.recordsForTopic("testdb.informix.always_snapshot")).hasSize(expectedRecordCount);
         struct = (Struct) ((Struct) sourceRecords.recordsForTopic("testdb.informix.always_snapshot").get(0).value()).get(FieldName.AFTER);
-        TestCase.assertEquals(3, struct.get("id"));
-        TestCase.assertEquals("Test3", struct.get("data"));
+        assertEquals(3, struct.get("id"));
+        assertEquals("Test3", struct.get("data"));
         struct = (Struct) ((Struct) sourceRecords.recordsForTopic("testdb.informix.always_snapshot").get(1).value()).get(FieldName.AFTER);
-        TestCase.assertEquals(2, struct.get("id"));
-        TestCase.assertEquals("Test2", struct.get("data"));
+        assertEquals(2, struct.get("id"));
+        assertEquals("Test2", struct.get("data"));
     }
 
     @Test

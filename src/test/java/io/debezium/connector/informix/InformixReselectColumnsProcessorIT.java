@@ -5,8 +5,8 @@
  */
 package io.debezium.connector.informix;
 
-import org.junit.After;
-import org.junit.Before;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.informix.util.TestHelper;
@@ -22,7 +22,7 @@ public class InformixReselectColumnsProcessorIT extends AbstractReselectProcesso
 
     private InformixConnection connection;
 
-    @Before
+    @BeforeEach
     public void beforeEach() throws Exception {
         connection = TestHelper.testConnection();
         connection.setAutoCommit(false);
@@ -32,7 +32,7 @@ public class InformixReselectColumnsProcessorIT extends AbstractReselectProcesso
         super.beforeEach();
     }
 
-    @After
+    @AfterEach
     public void afterEach() throws Exception {
         stopConnector();
         waitForConnectorShutdown(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);

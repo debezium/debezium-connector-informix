@@ -7,14 +7,13 @@ package io.debezium.connector.informix;
 
 import java.sql.SQLException;
 
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.rules.TestRule;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.extension.ExtendWith;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.informix.util.TestHelper;
 import io.debezium.data.VerifyRecord;
-import io.debezium.junit.ConditionalFail;
+import io.debezium.junit.ConditionalFailExtension;
 import io.debezium.relational.TableId;
 
 /**
@@ -22,12 +21,10 @@ import io.debezium.relational.TableId;
  *
  * @author Lars M Johansson, Chris Cranford
  */
+@ExtendWith(ConditionalFailExtension.class)
 public class InformixOfflineDefaultValueIT extends AbstractInformixDefaultValueIT {
 
-    @Rule
-    public TestRule conditionalFail = new ConditionalFail();
-
-    @Before
+    @BeforeEach
     public void before() throws SQLException {
         super.before();
         if (VerifyRecord.isApucurioAvailable()) {
