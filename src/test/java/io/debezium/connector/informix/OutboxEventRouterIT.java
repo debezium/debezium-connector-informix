@@ -52,6 +52,7 @@ public class OutboxEventRouterIT extends AbstractEventRouterTest<InformixConnect
 
     @AfterEach
     public void afterEach() throws Exception {
+        stopConnector();
         waitForConnectorShutdown(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
         assertConnectorNotRunning();
         if (connection != null && connection.isConnected()) {
