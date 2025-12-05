@@ -33,7 +33,7 @@ public class InformixDatabaseSchema extends HistorizedRelationalDatabaseSchema {
 
     public InformixDatabaseSchema(InformixConnectorConfig connectorConfig, TopicNamingStrategy<TableId> topicNamingStrategy,
                                   InformixValueConverters valueConverters, SchemaNameAdjuster schemaNameAdjuster,
-                                  InformixConnection connection, CustomConverterRegistry customConverterRegistry) {
+                                  InformixConnection connection, CustomConverterRegistry customConverterRegistry, InformixTaskContext taskContext) {
         super(
                 connectorConfig,
                 topicNamingStrategy,
@@ -48,7 +48,7 @@ public class InformixDatabaseSchema extends HistorizedRelationalDatabaseSchema {
                         connectorConfig.getFieldNamer(),
                         connectorConfig.multiPartitionMode()),
                 false,
-                connectorConfig.getKeyMapper());
+                connectorConfig.getKeyMapper(), taskContext);
     }
 
     @Override

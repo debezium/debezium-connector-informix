@@ -24,6 +24,7 @@ import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.base.DefaultQueueProvider;
 import io.debezium.connector.common.BaseSourceTask;
+import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.connector.common.DebeziumHeaderProducer;
 import io.debezium.document.DocumentReader;
 import io.debezium.heartbeat.HeartbeatFactory;
@@ -63,6 +64,7 @@ public class InformixConnectorTask extends BaseSourceTask<InformixPartition, Inf
     private volatile InformixConnection cdcConnection;
     private volatile ErrorHandler errorHandler;
     private volatile InformixDatabaseSchema schema;
+    private InformixConnectorConfig connectorConfig;
 
     @Override
     public String version() {
@@ -70,8 +72,17 @@ public class InformixConnectorTask extends BaseSourceTask<InformixPartition, Inf
     }
 
     @Override
+    public CdcSourceTaskContext<? extends CommonConnectorConfig> preStart(Configuration config) {
+
+        connectorConfig = new InformixConnectorConfig(config);
+        taskContext = new InformixTaskContext(config, connectorConfig);
+
+        return taskContext;
+    }
+
+    @Override
     protected ChangeEventSourceCoordinator<InformixPartition, InformixOffsetContext> start(Configuration config) {
-        final InformixConnectorConfig connectorConfig = new InformixConnectorConfig(config);
+
         final TopicNamingStrategy<TableId> topicNamingStrategy = connectorConfig.getTopicNamingStrategy(CommonConnectorConfig.TOPIC_NAMING_STRATEGY);
         final SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjuster();
 
@@ -92,9 +103,9 @@ public class InformixConnectorTask extends BaseSourceTask<InformixPartition, Inf
 
         CustomConverterRegistry customConverterRegistry = connectorConfig.getServiceRegistry().tryGetService(CustomConverterRegistry.class);
 
-        schema = new InformixDatabaseSchema(connectorConfig, topicNamingStrategy, valueConverters, schemaNameAdjuster, dataConnection, customConverterRegistry);
+        schema = new InformixDatabaseSchema(connectorConfig, topicNamingStrategy, valueConverters, schemaNameAdjuster, dataConnection, customConverterRegistry,
+                taskContext);
         schema.initializeStorage();
-        taskContext = new InformixTaskContext(config, connectorConfig);
 
         // Manual Bean Registration
         connectorConfig.getBeanRegistry().add(StandardBeanNames.CONFIGURATION, config);
