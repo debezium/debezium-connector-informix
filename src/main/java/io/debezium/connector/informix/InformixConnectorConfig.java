@@ -160,6 +160,8 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
 
         SHARE("share"),
 
+        NONE("none"),
+
         CUSTOM("custom");
 
         private final String value;
