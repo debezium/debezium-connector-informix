@@ -1,0 +1,12 @@
+hazelcast:
+  cache:
+    "transaction-cache":
+      key-type:
+        class-name: java.lang.Long
+      value-type:
+        class-name: com.informix.stream.api.IfmxStreamRecord
+      in-memory-format: OBJECT
+      eviction:
+        size: 10000
+        max-size-policy: ENTRY_COUNT
+        eviction-policy: LFU

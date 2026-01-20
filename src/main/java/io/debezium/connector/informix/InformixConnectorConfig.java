@@ -45,6 +45,8 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
 
     protected static final boolean DEFAULT_CDC_STOP_ON_CLOSE = true;
 
+    protected static final String DEFAULT_TRANSACTION_CACHE_NAME = "transaction-cache";
+
     /**
      * The set of predefined SnapshotMode options or aliases.
      */
@@ -370,6 +372,31 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
             .withValidation(Field::isBoolean)
             .withDefault(DEFAULT_CDC_STOP_ON_CLOSE);
 
+    public static final Field JCACHE_PROVIDER_CLASSNAME = Field.create("javax.cache.provider")
+            .withDisplayName("JCache Provider Classname")
+            .withType(ConfigDef.Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 3))
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("JCache Provider Classname, for caching transactions in a potentially distributed or disk offloading cache instead of heap memory.");
+
+    public static final Field JCACHE_URI = Field.create("javax.cache.uri")
+            .withDisplayName("JCache URI")
+            .withType(ConfigDef.Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 4))
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("URI of configuration resource for JCache Provider.");
+
+    public static final Field TRANSACTION_CACHE_NAME = Field.create("transaction.cache.name")
+            .withDisplayName("Transaction Cache Name")
+            .withType(ConfigDef.Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 5))
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("Name of transaction cache configured in JCache URI resource.")
+            .withDefault(DEFAULT_TRANSACTION_CACHE_NAME);
+
     public static final Field SOURCE_INFO_STRUCT_MAKER = CommonConnectorConfig.SOURCE_INFO_STRUCT_MAKER
             .withDefault(InformixSourceInfoStructMaker.class.getName());
 
@@ -398,7 +425,10 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
                     INCREMENTAL_SNAPSHOT_CHUNK_SIZE,
                     CDC_BUFFERSIZE,
                     CDC_TIMEOUT,
-                    CDC_STOP_ON_CLOSE)
+                    CDC_STOP_ON_CLOSE,
+                    JCACHE_PROVIDER_CLASSNAME,
+                    JCACHE_URI,
+                    TRANSACTION_CACHE_NAME)
             .events(SOURCE_INFO_STRUCT_MAKER)
             .excluding(INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES)
             .create();
@@ -419,6 +449,9 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
     private final int cdcBuffersize;
     private final int cdcTimeout;
     private final boolean stopLoggingOnClose;
+    private final String jCacheProviderClassName;
+    private final String jCacheUri;
+    private final String transactionCacheName;
 
     private final SnapshotLockingMode snapshotLockingMode;
 
@@ -440,6 +473,9 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
         this.cdcBuffersize = config.getInteger(CDC_BUFFERSIZE);
         this.cdcTimeout = config.getInteger(CDC_TIMEOUT);
         this.stopLoggingOnClose = config.getBoolean(CDC_STOP_ON_CLOSE);
+        this.jCacheProviderClassName = config.getString(JCACHE_PROVIDER_CLASSNAME);
+        this.jCacheUri = config.getString(JCACHE_URI);
+        this.transactionCacheName = config.getString(TRANSACTION_CACHE_NAME);
     }
 
     public String getDatabaseName() {
@@ -473,6 +509,18 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
 
     public boolean stopLoggingOnClose() {
         return stopLoggingOnClose;
+    }
+
+    public String getJCacheProviderClassName() {
+        return jCacheProviderClassName;
+    }
+
+    public String getJCacheUri() {
+        return jCacheUri;
+    }
+
+    public String getTransactionCacheName() {
+        return transactionCacheName;
     }
 
     @Override

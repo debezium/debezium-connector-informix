@@ -228,7 +228,7 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
                                                              InformixDatabaseSchema schema,
                                                              Lsn startLsn)
             throws SQLException {
-        return new InformixCdcTransactionEngine(context, getCDCEngine(schema, startLsn));
+        return new InformixCdcTransactionEngine(context, getCDCEngine(schema, startLsn), connectorConfig);
     }
 
     private IfxCDCEngine getCDCEngine(InformixDatabaseSchema schema, Lsn startLsn) throws SQLException {
