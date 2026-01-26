@@ -48,7 +48,8 @@ public class InformixDatabaseSchema extends HistorizedRelationalDatabaseSchema {
                         customConverterRegistry,
                         connectorConfig.getSourceInfoStructMaker().schema(),
                         connectorConfig.getFieldNamer(),
-                        connectorConfig.multiPartitionMode()),
+                        connectorConfig.multiPartitionMode(),
+                        connectorConfig.getEventConvertingFailureHandlingMode()),
                 false,
                 connectorConfig.getKeyMapper(), taskContext);
         columnFilter = connectorConfig.getColumnFilter();
