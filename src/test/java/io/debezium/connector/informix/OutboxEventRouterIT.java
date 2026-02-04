@@ -17,7 +17,6 @@ import io.debezium.connector.informix.InformixConnectorConfig.SnapshotMode;
 import io.debezium.connector.informix.util.TestHelper;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.ConditionalFailExtension;
-import io.debezium.junit.Flaky;
 import io.debezium.transforms.outbox.AbstractEventRouterTest;
 import io.debezium.transforms.outbox.EventRouter;
 
@@ -26,7 +25,6 @@ import io.debezium.transforms.outbox.EventRouter;
  *
  * @author Chris Cranford, Lars M Johansson
  */
-@Flaky("DBZ-8114")
 @ExtendWith(ConditionalFailExtension.class)
 public class OutboxEventRouterIT extends AbstractEventRouterTest<InformixConnector> {
 
