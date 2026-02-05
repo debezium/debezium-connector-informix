@@ -22,6 +22,7 @@ import org.junit.Test;
 import io.debezium.config.Configuration;
 import io.debezium.connector.informix.InformixConnectorConfig.SnapshotMode;
 import io.debezium.connector.informix.util.TestHelper;
+import io.debezium.doc.FixFor;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.util.Collect;
 
@@ -125,6 +126,7 @@ public class TransactionMetadataIT extends AbstractAsyncEngineConnectorTest {
         final Configuration config = TestHelper.defaultConfig()
                 .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .with(InformixConnectorConfig.PROVIDE_TRANSACTION_METADATA, true)
+                .with(InformixConnectorConfig.RETURN_EMPTY_TRANSACTIONS, false)
                 .build();
 
         start(InformixConnector.class, config);
@@ -144,8 +146,14 @@ public class TransactionMetadataIT extends AbstractAsyncEngineConnectorTest {
         connection.executeWithoutCommitting("INSERT INTO tableb VALUES(1000, 'b')");
         connection.rollback();
 
+        connection.executeWithoutCommitting("SAVEPOINT savepoint");
         connection.executeWithoutCommitting("INSERT INTO tablea VALUES(1001, 'a')");
         connection.executeWithoutCommitting("INSERT INTO tableb VALUES(1001, 'b')");
+        connection.executeWithoutCommitting("ROLLBACK TO SAVEPOINT savepoint");
+        connection.commit();
+
+        connection.executeWithoutCommitting("INSERT INTO tablea VALUES(1002, 'a')");
+        connection.executeWithoutCommitting("INSERT INTO tableb VALUES(1002, 'b')");
         connection.commit();
 
         waitForAvailableRecords();
@@ -162,6 +170,62 @@ public class TransactionMetadataIT extends AbstractAsyncEngineConnectorTest {
         final List<SourceRecord> all = records.allRecordsInOrder();
         final String txId = assertBeginTransaction(all.get(0));
         assertEndTransaction(all.get(3), txId, 2, Collect.hashMapOf("testdb.informix.tablea", 1, "testdb.informix.tableb", 1));
+    }
+
+    @Test
+    @FixFor("dbz#1587")
+    public void transactionMetadataWithEmptyTransactions() throws Exception {
+
+        final Configuration config = TestHelper.defaultConfig()
+                .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(InformixConnectorConfig.PROVIDE_TRANSACTION_METADATA, true)
+                .with(InformixConnectorConfig.RETURN_EMPTY_TRANSACTIONS, true)
+                .build();
+
+        start(InformixConnector.class, config);
+
+        assertConnectorIsRunning();
+
+        // Wait for snapshot completion
+        waitForSnapshotToBeCompleted(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
+
+        consumeRecordsByTopic(1);
+
+        waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
+
+        connection.setAutoCommit(false);
+
+        connection.executeWithoutCommitting("INSERT INTO tablea VALUES(1000, 'a')");
+        connection.executeWithoutCommitting("INSERT INTO tableb VALUES(1000, 'b')");
+        connection.rollback();
+
+        connection.executeWithoutCommitting("SAVEPOINT savepoint");
+        connection.executeWithoutCommitting("INSERT INTO tablea VALUES(1001, 'a')");
+        connection.executeWithoutCommitting("INSERT INTO tableb VALUES(1001, 'b')");
+        connection.executeWithoutCommitting("ROLLBACK TO SAVEPOINT savepoint");
+        connection.commit();
+
+        connection.executeWithoutCommitting("INSERT INTO tablea VALUES(1002, 'a')");
+        connection.executeWithoutCommitting("INSERT INTO tableb VALUES(1002, 'b')");
+        connection.commit();
+
+        waitForAvailableRecords();
+
+        // BEGIN, data, END
+        final SourceRecords records = consumeRecordsByTopic(6);
+        final List<SourceRecord> tableA = records.recordsForTopic("testdb.informix.tablea");
+        final List<SourceRecord> tableB = records.recordsForTopic("testdb.informix.tableb");
+        final List<SourceRecord> tx = records.recordsForTopic("testdb.transaction");
+        assertThat(tableA).hasSize(1);
+        assertThat(tableB).hasSize(1);
+        assertThat(tx).hasSize(4);
+
+        final List<SourceRecord> all = records.allRecordsInOrder();
+        String txId = assertBeginTransaction(all.get(0));
+        assertEndTransaction(all.get(1), txId, 0, Map.of());
+
+        txId = assertBeginTransaction(all.get(2));
+        assertEndTransaction(all.get(5), txId, 2, Collect.hashMapOf("testdb.informix.tablea", 1, "testdb.informix.tableb", 1));
     }
 
     @Override

@@ -45,6 +45,8 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
 
     protected static final boolean DEFAULT_CDC_STOP_ON_CLOSE = true;
 
+    protected static final boolean DEFAULT_RETURN_EMPTY_TRANSACTIONS = false;
+
     /**
      * The set of predefined SnapshotMode options or aliases.
      */
@@ -368,6 +370,16 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
             .withValidation(Field::isBoolean)
             .withDefault(DEFAULT_CDC_STOP_ON_CLOSE);
 
+    public static final Field RETURN_EMPTY_TRANSACTIONS = Field.create("cdc.return.empty.transactions")
+            .withDisplayName("CDC Return Empty Transactions")
+            .withType(ConfigDef.Type.BOOLEAN)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 3))
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("Whether Informix should return and emit transaction records for empty transactions.")
+            .withValidation(Field::isBoolean)
+            .withDefault(DEFAULT_RETURN_EMPTY_TRANSACTIONS);
+
     public static final Field SOURCE_INFO_STRUCT_MAKER = CommonConnectorConfig.SOURCE_INFO_STRUCT_MAKER
             .withDefault(InformixSourceInfoStructMaker.class.getName());
 
@@ -396,7 +408,8 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
                     INCREMENTAL_SNAPSHOT_CHUNK_SIZE,
                     CDC_BUFFERSIZE,
                     CDC_TIMEOUT,
-                    CDC_STOP_ON_CLOSE)
+                    CDC_STOP_ON_CLOSE,
+                    RETURN_EMPTY_TRANSACTIONS)
             .events(SOURCE_INFO_STRUCT_MAKER)
             .excluding(INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES)
             .create();
@@ -417,6 +430,7 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
     private final int cdcBuffersize;
     private final int cdcTimeout;
     private final boolean stopLoggingOnClose;
+    private final boolean returnEmptytransactions;
 
     private final SnapshotLockingMode snapshotLockingMode;
 
@@ -438,6 +452,7 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
         this.cdcBuffersize = config.getInteger(CDC_BUFFERSIZE);
         this.cdcTimeout = config.getInteger(CDC_TIMEOUT);
         this.stopLoggingOnClose = config.getBoolean(CDC_STOP_ON_CLOSE);
+        this.returnEmptytransactions = config.getBoolean(RETURN_EMPTY_TRANSACTIONS);
     }
 
     public String getDatabaseName() {
@@ -471,6 +486,10 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
 
     public boolean stopLoggingOnClose() {
         return stopLoggingOnClose;
+    }
+
+    public boolean returnEmptytransactions() {
+        return returnEmptytransactions;
     }
 
     @Override
