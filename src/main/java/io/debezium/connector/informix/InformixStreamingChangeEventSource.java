@@ -250,7 +250,7 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
             LOGGER.info("Set CDCEngine's LSN to '{}' aka {}", sequence, Lsn.of(sequence).toLongString());
         }
 
-        return builder.build();
+        return builder.build().returnEmptyTransactions(connectorConfig.returnEmptytransactions());
     }
 
     private void handleTransaction(InformixCdcTransactionEngine engine, InformixPartition partition,
