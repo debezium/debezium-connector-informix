@@ -135,6 +135,19 @@ public class InformixConnection extends JdbcConnection {
     }
 
     @Override
+    public String buildSelectPrimaryKeyBoundaries(TableId tableId, long size, String projection, String orderBy) {
+        return new StringBuilder("SELECT ")
+                .append("SKIP ").append(size)
+                .append(" FIRST 1 ")
+                .append(projection)
+                .append(" FROM ")
+                .append(quotedTableIdString(tableId))
+                .append(" ORDER BY ")
+                .append(orderBy)
+                .toString();
+    }
+
+    @Override
     public Optional<Boolean> nullsSortLast() {
         // "NULL values by default are ordered as less than values that are not NULL"
         // https://www.ibm.com/docs/en/informix-servers/14.10?topic=clause-ascending-descending-orders#ids_sqs_1055
