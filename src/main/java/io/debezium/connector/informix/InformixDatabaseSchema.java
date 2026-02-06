@@ -31,6 +31,8 @@ public class InformixDatabaseSchema extends HistorizedRelationalDatabaseSchema {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(InformixDatabaseSchema.class);
 
+    private final Tables.ColumnNameFilter columnFilter;
+
     public InformixDatabaseSchema(InformixConnectorConfig connectorConfig, TopicNamingStrategy<TableId> topicNamingStrategy,
                                   InformixValueConverters valueConverters, SchemaNameAdjuster schemaNameAdjuster,
                                   InformixConnection connection, CustomConverterRegistry customConverterRegistry, InformixTaskContext taskContext) {
@@ -49,6 +51,7 @@ public class InformixDatabaseSchema extends HistorizedRelationalDatabaseSchema {
                         connectorConfig.multiPartitionMode()),
                 false,
                 connectorConfig.getKeyMapper(), taskContext);
+        columnFilter = connectorConfig.getColumnFilter();
     }
 
     @Override
@@ -87,4 +90,9 @@ public class InformixDatabaseSchema extends HistorizedRelationalDatabaseSchema {
     public Tables.TableFilter getTableFilter() {
         return super.getTableFilter();
     }
+
+    public Tables.ColumnNameFilter getColumnFilter() {
+        return columnFilter;
+    }
+
 }

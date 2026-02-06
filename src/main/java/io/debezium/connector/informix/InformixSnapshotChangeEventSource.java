@@ -167,7 +167,7 @@ public class InformixSnapshotChangeEventSource extends RelationalSnapshotChangeE
                     null,
                     schema,
                     tableFilter,
-                    null,
+                    connectorConfig.getColumnFilter(),
                     false);
         }
     }

@@ -20,12 +20,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.OptionalLong;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.stream.Collectors;
+
+import javax.sql.DataSource;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.informix.jdbc.IfmxTableDescriptor;
 import com.informix.stream.api.IfmxStreamRecord;
 import com.informix.stream.api.IfmxStreamRecordType;
 import com.informix.stream.api.IfxTransactionEngine;
@@ -47,21 +50,27 @@ public class InformixCdcTransactionEngine implements IfxTransactionEngine {
     private static final Logger LOGGER = LoggerFactory.getLogger(InformixCdcTransactionEngine.class);
     private static final String PROCESSING_RECORD = "Processing {} record";
     private static final String MISSING_TRANSACTION_START_FOR_RECORD = "Missing transaction start for record: {}";
-    protected final Map<Integer, TransactionHolder> transactionMap;
+    protected final Builder builder;
     protected final IfxCDCEngine engine;
-    private final ChangeEventSourceContext context;
+    protected final ChangeEventSourceContext context;
     protected EnumSet<IfmxStreamRecordType> operationFilters;
     protected EnumSet<IfmxStreamRecordType> transactionFilters;
+    protected final Map<Integer, TransactionHolder> transactionMap;
     protected boolean returnEmptyTransactions;
-    private Map<String, TableId> tableIdByLabelId;
+    protected Map<String, TableId> tableIdByLabelId;
 
-    public InformixCdcTransactionEngine(ChangeEventSourceContext context, IfxCDCEngine engine) {
-        this.context = context;
+    public static Builder builder(DataSource ds) {
+        return new Builder(ds);
+    }
+
+    protected InformixCdcTransactionEngine(Builder builder) {
+        this.builder = builder;
+        this.engine = builder.engine;
+        this.context = builder.context;
         this.operationFilters = EnumSet.of(INSERT, DELETE, BEFORE_UPDATE, AFTER_UPDATE, TRUNCATE);
         this.transactionFilters = EnumSet.of(COMMIT, ROLLBACK);
-        this.transactionMap = new ConcurrentHashMap<>();
-        this.returnEmptyTransactions = true;
-        this.engine = engine;
+        this.transactionMap = new ConcurrentSkipListMap<>();
+        this.returnEmptyTransactions = false;
     }
 
     @Override
@@ -170,7 +179,7 @@ public class InformixCdcTransactionEngine implements IfxTransactionEngine {
         /*
          * Build Map of Label_id to TableId.
          */
-        tableIdByLabelId = engine.getBuilder().getWatchedTables().stream()
+        tableIdByLabelId = builder.getWatchedTables().stream()
                 .collect(Collectors.toUnmodifiableMap(
                         t -> String.valueOf(t.getLabel()),
                         t -> TableId.parse("%s.%s.%s".formatted(t.getDatabaseName(), t.getNamespace(), t.getTableName()))));
@@ -193,5 +202,85 @@ public class InformixCdcTransactionEngine implements IfxTransactionEngine {
         final List<IfmxStreamRecord> records = new ArrayList<>();
         IfxCDCBeginTransactionRecord beginRecord;
         IfmxStreamRecord closingRecord;
+    }
+
+    public Builder getBuilder() {
+        return builder;
+    }
+
+    public static class Builder {
+
+        private final IfxCDCEngine.Builder builder;
+        private IfxCDCEngine engine;
+        private ChangeEventSourceContext context;
+
+        protected Builder(DataSource ds) {
+            builder = IfxCDCEngine.builder(ds);
+        }
+
+        public DataSource getDataSource() {
+            return builder.getDataSource();
+        }
+
+        public Builder context(ChangeEventSourceContext context) {
+            this.context = context;
+            return this;
+        }
+
+        public Builder buffer(int bufferSize) {
+            builder.buffer(bufferSize);
+            return this;
+        }
+
+        public int getBufferSize() {
+            return builder.getBufferSize();
+        }
+
+        public Builder sequenceId(long position) {
+            builder.sequenceId(position);
+            return this;
+        }
+
+        public long getSequenceId() {
+            return builder.getSequenceId();
+        }
+
+        public Builder timeout(int timeout) {
+            builder.timeout(timeout);
+            return this;
+        }
+
+        public int getTimeout() {
+            return builder.getTimeout();
+        }
+
+        public Builder watchTable(String canonicalTableName, String... columns) {
+            builder.watchTable(canonicalTableName, columns);
+            return this;
+        }
+
+        public Builder watchTable(IfmxTableDescriptor desc, String... columns) {
+            builder.watchTable(desc, columns);
+            return this;
+        }
+
+        public Builder watchTable(IfxCDCEngine.IfmxWatchedTable table) {
+            builder.watchTable(table);
+            return this;
+        }
+
+        public List<IfxCDCEngine.IfmxWatchedTable> getWatchedTables() {
+            return builder.getWatchedTables();
+        }
+
+        public Builder stopLoggingOnClose(boolean stopOnClose) {
+            builder.stopLoggingOnClose(stopOnClose);
+            return this;
+        }
+
+        public InformixCdcTransactionEngine build() throws SQLException {
+            engine = builder.build();
+            return new InformixCdcTransactionEngine(this);
+        }
     }
 }

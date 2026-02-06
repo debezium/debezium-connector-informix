@@ -63,7 +63,8 @@ public class TestHelper {
                 .withDefault(JdbcConfiguration.HOSTNAME, "localhost")
                 .withDefault(JdbcConfiguration.PORT, 9088)
                 .withDefault(JdbcConfiguration.USER, "informix")
-                .withDefault(JdbcConfiguration.PASSWORD, "in4mix");
+                .withDefault(JdbcConfiguration.PASSWORD, "in4mix")
+                .with(IFX_LOCK_MODE_WAIT, 30);
     }
 
     public static JdbcConfiguration.Builder defaultJdbcConfig() {
@@ -73,7 +74,7 @@ public class TestHelper {
                 .withDefault(JdbcConfiguration.PORT, 9088)
                 .withDefault(JdbcConfiguration.USER, "informix")
                 .withDefault(JdbcConfiguration.PASSWORD, "in4mix")
-                .with(IFX_LOCK_MODE_WAIT, 10);
+                .with(IFX_LOCK_MODE_WAIT, 30);
     }
 
     /**
@@ -83,14 +84,14 @@ public class TestHelper {
     public static Configuration.Builder defaultConfig() {
 
         return Configuration.copy(defaultJdbcConfig().build().map(key -> ConfigurationNames.DATABASE_CONFIG_PREFIX + key))
-                .with(CommonConnectorConfig.EXECUTOR_SHUTDOWN_TIMEOUT_MS, 30_000)
-                .with(AsyncEngineConfig.TASK_MANAGEMENT_TIMEOUT_MS, 180_000)
+                .with(CommonConnectorConfig.EXECUTOR_SHUTDOWN_TIMEOUT_MS, 28_657)
+                .with(AsyncEngineConfig.TASK_MANAGEMENT_TIMEOUT_MS, 196_418)
                 .with(CommonConnectorConfig.TOPIC_PREFIX, TEST_DATABASE)
-                .with(CommonConnectorConfig.DRIVER_CONFIG_PREFIX + IFX_LOCK_MODE_WAIT, 10)
+                .with(CommonConnectorConfig.DRIVER_CONFIG_PREFIX + IFX_LOCK_MODE_WAIT, 30)
                 .with(InformixConnectorConfig.SCHEMA_HISTORY, FileSchemaHistory.class)
                 .with(FileSchemaHistory.FILE_PATH, SCHEMA_HISTORY_PATH)
                 .with(InformixConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
-                .with(InformixConnectorConfig.CDC_TIMEOUT, 0)
+                .with(InformixConnectorConfig.CDC_TIMEOUT, 1)
                 .with(InformixConnectorConfig.CDC_BUFFERSIZE, 0x200);
     }
 

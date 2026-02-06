@@ -19,7 +19,6 @@ import com.informix.jdbc.IfmxReadableType;
 import com.informix.stream.api.IfmxStreamOperationRecord;
 import com.informix.stream.api.IfmxStreamRecord;
 import com.informix.stream.api.IfmxStreamRecordType;
-import com.informix.stream.cdc.IfxCDCEngine;
 import com.informix.stream.cdc.records.IfxCDCBeginTransactionRecord;
 import com.informix.stream.cdc.records.IfxCDCCommitTransactionRecord;
 import com.informix.stream.cdc.records.IfxCDCMetaDataRecord;
@@ -94,7 +93,7 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
                         null,
                         schemaName,
                         schema.getTableFilter(),
-                        null,
+                        schema.getColumnFilter(),
                         true);
             }
             catch (SQLException e) {
@@ -228,18 +227,18 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
                                                              InformixDatabaseSchema schema,
                                                              Lsn startLsn)
             throws SQLException {
-        return new InformixCdcTransactionEngine(context, getCDCEngine(schema, startLsn));
-    }
-
-    private IfxCDCEngine getCDCEngine(InformixDatabaseSchema schema, Lsn startLsn) throws SQLException {
-        IfxCDCEngine.Builder builder = IfxCDCEngine
+        InformixCdcTransactionEngine.Builder builder = InformixCdcTransactionEngine
                 .builder(dataConnection.datasource())
                 .buffer(connectorConfig.getCdcBuffersize())
                 .timeout(connectorConfig.getCdcTimeout())
-                .stopLoggingOnClose(connectorConfig.stopLoggingOnClose());
+                .stopLoggingOnClose(connectorConfig.stopLoggingOnClose())
+                .context(context);
 
         schema.tableIds().forEach((TableId tid) -> {
-            String[] colNames = schema.tableFor(tid).retrieveColumnNames().stream().map(dataConnection::quoteIdentifier).toArray(String[]::new);
+            String[] colNames = schema.tableFor(tid).retrieveColumnNames().stream()
+                    .filter(colName -> connectorConfig.getColumnFilter()
+                            .matches(tid.catalog(), tid.schema(), tid.table(), colName))
+                    .map(dataConnection::quoteIdentifier).toArray(String[]::new);
             builder.watchTable(dataConnection.quotedTableIdString(tid), colNames);
         });
 
@@ -285,7 +284,6 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
 
         if (IfmxStreamRecordType.COMMIT.equals(endRecord.getType())) {
             IfxCDCCommitTransactionRecord commitRecord = (IfxCDCCommitTransactionRecord) endRecord;
-            long commitSeq = endSeq;
             long commitTs = commitRecord.getTime();
 
             Map<String, IfmxReadableType> before = null;
@@ -385,7 +383,7 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
 
             start = System.nanoTime();
 
-            updateChangePosition(offsetContext, commitSeq, commitSeq, transactionId, restartSeq);
+            updateChangePosition(offsetContext, endSeq, endSeq, transactionId, restartSeq);
             dispatcher.dispatchTransactionCommittedEvent(partition, offsetContext, Instant.ofEpochSecond(commitTs));
 
             end = System.nanoTime();
