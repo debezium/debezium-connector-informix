@@ -13,6 +13,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.informix.InformixConnectorConfig.SnapshotIsolationMode;
+import io.debezium.connector.informix.InformixConnectorConfig.SnapshotLockingMode;
 import io.debezium.connector.informix.util.TestHelper;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.ConditionalFailExtension;
@@ -25,7 +27,6 @@ import io.debezium.util.Testing;
  * @author Chris Cranford
  */
 @ExtendWith(ConditionalFailExtension.class)
-// @Disabled("Informix Developer License is Limited to a Single Connection")
 public class InformixChunkedSnapshotIT extends AbstractChunkedSnapshotTest<InformixConnector> {
 
     private InformixConnection connection;
@@ -94,7 +95,9 @@ public class InformixChunkedSnapshotIT extends AbstractChunkedSnapshotTest<Infor
     protected Configuration.Builder getConfig() {
         return TestHelper.defaultConfig()
                 // todo: using default of repeatable_read blocks, despite locks being released?
-                .with(InformixConnectorConfig.SNAPSHOT_ISOLATION_MODE, "read_uncommitted");
+                .with(InformixConnectorConfig.SNAPSHOT_ISOLATION_MODE, SnapshotIsolationMode.READ_COMMITTED)
+                .with(InformixConnectorConfig.SNAPSHOT_LOCKING_MODE, SnapshotLockingMode.SHARE)
+                .with(InformixConnectorConfig.SNAPSHOT_LOCK_TIMEOUT_MS, 30_000L);
     }
 
     @Override
@@ -150,7 +153,7 @@ public class InformixChunkedSnapshotIT extends AbstractChunkedSnapshotTest<Infor
 
     @Override
     protected String getFullyQualifiedTableName(String tableName) {
-        return "informix.%s".formatted(tableName);
+        return "testdb.informix.%s".formatted(tableName);
     }
 
 }
