@@ -284,9 +284,8 @@
                             <name>${docker.dbs}:${informix.version}</name>
                             <run>
                                 <env>
-                                    <LICENSE>accept</LICENSE>
                                     <SIZE>medium</SIZE>
-                                    <TYPE>oltp</TYPE>
+                                    <LICENSE>accept</LICENSE>
                                     <USEOSTIME>1</USEOSTIME>
                                     <DB_SBSPACE>1</DB_SBSPACE>
                                     <DBDATE>${informix.db.date}</DBDATE>
