@@ -10,6 +10,8 @@ import java.util.List;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 import io.debezium.config.Configuration;
@@ -27,6 +29,7 @@ import io.debezium.util.Testing;
  * @author Chris Cranford
  */
 @ExtendWith(ConditionalFailExtension.class)
+@TestMethodOrder(MethodOrderer.Random.class)
 public class InformixChunkedSnapshotIT extends AbstractChunkedSnapshotTest<InformixConnector> {
 
     private InformixConnection connection;

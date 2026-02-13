@@ -20,6 +20,7 @@ import io.debezium.config.Configuration;
 import io.debezium.config.ConfigurationNames;
 import io.debezium.connector.informix.InformixConnection;
 import io.debezium.connector.informix.InformixConnectorConfig;
+import io.debezium.embedded.EmbeddedEngineConfig;
 import io.debezium.embedded.async.AsyncEngineConfig;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.storage.file.history.FileSchemaHistory;
@@ -84,7 +85,8 @@ public class TestHelper {
     public static Configuration.Builder defaultConfig() {
 
         return Configuration.copy(defaultJdbcConfig().build().map(key -> ConfigurationNames.DATABASE_CONFIG_PREFIX + key))
-                .with(CommonConnectorConfig.EXECUTOR_SHUTDOWN_TIMEOUT_MS, 28_657)
+                .with(CommonConnectorConfig.EXECUTOR_SHUTDOWN_TIMEOUT_MS, 46_368)
+                .with(EmbeddedEngineConfig.WAIT_FOR_COMPLETION_BEFORE_INTERRUPT_MS, 121_393)
                 .with(AsyncEngineConfig.TASK_MANAGEMENT_TIMEOUT_MS, 196_418)
                 .with(CommonConnectorConfig.TOPIC_PREFIX, TEST_DATABASE)
                 .with(CommonConnectorConfig.DRIVER_CONFIG_PREFIX + IFX_LOCK_MODE_WAIT, 30)
