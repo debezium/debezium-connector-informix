@@ -10,14 +10,11 @@ import java.util.concurrent.TimeUnit;
 import org.apache.kafka.connect.data.Schema;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.extension.ExtendWith;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.informix.InformixConnectorConfig.SnapshotMode;
 import io.debezium.connector.informix.util.TestHelper;
 import io.debezium.jdbc.JdbcConnection;
-import io.debezium.junit.ConditionalFailExtension;
-import io.debezium.junit.Flaky;
 import io.debezium.transforms.outbox.AbstractEventRouterTest;
 import io.debezium.transforms.outbox.EventRouter;
 
@@ -26,8 +23,6 @@ import io.debezium.transforms.outbox.EventRouter;
  *
  * @author Chris Cranford, Lars M Johansson
  */
-@Flaky("DBZ-8114")
-@ExtendWith(ConditionalFailExtension.class)
 public class OutboxEventRouterIT extends AbstractEventRouterTest<InformixConnector> {
 
     private static final String SETUP_OUTBOX_TABLE = "CREATE TABLE outbox (" +
