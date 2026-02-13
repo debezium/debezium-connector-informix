@@ -8,12 +8,10 @@ package io.debezium.connector.informix;
 import java.sql.SQLException;
 
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.extension.ExtendWith;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.informix.util.TestHelper;
 import io.debezium.data.VerifyRecord;
-import io.debezium.junit.ConditionalFailExtension;
 import io.debezium.relational.TableId;
 
 /**
@@ -21,7 +19,6 @@ import io.debezium.relational.TableId;
  *
  * @author Lars M Johansson, Chris Cranford
  */
-@ExtendWith(ConditionalFailExtension.class)
 public class InformixOfflineDefaultValueIT extends AbstractInformixDefaultValueIT {
 
     @BeforeEach

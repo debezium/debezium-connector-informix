@@ -26,7 +26,6 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -47,7 +46,6 @@ import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.heartbeat.DatabaseHeartbeatImpl;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
-import io.debezium.junit.ConditionalFailExtension;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.RelationalDatabaseSchema;
 import io.debezium.relational.history.MemorySchemaHistory;
@@ -57,7 +55,6 @@ import io.debezium.schema.DatabaseSchema;
  * Integration test for the Debezium Informix connector.
  *
  */
-@ExtendWith(ConditionalFailExtension.class)
 public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
 
     private InformixConnection connection;

@@ -12,14 +12,12 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.TestMethodOrder;
-import org.junit.jupiter.api.extension.ExtendWith;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.informix.InformixConnectorConfig.SnapshotIsolationMode;
 import io.debezium.connector.informix.InformixConnectorConfig.SnapshotLockingMode;
 import io.debezium.connector.informix.util.TestHelper;
 import io.debezium.jdbc.JdbcConnection;
-import io.debezium.junit.ConditionalFailExtension;
 import io.debezium.pipeline.AbstractChunkedSnapshotTest;
 import io.debezium.util.Testing;
 
@@ -28,7 +26,6 @@ import io.debezium.util.Testing;
  *
  * @author Chris Cranford
  */
-@ExtendWith(ConditionalFailExtension.class)
 @TestMethodOrder(MethodOrderer.Random.class)
 public class InformixChunkedSnapshotIT extends AbstractChunkedSnapshotTest<InformixConnector> {
 
