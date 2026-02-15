@@ -85,9 +85,9 @@ public class TestHelper {
     public static Configuration.Builder defaultConfig() {
 
         return Configuration.copy(defaultJdbcConfig().build().map(key -> ConfigurationNames.DATABASE_CONFIG_PREFIX + key))
-                .with(CommonConnectorConfig.EXECUTOR_SHUTDOWN_TIMEOUT_MS, 46_368)
-                .with(EmbeddedEngineConfig.WAIT_FOR_COMPLETION_BEFORE_INTERRUPT_MS, 121_393)
-                .with(AsyncEngineConfig.TASK_MANAGEMENT_TIMEOUT_MS, 196_418)
+                .with(CommonConnectorConfig.EXECUTOR_SHUTDOWN_TIMEOUT_MS, 75_025)
+                .with(EmbeddedEngineConfig.WAIT_FOR_COMPLETION_BEFORE_INTERRUPT_MS, 150_283)
+                .with(AsyncEngineConfig.TASK_MANAGEMENT_TIMEOUT_MS, 317_811)
                 .with(CommonConnectorConfig.TOPIC_PREFIX, TEST_DATABASE)
                 .with(CommonConnectorConfig.DRIVER_CONFIG_PREFIX + IFX_LOCK_MODE_WAIT, 30)
                 .with(InformixConnectorConfig.SCHEMA_HISTORY, FileSchemaHistory.class)

@@ -103,6 +103,7 @@ public class InformixChunkedSnapshotIT extends AbstractChunkedSnapshotTest<Infor
     @Override
     protected void waitForSnapshotToBeCompleted() throws InterruptedException {
         waitForSnapshotToBeCompleted(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
+        waitForAvailableRecords();
     }
 
     @Override
