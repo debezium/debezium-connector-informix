@@ -10,15 +10,16 @@ import java.util.List;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.extension.ExtendWith;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.informix.InformixConnectorConfig.SnapshotIsolationMode;
 import io.debezium.connector.informix.InformixConnectorConfig.SnapshotLockingMode;
 import io.debezium.connector.informix.util.TestHelper;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.ConditionalFailExtension;
+import io.debezium.junit.Flaky;
 import io.debezium.pipeline.AbstractChunkedSnapshotTest;
 import io.debezium.util.Testing;
 
@@ -27,12 +28,13 @@ import io.debezium.util.Testing;
  *
  * @author Chris Cranford
  */
+@Flaky("dbz#1220")
 @ExtendWith(ConditionalFailExtension.class)
-@Disabled
 public class InformixChunkedSnapshotIT extends AbstractChunkedSnapshotTest<InformixConnector> {
 
     private InformixConnection connection;
 
+    @Override
     @BeforeEach
     public void beforeEach() throws Exception {
         connection = TestHelper.testConnection();
@@ -44,8 +46,11 @@ public class InformixChunkedSnapshotIT extends AbstractChunkedSnapshotTest<Infor
         super.beforeEach();
     }
 
+    @Override
     @AfterEach
     public void afterEach() throws Exception {
+        super.afterEach();
+
         stopConnector();
         waitForConnectorShutdown(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
         assertConnectorNotRunning();
@@ -55,7 +60,6 @@ public class InformixChunkedSnapshotIT extends AbstractChunkedSnapshotTest<Infor
             TestHelper.dropTables(connection, "dbz1220a", "dbz1220b", "dbz1220c", "dbz1220d", "dbz1220");
             connection.close();
         }
-        super.afterEach();
     }
 
     @Override
@@ -81,7 +85,10 @@ public class InformixChunkedSnapshotIT extends AbstractChunkedSnapshotTest<Infor
     @Override
     protected Configuration.Builder getConfig() {
         return TestHelper.defaultConfig()
-                // todo: using default of repeatable_read blocks, despite locks being released?
+                .with(CommonConnectorConfig.EXECUTOR_SHUTDOWN_TIMEOUT_MS, 46_368)
+                .with(InformixConnectorConfig.CDC_TIMEOUT, 0)
+                .with(InformixConnectorConfig.CDC_BUFFERSIZE, 0x100_0000)
+                .with(InformixConnectorConfig.CDC_MAX_RECORDS, 0x100)
                 .with(InformixConnectorConfig.SNAPSHOT_ISOLATION_MODE, SnapshotIsolationMode.READ_COMMITTED)
                 .with(InformixConnectorConfig.SNAPSHOT_LOCKING_MODE, SnapshotLockingMode.SHARE)
                 .with(InformixConnectorConfig.SNAPSHOT_LOCK_TIMEOUT_MS, 30_000L);
@@ -158,4 +165,8 @@ public class InformixChunkedSnapshotIT extends AbstractChunkedSnapshotTest<Infor
         return "testdb.informix.%s".formatted(tableName);
     }
 
+    @Override
+    protected String getSnapshotSelectOverrideQuery() {
+        return "SELECT * FROM testdb:informix.%s WHERE id = 0".formatted(getSingleKeyTableName());
+    }
 }
