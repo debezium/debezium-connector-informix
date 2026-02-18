@@ -10,7 +10,6 @@ import java.util.List;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 import io.debezium.config.Configuration;
@@ -19,6 +18,7 @@ import io.debezium.connector.informix.InformixConnectorConfig.SnapshotLockingMod
 import io.debezium.connector.informix.util.TestHelper;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.ConditionalFailExtension;
+import io.debezium.junit.Flaky;
 import io.debezium.pipeline.AbstractChunkedSnapshotTest;
 import io.debezium.util.Testing;
 
@@ -27,12 +27,13 @@ import io.debezium.util.Testing;
  *
  * @author Chris Cranford
  */
+@Flaky("dbz#1220")
 @ExtendWith(ConditionalFailExtension.class)
-@Disabled
 public class InformixChunkedSnapshotIT extends AbstractChunkedSnapshotTest<InformixConnector> {
 
     private InformixConnection connection;
 
+    @Override
     @BeforeEach
     public void beforeEach() throws Exception {
         connection = TestHelper.testConnection();
@@ -44,8 +45,11 @@ public class InformixChunkedSnapshotIT extends AbstractChunkedSnapshotTest<Infor
         super.beforeEach();
     }
 
+    @Override
     @AfterEach
     public void afterEach() throws Exception {
+        super.afterEach();
+
         stopConnector();
         waitForConnectorShutdown(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
         assertConnectorNotRunning();
@@ -55,7 +59,6 @@ public class InformixChunkedSnapshotIT extends AbstractChunkedSnapshotTest<Infor
             TestHelper.dropTables(connection, "dbz1220a", "dbz1220b", "dbz1220c", "dbz1220d", "dbz1220");
             connection.close();
         }
-        super.afterEach();
     }
 
     @Override
@@ -66,21 +69,6 @@ public class InformixChunkedSnapshotIT extends AbstractChunkedSnapshotTest<Infor
     @Override
     protected void populateCompositeKeyTable(String tableName, int rowCount) throws SQLException {
         super.populateCompositeKeyTable(tableName, rowCount);
-    }
-
-    @Override
-    protected String getSingleKeyTableName() {
-        return "dbz1220";
-    }
-
-    @Override
-    protected String getCompositeKeyTableName() {
-        return "dbz1220";
-    }
-
-    @Override
-    protected List<String> getMultipleSingleKeyTableNames() {
-        return List.of("dbz1220a", "dbz1220b", "dbz1220c", "dbz1220d");
     }
 
     @Override
@@ -96,7 +84,7 @@ public class InformixChunkedSnapshotIT extends AbstractChunkedSnapshotTest<Infor
     @Override
     protected Configuration.Builder getConfig() {
         return TestHelper.defaultConfig()
-                // todo: using default of repeatable_read blocks, despite locks being released?
+                .with(InformixConnectorConfig.CDC_BUFFERSIZE, 0x4000_0000)
                 .with(InformixConnectorConfig.SNAPSHOT_ISOLATION_MODE, SnapshotIsolationMode.READ_COMMITTED)
                 .with(InformixConnectorConfig.SNAPSHOT_LOCKING_MODE, SnapshotLockingMode.SHARE)
                 .with(InformixConnectorConfig.SNAPSHOT_LOCK_TIMEOUT_MS, 30_000L);
