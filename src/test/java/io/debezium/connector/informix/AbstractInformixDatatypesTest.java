@@ -634,10 +634,10 @@ public abstract class AbstractInformixDatatypesTest extends AbstractAsyncEngineC
 
     protected static void insertClobTypes() throws SQLException {
         Clob clob1 = connection.connection().createClob();
-        clob1.setString(0, part(CLOB_JSON, 0, 512));
+        clob1.setString(1, part(CLOB_JSON, 0, 512));
 
         Clob clob2 = connection.connection().createClob();
-        clob2.setString(0, part(CLOB_JSON, 0, 5000));
+        clob2.setString(1, part(CLOB_JSON, 0, 5000));
 
         connection.prepareUpdate("INSERT INTO type_clob VALUES (0, ?, ?, ?)", ps -> {
             ps.setString(1, CLOB_TXT);
@@ -649,10 +649,10 @@ public abstract class AbstractInformixDatatypesTest extends AbstractAsyncEngineC
 
     protected static void updateClobTypes() throws Exception {
         Clob clob1 = connection.connection().createClob();
-        clob1.setString(0, part(CLOB_JSON, 1, 512));
+        clob1.setString(1, part(CLOB_JSON, 1, 512));
 
         Clob clob2 = connection.connection().createClob();
-        clob2.setString(0, part(CLOB_JSON, 1, 5000));
+        clob2.setString(1, part(CLOB_JSON, 1, 5000));
 
         connection.prepareUpdate("UPDATE type_clob SET VAL_CLOB_INLINE=?, VAL_CLOB_SHORT=?, VAL_CLOB_LONG=?" +
                 " WHERE ID = 1", ps -> {

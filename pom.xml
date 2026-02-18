@@ -34,8 +34,8 @@
         <informix.db.name>testdb</informix.db.name>
         <informix.image>informix-developer-database</informix.image>
         <informix.image.registry>icr.io/informix</informix.image.registry>
-        <informix.image.tag>14.10.FC9W1DE</informix.image.tag>
-        <informix.version>14</informix.version>
+        <informix.image.tag>15.0</informix.image.tag>
+        <informix.version>15</informix.version>
         <informix.init.timeout>300000</informix.init.timeout> <!-- five minutes max -->
         <informix.run.wait.log>SCHAPI: Started \d dbWorker threads</informix.run.wait.log>
         <informix.size>medium</informix.size>
@@ -191,16 +191,11 @@
             <groupId>io.debezium</groupId>
             <artifactId>debezium-connect-plugins</artifactId>
         </dependency>
-        <!-- Informix ChangeStream client -->
-        <dependency>
-            <groupId>com.ibm.informix</groupId>
-            <artifactId>ifx-changestream-client</artifactId>
-            <scope>provided</scope>
-        </dependency>
         <!-- Informix JDBC driver -->
         <dependency>
             <groupId>com.ibm.informix</groupId>
             <artifactId>jdbc</artifactId>
+            <version>15.0.1.0</version>
             <scope>provided</scope>
         </dependency>
         <dependency>

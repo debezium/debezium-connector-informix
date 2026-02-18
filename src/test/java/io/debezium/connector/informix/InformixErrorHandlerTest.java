@@ -12,8 +12,8 @@ import java.sql.SQLException;
 
 import org.junit.jupiter.api.Test;
 
-import com.informix.asf.IfxASFException;
-import com.informix.stream.impl.IfxStreamException;
+import com.informix.asf.ASFException;
+import com.informix.jdbc.stream.impl.StreamException;
 
 import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
@@ -43,13 +43,13 @@ public class InformixErrorHandlerTest {
     @Test
     public void encapsulatedCommunicationExceptionIsRetryable() {
         ConnectException testException = new ConnectException("Connection refused");
-        assertThat(errorHandler.isRetriable(new IfxASFException("Socket connection to server failed", testException))).isTrue();
+        assertThat(errorHandler.isRetriable(new ASFException("Socket connection to server failed", testException))).isTrue();
     }
 
     @Test
     public void deepEncapsulatedCommunicationExceptionIsRetryable() {
         Exception testException = new ConnectException("Connection refused");
-        testException = new IfxASFException("Socket connection to server failed", testException);
+        testException = new ASFException("Socket connection to server failed", testException);
         testException = new SQLException(testException);
         testException = new DebeziumException("Couldn't obtain database name", testException);
         assertThat(errorHandler.isRetriable(testException)).isTrue();
@@ -68,13 +68,13 @@ public class InformixErrorHandlerTest {
 
     @Test
     public void ifxStreamExceptionIsNotRetryable() {
-        assertThat(errorHandler.isRetriable(new IfxStreamException("Unable to create CDC session. Error code: -83713"))).isFalse();
+        assertThat(errorHandler.isRetriable(new StreamException("Unable to create CDC session. Error code: -83713"))).isFalse();
     }
 
     @Test
     public void ifxEncapsulatedSQLExceptionIsRetriable() {
         SQLException sqlException = new SQLException("definitely not a informix error");
-        assertThat(errorHandler.isRetriable(new IfxStreamException("Unable to create CDC session ", sqlException))).isTrue();
+        assertThat(errorHandler.isRetriable(new StreamException("Unable to create CDC session ", sqlException))).isTrue();
     }
 
     @Test
