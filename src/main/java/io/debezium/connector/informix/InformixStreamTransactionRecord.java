@@ -8,31 +8,31 @@ package io.debezium.connector.informix;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import com.informix.stream.api.IfmxStreamOperationRecord;
-import com.informix.stream.api.IfmxStreamRecord;
-import com.informix.stream.cdc.records.IfxCDCBeginTransactionRecord;
-import com.informix.stream.transactions.IfmxStreamTransactionRecord;
+import com.informix.jdbc.stream.api.StreamOperationRecord;
+import com.informix.jdbc.stream.api.StreamRecord;
+import com.informix.jdbc.stream.cdc.records.CDCBeginTransactionRecord;
+import com.informix.jdbc.stream.transactions.StreamTransactionRecord;
 
 /**
  * An extension of IfmxStreamTransactionRecord that takes a wider view of which operation types we are interested in.
  *
  * @author Lars M Johansson
  */
-public class InformixStreamTransactionRecord extends IfmxStreamTransactionRecord implements IfmxStreamRecord {
+public class InformixStreamTransactionRecord extends StreamTransactionRecord implements StreamRecord {
 
-    private final List<IfmxStreamRecord> records;
+    private final List<StreamRecord> records;
 
-    public InformixStreamTransactionRecord(IfxCDCBeginTransactionRecord beginRecord, IfmxStreamRecord closingRecord, List<IfmxStreamRecord> records) {
+    public InformixStreamTransactionRecord(CDCBeginTransactionRecord beginRecord, StreamRecord closingRecord, List<StreamRecord> records) {
         super(beginRecord, closingRecord, List.of());
         this.records = records;
     }
 
     @Override
-    public List<IfmxStreamOperationRecord> getOperationRecords() {
-        return records.stream().filter(IfmxStreamRecord::hasOperationData).map(IfmxStreamOperationRecord.class::cast).collect(Collectors.toList());
+    public List<StreamOperationRecord> getOperationRecords() {
+        return records.stream().filter(StreamRecord::hasOperationData).map(StreamOperationRecord.class::cast).collect(Collectors.toList());
     }
 
-    public List<IfmxStreamRecord> getRecords() {
+    public List<StreamRecord> getRecords() {
         return records;
     }
 
