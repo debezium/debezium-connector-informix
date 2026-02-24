@@ -106,6 +106,21 @@ public class InformixChunkedSnapshotIT extends AbstractChunkedSnapshotTest<Infor
     }
 
     @Override
+    protected void waitForStreamingRunning() throws InterruptedException {
+        waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
+    }
+
+    @Override
+    protected String connector() {
+        return TestHelper.TEST_CONNECTOR;
+    }
+
+    @Override
+    protected String server() {
+        return TestHelper.TEST_DATABASE;
+    }
+
+    @Override
     protected String getSingleKeyCollectionName() {
         return "testdb.informix.dbz1220";
     }
