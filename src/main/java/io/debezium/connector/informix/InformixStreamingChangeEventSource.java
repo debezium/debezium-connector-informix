@@ -130,6 +130,10 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
                     dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
 
                     IfmxStreamRecord streamRecord = transactionEngine.getRecord();
+                    if (streamRecord == null) {
+                        LOGGER.debug(RECEIVED_GENERIC_RECORD, streamRecord, 0);
+                        continue;
+                    }
 
                     switch (streamRecord.getType()) {
                         case TRANSACTION_GROUP:
@@ -184,6 +188,10 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
                 dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
 
                 IfmxStreamRecord streamRecord = transactionEngine.getRecord();
+                if (streamRecord == null) {
+                    LOGGER.debug(RECEIVED_GENERIC_RECORD, streamRecord, 0);
+                    continue;
+                }
 
                 switch (streamRecord.getType()) {
                     case TRANSACTION_GROUP:
