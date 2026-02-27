@@ -98,8 +98,6 @@ public class InformixConnectorTask extends BaseSourceTask<InformixPartition, Inf
 
         Offsets<InformixPartition, InformixOffsetContext> previousOffsets = getPreviousOffsets(new InformixPartition.Provider(connectorConfig),
                 new InformixOffsetContext.Loader(connectorConfig));
-        // Service providers
-        registerServiceProviders(connectorConfig.getServiceRegistry());
 
         CustomConverterRegistry customConverterRegistry = connectorConfig.getServiceRegistry().tryGetService(CustomConverterRegistry.class);
 
