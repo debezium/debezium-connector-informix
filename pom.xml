@@ -101,6 +101,11 @@
                 <artifactId>debezium-storage-file</artifactId>
                 <version>${version.debezium}</version>
             </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-connect-plugins</artifactId>
+                <version>${version.debezium}</version>
+            </dependency>
 
             <!-- Building -->
             <dependency>
@@ -158,6 +163,10 @@
         <dependency>
             <groupId>io.debezium</groupId>
             <artifactId>debezium-storage-file</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-connect-plugins</artifactId>
         </dependency>
         <!-- Informix ChangeStream client -->
         <dependency>
@@ -220,6 +229,12 @@
         <dependency>
             <groupId>io.debezium</groupId>
             <artifactId>debezium-embedded</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-connect-plugins</artifactId>
+            <type>test-jar</type>
             <scope>test</scope>
         </dependency>
         <dependency>
