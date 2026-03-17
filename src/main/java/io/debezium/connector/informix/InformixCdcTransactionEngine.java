@@ -53,10 +53,10 @@ public class InformixCdcTransactionEngine implements IfxTransactionEngine {
     protected final Builder builder;
     protected final IfxCDCEngine engine;
     protected final ChangeEventSourceContext context;
+    protected boolean returnEmptyTransactions;
     protected EnumSet<IfmxStreamRecordType> operationFilters;
     protected EnumSet<IfmxStreamRecordType> transactionFilters;
     protected final Map<Integer, TransactionHolder> transactionMap;
-    protected boolean returnEmptyTransactions;
     protected Map<String, TableId> tableIdByLabelId;
 
     public static Builder builder(DataSource ds) {
@@ -67,10 +67,10 @@ public class InformixCdcTransactionEngine implements IfxTransactionEngine {
         this.builder = builder;
         this.engine = builder.engine;
         this.context = builder.context;
+        this.returnEmptyTransactions = builder.returnEmptyTransactions;
         this.operationFilters = EnumSet.of(INSERT, DELETE, BEFORE_UPDATE, AFTER_UPDATE, TRUNCATE);
         this.transactionFilters = EnumSet.of(COMMIT, ROLLBACK);
         this.transactionMap = new ConcurrentSkipListMap<>();
-        this.returnEmptyTransactions = false;
     }
 
     @Override
@@ -213,6 +213,7 @@ public class InformixCdcTransactionEngine implements IfxTransactionEngine {
         private final IfxCDCEngine.Builder builder;
         private IfxCDCEngine engine;
         private ChangeEventSourceContext context;
+        private boolean returnEmptyTransactions = false;
 
         protected Builder(DataSource ds) {
             builder = IfxCDCEngine.builder(ds);
@@ -275,6 +276,11 @@ public class InformixCdcTransactionEngine implements IfxTransactionEngine {
 
         public Builder stopLoggingOnClose(boolean stopOnClose) {
             builder.stopLoggingOnClose(stopOnClose);
+            return this;
+        }
+
+        public Builder returnEmptyTransactions(boolean returnEmptyTransactions) {
+            this.returnEmptyTransactions = returnEmptyTransactions;
             return this;
         }
 
