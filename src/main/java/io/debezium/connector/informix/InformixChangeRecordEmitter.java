@@ -8,13 +8,15 @@ package io.debezium.connector.informix;
 import java.util.Map;
 import java.util.concurrent.Callable;
 
-import org.apache.kafka.connect.data.Field;
-
 import com.informix.jdbc.IfmxReadableType;
+import com.informix.jdbc.IfxUDT;
+import com.informix.jdbc.udt.BasicUdt;
 
 import io.debezium.DebeziumException;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.relational.RelationalChangeRecordEmitter;
+import io.debezium.relational.Table;
+import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
 import io.debezium.util.Clock;
 
@@ -26,17 +28,24 @@ import io.debezium.util.Clock;
  */
 public class InformixChangeRecordEmitter extends RelationalChangeRecordEmitter<InformixPartition> {
 
+    private final InformixDatabaseSchema schema;
+    private final TableId tableId;
     private final Operation operation;
-    private final Object[] before;
-    private final Object[] after;
+    private final Map<String, IfmxReadableType> before;
+    private final Map<String, IfmxReadableType> after;
+    private final IfxUDT placeholderValue;
 
-    public InformixChangeRecordEmitter(InformixPartition partition, InformixOffsetContext offsetContext, Operation operation,
-                                       Object[] before, Object[] after, Clock clock, InformixConnectorConfig connectorConfig) {
+    public InformixChangeRecordEmitter(InformixPartition partition, InformixOffsetContext offsetContext, Clock clock,
+                                       InformixConnectorConfig connectorConfig, InformixDatabaseSchema schema, TableId tableId,
+                                       Operation operation, Map<String, IfmxReadableType> before, Map<String, IfmxReadableType> after) {
         super(partition, offsetContext, clock, connectorConfig);
 
+        this.schema = schema;
+        this.tableId = tableId;
         this.operation = operation;
         this.before = before;
         this.after = after;
+        this.placeholderValue = new BasicUdt(connectorConfig.getUnavailableValuePlaceholder());
     }
 
     @Override
@@ -46,12 +55,12 @@ public class InformixChangeRecordEmitter extends RelationalChangeRecordEmitter<I
 
     @Override
     protected Object[] getOldColumnValues() {
-        return before;
+        return columnValues(before, schema.tableFor(tableId));
     }
 
     @Override
     protected Object[] getNewColumnValues() {
-        return after;
+        return columnValues(after, schema.tableFor(tableId));
     }
 
     @Override
@@ -61,20 +70,12 @@ public class InformixChangeRecordEmitter extends RelationalChangeRecordEmitter<I
                 getOffset(), null);
     }
 
-    /**
-     * Convert columns data from Map[String,IfmxReadableType] to Object[].
-     * Debezium can't convert the IfmxReadableType object to kafka direct,so use map[AnyRef](x=>x.toObject) to extract the java
-     * type value from IfmxReadableType and pass to debezium for kafka
-     *
-     * @param data the data from informix cdc map[String,IfmxReadableType].
-     * @author Laoflch Luo, Xiaolin Zhang
-     */
-    public static Object[] convertIfxData2Array(Map<String, IfmxReadableType> data, TableSchema tableSchema) {
-        return data == null ? new Object[0]
-                : tableSchema.valueSchema().fields().stream()
-                        .map(Field::name)
-                        .map(data::get)
-                        .map(irt -> propagate(irt::toObject)).toArray();
+    protected Object[] columnValues(Map<String, IfmxReadableType> data, Table table) {
+        // based on the schema columns, create the values on the same position as the columns
+        return data == null ? new Object[table.columns().size()]
+                : table.retrieveColumnNames().stream()
+                        .map(key -> data.getOrDefault(key, placeholderValue))
+                        .map(type -> propagate(type::toObject)).toArray();
     }
 
     private static <X> X propagate(Callable<X> callable) {
