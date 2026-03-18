@@ -5,10 +5,7 @@
  */
 package io.debezium.connector.informix;
 
-import java.io.PrintWriter;
-import java.sql.Connection;
 import java.sql.SQLException;
-import java.sql.SQLFeatureNotSupportedException;
 import java.time.Instant;
 import java.util.Optional;
 
@@ -18,6 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.informix.jdbc.IfxDriver;
+import com.informix.jdbcx.IfxDataSource;
 
 import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
@@ -163,60 +161,9 @@ public class InformixConnection extends JdbcConnection {
         return InformixIdentifierQuoter.quoteIfNecessary(columnName);
     }
 
-    public DataSource datasource() {
-        return new DataSource() {
-            private PrintWriter logWriter;
-
-            @Override
-            public Connection getConnection() throws SQLException {
-                return connection();
-            }
-
-            @Override
-            public Connection getConnection(String username, String password) throws SQLException {
-                JdbcConfiguration config = JdbcConfiguration.copy(config()).withUser(username).withPassword(password).build();
-                return FACTORY.connect(config);
-            }
-
-            @Override
-            public PrintWriter getLogWriter() {
-                return this.logWriter;
-            }
-
-            @Override
-            public void setLogWriter(PrintWriter out) {
-                this.logWriter = out;
-            }
-
-            @Override
-            public void setLoginTimeout(int seconds) {
-                throw new UnsupportedOperationException("setLoginTimeout");
-            }
-
-            @Override
-            public int getLoginTimeout() {
-                return (int) config().getConnectionTimeout().toSeconds();
-            }
-
-            @Override
-            public java.util.logging.Logger getParentLogger() throws SQLFeatureNotSupportedException {
-                return java.util.logging.Logger.getLogger("io.debezium.connector.informix");
-            }
-
-            @Override
-            @SuppressWarnings("unchecked")
-            public <T> T unwrap(Class<T> iface) throws SQLException {
-                if (iface.isInstance(this)) {
-                    return (T) this;
-                }
-                throw new SQLException("DataSource of type [" + getClass().getName() + "] cannot be unwrapped as [" + iface.getName() + "]");
-            }
-
-            @Override
-            public boolean isWrapperFor(Class<?> iface) throws SQLException {
-                return iface.isInstance(this);
-            }
-        };
+    public DataSource datasource() throws SQLException {
+        IfxDataSource datasource = new IfxDataSource(connectionString());
+        datasource.getDsProperties().putAll(config().withoutKnownFields().asProperties());
+        return datasource;
     }
-
 }
