@@ -38,8 +38,11 @@
         <informix.version>14</informix.version>
         <informix.init.timeout>300000</informix.init.timeout> <!-- five minutes max -->
         <informix.run.wait.log>SCHAPI: Started \d dbWorker threads</informix.run.wait.log>
-        <informix.init.script.name>informix_post_init.sh</informix.init.script.name>
-        <informix.output.directory>config</informix.output.directory>
+        <informix.size>medium</informix.size>
+        <informix.init.script.name/>
+        <informix.sch.init.script.name/>
+        <informix.pre.init.script.name>informix_pre_init.sh</informix.pre.init.script.name>
+        <informix.post.init.script.name>informix_post_init.sh</informix.post.init.script.name>
         <!-- Default values for the database -->
         <informix.db.date>MDY4/</informix.db.date>
         <informix.db.century>R</informix.db.century>
@@ -330,14 +333,13 @@
                             <run>
                                 <env>
                                     <LICENSE>accept</LICENSE>
-                                    <SIZE>large</SIZE>
-                                    <TYPE>oltp</TYPE>
-                                    <USEOSTIME>1</USEOSTIME>
+                                    <SIZE>${informix.size}</SIZE>
                                     <DB_SBSPACE>1</DB_SBSPACE>
                                     <DBDATE>${informix.db.date}</DBDATE>
                                     <DBCENTURY>${informix.db.century}</DBCENTURY>
                                     <DBMONEY>${informix.db.money}</DBMONEY>
-                                    <RUN_FILE_POST_INIT>informix_post_init.sh</RUN_FILE_POST_INIT>
+                                    <RUN_FILE_PRE_INIT>${informix.pre.init.script.name}</RUN_FILE_PRE_INIT>
+                                    <RUN_FILE_POST_INIT>${informix.post.init.script.name}</RUN_FILE_POST_INIT>
                                 </env>
                                 <ports>
                                     <port>${informix.port}:9088</port>
@@ -355,23 +357,45 @@
                             </run>
                             <build>
                                 <from>${informix.image.registry}/${informix.image}:${informix.image.tag}</from>
-                                <runCmds>
-                                    <run>sed -Ei 's/^(USEOSTIME)\s+\S/\1 1/' /opt/ibm/informix/etc/onconfig.std</run>
-                                </runCmds>
                                 <assembly>
                                     <inline>
                                         <includeBaseDirectory>false</includeBaseDirectory>
                                         <files>
                                             <file>
                                                 <source>${project.basedir}/src/test/docker/informix-cdc-docker/${informix.version}/${informix.init.script.name}</source>
-                                                <outputDirectory>${informix.output.directory}</outputDirectory>
+                                                <outputDirectory>scripts</outputDirectory>
                                                 <lineEnding>unix</lineEnding>
                                                 <fileMode>755</fileMode>
                                             </file>
                                             <file>
-                                                <source>${project.basedir}/src/test/docker/informix-cdc-docker/${informix.version}/testdb.sql</source>
-                                                <outputDirectory>informix/etc</outputDirectory>
+                                                <source>${project.basedir}/src/test/docker/informix-cdc-docker/${informix.version}/${informix.sch.init.script.name}</source>
+                                                <outputDirectory>data</outputDirectory>
                                                 <lineEnding>unix</lineEnding>
+                                                <fileMode>755</fileMode>
+                                            </file>
+                                            <file>
+                                                <source>${project.basedir}/src/test/docker/informix-cdc-docker/${informix.version}/${informix.pre.init.script.name}</source>
+                                                <outputDirectory>config</outputDirectory>
+                                                <lineEnding>unix</lineEnding>
+                                                <fileMode>755</fileMode>
+                                            </file>
+                                            <file>
+                                                <source>${project.basedir}/src/test/docker/informix-cdc-docker/${informix.version}/${informix.post.init.script.name}</source>
+                                                <outputDirectory>config</outputDirectory>
+                                                <lineEnding>unix</lineEnding>
+                                                <fileMode>755</fileMode>
+                                            </file>
+                                            <file>
+                                                <source>${project.basedir}/src/test/docker/informix-cdc-docker/${informix.version}/informix_config.custom</source>
+                                                <outputDirectory>data</outputDirectory>
+                                                <lineEnding>unix</lineEnding>
+                                                <fileMode>755</fileMode>
+                                            </file>
+                                            <file>
+                                                <source>${project.basedir}/src/test/docker/informix-cdc-docker/testdb.sql</source>
+                                                <outputDirectory>data</outputDirectory>
+                                                <lineEnding>unix</lineEnding>
+                                                <fileMode>755</fileMode>
                                             </file>
                                         </files>
                                     </inline>
@@ -561,10 +585,13 @@
                 <informix.version>12</informix.version>
                 <informix.image>ibmcom-informix-developer-database</informix.image>
                 <informix.image.tag>12.10.FC12W1DE</informix.image.tag>
-                <informix.run.wait.log>Logical Log \d Complete</informix.run.wait.log>
+                <informix.run.wait.log>Checkpoint Completed:  duration was \d seconds</informix.run.wait.log>
                 <informix.image.registry>quay.io/debezium</informix.image.registry>
+                <informix.size>custom</informix.size>
                 <informix.init.script.name>informix_init.sh</informix.init.script.name>
-                <informix.output.directory>scripts</informix.output.directory>
+                <informix.sch.init.script.name>sch_init_informix.custom.sql</informix.sch.init.script.name>
+                <informix.pre.init.script.name/>
+                <informix.post.init.script.name/>
                 <informix.db.date>MDY2.</informix.db.date>
                 <informix.db.century>C</informix.db.century>
             </properties>

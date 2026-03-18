@@ -221,7 +221,7 @@ public abstract class AbstractInformixDatatypesTest extends AbstractAsyncEngineC
             DDL_FP,
             DDL_INT,
             DDL_TIME,
-            DDL_CLOB,
+            DDL_CLOB
     };
 
     private static InformixConnection connection;

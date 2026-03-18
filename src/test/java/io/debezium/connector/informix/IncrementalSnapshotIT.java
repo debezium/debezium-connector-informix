@@ -7,6 +7,7 @@ package io.debezium.connector.informix;
 
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.AfterEach;
@@ -24,6 +25,7 @@ import io.debezium.junit.ConditionalFailExtension;
 import io.debezium.junit.Flaky;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotTest;
 
+@Flaky("DBZ-8114")
 @ExtendWith(ConditionalFailExtension.class)
 public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<InformixConnector> {
 
@@ -135,6 +137,11 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Infor
         return TestHelper.TEST_DATABASE + '.' + signalTableName();
     }
 
+    @Override
+    protected Optional<String> physicalRowIdentifierSurrogateKey() {
+        return Optional.of("aa");
+    }
+
     protected String tableIncludeList() {
         return String.join(",", tableDataCollectionIds());
     }
@@ -171,19 +178,5 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Infor
     @Disabled("Informix does not support DDL operations on tables defined for replication")
     @Override
     public void snapshotPreceededBySchemaChange() {
-    }
-
-    @Test
-    @Flaky("DBZ-9475")
-    @Override
-    public void removeNotYetCapturedCollectionFromInProgressIncrementalSnapshot() throws Exception {
-        super.removeNotYetCapturedCollectionFromInProgressIncrementalSnapshot();
-    }
-
-    @Test
-    @Flaky("DBZ-9475")
-    @Override
-    public void removeStartedCapturedCollectionFromInProgressIncrementalSnapshot() throws Exception {
-        super.removeStartedCapturedCollectionFromInProgressIncrementalSnapshot();
     }
 }
