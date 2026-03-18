@@ -87,12 +87,12 @@ public class TestHelper {
                 .with(CommonConnectorConfig.EXECUTOR_SHUTDOWN_TIMEOUT_MS, 28_657)
                 .with(AsyncEngineConfig.TASK_MANAGEMENT_TIMEOUT_MS, 196_418)
                 .with(CommonConnectorConfig.TOPIC_PREFIX, TEST_DATABASE)
-                .with(CommonConnectorConfig.DRIVER_CONFIG_PREFIX + IFX_LOCK_MODE_WAIT, 30)
                 .with(InformixConnectorConfig.SCHEMA_HISTORY, FileSchemaHistory.class)
                 .with(FileSchemaHistory.FILE_PATH, SCHEMA_HISTORY_PATH)
                 .with(InformixConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
-                .with(InformixConnectorConfig.CDC_TIMEOUT, 1)
-                .with(InformixConnectorConfig.CDC_BUFFERSIZE, 0x200);
+                .with(InformixConnectorConfig.CDC_TIMEOUT, 3)
+                .with(CommonConnectorConfig.DRIVER_CONFIG_PREFIX + "LOBCACHE", -1)
+                .with(CommonConnectorConfig.DRIVER_CONFIG_PREFIX + IFX_LOCK_MODE_WAIT, 30);
     }
 
     public static InformixConnection adminConnection() {

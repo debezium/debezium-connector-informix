@@ -275,7 +275,6 @@ public abstract class AbstractInformixDefaultValueIT extends AbstractAsyncEngine
         // store config so it can be used by other methods
         config = TestHelper.defaultConfig()
                 .with(InformixConnectorConfig.TABLE_INCLUDE_LIST, TestHelper.TEST_DATABASE + ".informix.dv_test")
-                .with(InformixConnectorConfig.CDC_BUFFERSIZE, 0x800)
                 .with(InformixConnectorConfig.TIME_PRECISION_MODE, TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS)
                 .build();
 
