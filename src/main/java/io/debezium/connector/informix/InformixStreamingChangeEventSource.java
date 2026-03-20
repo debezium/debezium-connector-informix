@@ -9,6 +9,7 @@ import static java.lang.Thread.currentThread;
 
 import java.sql.SQLException;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -134,7 +135,7 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
                     }
 
                     switch (streamRecord.getType()) {
-                        case TRANSACTION_GROUP:
+                        case TRANSACTION_GROUP -> {
                             InformixStreamTransactionRecord transactionRecord = (InformixStreamTransactionRecord) streamRecord;
 
                             Lsn commitLsn = Lsn.of(transactionRecord.getEndRecord().getSequenceId());
@@ -155,18 +156,11 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
                                 recovering = false;
                             }
                             handleTransaction(transactionEngine, partition, offsetContext, transactionRecord, recovering);
-                            break;
-                        case METADATA:
-                            handleMetadata(partition, offsetContext, transactionEngine, (CDCMetaDataRecord) streamRecord);
-                            break;
-                        case TIMEOUT:
-                            LOGGER.trace(RECEIVED_GENERIC_RECORD, streamRecord, 0);
-                            break;
-                        case ERROR:
-                            LOGGER.error(RECEIVED_GENERIC_RECORD, streamRecord, 0);
-                            break;
-                        default:
-                            LOGGER.warn(RECEIVED_UNKNOWN_RECORD_TYPE, streamRecord, 0);
+                        }
+                        case METADATA -> handleMetadata(partition, offsetContext, transactionEngine, (CDCMetaDataRecord) streamRecord);
+                        case TIMEOUT -> LOGGER.trace(RECEIVED_GENERIC_RECORD, streamRecord, 0);
+                        case ERROR -> LOGGER.error(RECEIVED_GENERIC_RECORD, streamRecord, 0);
+                        default -> LOGGER.warn(RECEIVED_UNKNOWN_RECORD_TYPE, streamRecord, 0);
                     }
                 }
             }
@@ -192,20 +186,11 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
                 }
 
                 switch (streamRecord.getType()) {
-                    case TRANSACTION_GROUP:
-                        handleTransaction(transactionEngine, partition, offsetContext, (InformixStreamTransactionRecord) streamRecord, false);
-                        break;
-                    case METADATA:
-                        handleMetadata(partition, offsetContext, transactionEngine, (CDCMetaDataRecord) streamRecord);
-                        break;
-                    case TIMEOUT:
-                        LOGGER.trace(RECEIVED_GENERIC_RECORD, streamRecord, 0);
-                        break;
-                    case ERROR:
-                        LOGGER.error(RECEIVED_GENERIC_RECORD, streamRecord, 0);
-                        break;
-                    default:
-                        LOGGER.warn(RECEIVED_UNKNOWN_RECORD_TYPE, streamRecord, 0);
+                    case TRANSACTION_GROUP -> handleTransaction(transactionEngine, partition, offsetContext, (InformixStreamTransactionRecord) streamRecord, false);
+                    case METADATA -> handleMetadata(partition, offsetContext, transactionEngine, (CDCMetaDataRecord) streamRecord);
+                    case TIMEOUT -> LOGGER.trace(RECEIVED_GENERIC_RECORD, streamRecord, 0);
+                    case ERROR -> LOGGER.error(RECEIVED_GENERIC_RECORD, streamRecord, 0);
+                    default -> LOGGER.warn(RECEIVED_UNKNOWN_RECORD_TYPE, streamRecord, 0);
                 }
             }
         }
@@ -258,9 +243,8 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
         return builder.build();
     }
 
-    private void handleTransaction(InformixCdcTransactionEngine engine, InformixPartition partition,
-                                   InformixOffsetContext offsetContext, InformixStreamTransactionRecord transactionRecord,
-                                   boolean recover)
+    private void handleTransaction(InformixCdcTransactionEngine engine, InformixPartition partition, InformixOffsetContext offsetContext,
+                                   InformixStreamTransactionRecord transactionRecord, boolean recover)
             throws InterruptedException, StreamException {
         long tStart = System.nanoTime();
 
@@ -301,7 +285,10 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
                         offsetContext,
                         Instant.ofEpochSecond(beginTs));
 
-                for (StreamRecord streamRecord : transactionRecord.getRecords()) {
+                List<StreamRecord> streamRecords = transactionRecord.getRecords();
+                long finalChangeSeq = streamRecords.isEmpty() ? -1L : streamRecords.get(streamRecords.size() - 1).getSequenceId(); // No .getLast() in Java 17
+
+                for (StreamRecord streamRecord : streamRecords) {
                     start = System.nanoTime();
 
                     long changeSeq = streamRecord.getSequenceId();
@@ -316,6 +303,15 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
                     Map<String, ReadableType> after;
 
                     updateChangePosition(offsetContext, null, changeSeq, transactionId, null);
+                    /*
+                     * When transaction metadata is not provided, no transaction commited event is sent and change position
+                     * is not updated with endSeq and restartSeq. After a restart, the transaction will be recovered but all
+                     * operations are skipped as they have already been processed. Instead, for the last record of the
+                     * transaction change position is updated with changeSeq = endSeq and beginSeq = restartSeq
+                     */
+                    if (!connectorConfig.shouldProvideTransactionMetadata() && changeSeq == finalChangeSeq) {
+                        updateChangePosition(offsetContext, null, endSeq, transactionId, restartSeq);
+                    }
 
                     switch (streamRecord.getType()) {
                         case INSERT -> {
@@ -326,8 +322,7 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
 
                             end = System.nanoTime();
 
-                            LOGGER.debug("Received {} ElapsedT [{}ms] Data After [{}]",
-                                    streamRecord, (end - start) / 1000000d, after);
+                            LOGGER.debug("Received {} ElapsedT [{}ms] Data After [{}]", streamRecord, (end - start) / 1000000d, after);
                         }
                         case BEFORE_UPDATE -> {
 
@@ -335,8 +330,7 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
 
                             end = System.nanoTime();
 
-                            LOGGER.debug("Received {} ElapsedT [{}ms] Data Before [{}]",
-                                    streamRecord, (end - start) / 1000000d, before);
+                            LOGGER.debug("Received {} ElapsedT [{}ms] Data Before [{}]", streamRecord, (end - start) / 1000000d, before);
                         }
                         case AFTER_UPDATE -> {
 
@@ -346,8 +340,7 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
 
                             end = System.nanoTime();
 
-                            LOGGER.debug("Received {} ElapsedT [{}ms] Data Before [{}] Data After [{}]",
-                                    streamRecord, (end - start) / 1000000d, before, after);
+                            LOGGER.debug("Received {} ElapsedT [{}ms] Data Before [{}] Data After [{}]", streamRecord, (end - start) / 1000000d, before, after);
                         }
                         case DELETE -> {
 
@@ -357,8 +350,7 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
 
                             end = System.nanoTime();
 
-                            LOGGER.debug("Received {} ElapsedT [{}ms] Data Before [{}]",
-                                    streamRecord, (end - start) / 1000000d, before);
+                            LOGGER.debug("Received {} ElapsedT [{}ms] Data Before [{}]", streamRecord, (end - start) / 1000000d, before);
                         }
                         case TRUNCATE -> {
                             /*
@@ -393,11 +385,9 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
 
                 end = System.nanoTime();
 
-                LOGGER.debug("Received {} Time [{}] UserId [{}] ElapsedT [{}ms]",
-                        endRecord, commitTs, beginRecord.getUserId(), (end - start) / 1000000d);
+                LOGGER.debug("Received {} Time [{}] UserId [{}] ElapsedT [{}ms]", endRecord, commitTs, beginRecord.getUserId(), (end - start) / 1000000d);
 
-                LOGGER.debug("Handle Transaction Events [{}], ElapsedT [{}ms]",
-                        transactionRecord.getRecords().size(), (end - tStart) / 1000000d);
+                LOGGER.debug("Handle Transaction Events [{}], ElapsedT [{}ms]", streamRecords.size(), (end - tStart) / 1000000d);
             }
             case ROLLBACK -> {
 
@@ -454,5 +444,4 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
         dispatcher.dispatchDataChangeEvent(partition, tableId,
                 new InformixChangeRecordEmitter(partition, offsetContext, clock, connectorConfig, schema, tableId, operation, before, after));
     }
-
 }
