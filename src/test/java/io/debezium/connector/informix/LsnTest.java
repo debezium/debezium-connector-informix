@@ -20,8 +20,8 @@ public class LsnTest {
         // assertThat(ret).isEqualTo(-1);
         System.out.println(146031505564L);
         System.out.println(Long.MAX_VALUE);
-        Long l1 = 0L;
-        Long l2 = 146031505564L;
+        long l1 = 0L;
+        long l2 = 146031505564L;
         System.out.println(Long.toHexString(l1));
         System.out.println(Long.toHexString(l2));
     }

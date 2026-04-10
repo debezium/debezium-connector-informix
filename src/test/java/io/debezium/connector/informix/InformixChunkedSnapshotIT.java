@@ -69,21 +69,6 @@ public class InformixChunkedSnapshotIT extends AbstractChunkedSnapshotTest<Infor
     }
 
     @Override
-    protected String getSingleKeyTableName() {
-        return "dbz1220";
-    }
-
-    @Override
-    protected String getCompositeKeyTableName() {
-        return "dbz1220";
-    }
-
-    @Override
-    protected List<String> getMultipleSingleKeyTableNames() {
-        return List.of("dbz1220a", "dbz1220b", "dbz1220c", "dbz1220d");
-    }
-
-    @Override
     protected Class<InformixConnector> getConnectorClass() {
         return InformixConnector.class;
     }

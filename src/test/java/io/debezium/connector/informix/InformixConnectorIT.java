@@ -483,6 +483,7 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
         final int ID_START = 40;
         final int ID_RESTART = 100;
         final Configuration config = TestHelper.defaultConfig()
+                .with(InformixConnectorConfig.CDC_MAX_RECORDS, 1)
                 .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .build();
 
@@ -774,7 +775,7 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
                     ps.setBytes(2, "bytes".getBytes());
                 }).commit();
 
-        waitForAvailableRecords(waitTimeForRecords() * 5L, TimeUnit.SECONDS);
+        waitForAvailableRecords(waitTimeForRecords(), TimeUnit.SECONDS);
 
         final SourceRecords records = consumeRecordsByTopic(expectedRecords);
         final List<SourceRecord> table = records.recordsForTopic("testdb.informix.dt_table");
@@ -811,6 +812,7 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
         final int ID_RESTART = 1000;
         final int HALF_ID = ID_START + RECORDS_PER_TABLE / 2;
         final Configuration config = TestHelper.defaultConfig()
+                .with(InformixConnectorConfig.CDC_MAX_RECORDS, 10)
                 .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .build();
 
@@ -1352,6 +1354,7 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
     public void testHeartbeatExecuted() throws Exception {
         final Configuration config = TestHelper.defaultConfig()
                 .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
+                .with(InformixConnectorConfig.CDC_TIMEOUT, 0)
                 .with(InformixConnectorConfig.TABLE_INCLUDE_LIST, "testdb.informix.tablea")
                 // A low heartbeat interval should make sure that a heartbeat message is emitted at least once during the test.
                 .with(Heartbeat.HEARTBEAT_INTERVAL, "100")
@@ -1384,6 +1387,7 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
     public void testHeartbeatActionQueryExecuted() throws Exception {
         final Configuration config = TestHelper.defaultConfig()
                 .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
+                .with(InformixConnectorConfig.CDC_TIMEOUT, 0)
                 // to avoid locking issues during forcedBeat in the snapshot phase
                 .with(InformixConnectorConfig.SNAPSHOT_ISOLATION_MODE, SnapshotIsolationMode.READ_COMMITTED)
                 .with(InformixConnectorConfig.SNAPSHOT_LOCKING_MODE, SnapshotLockingMode.SHARE)

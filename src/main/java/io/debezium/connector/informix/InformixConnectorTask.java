@@ -165,9 +165,7 @@ public class InformixConnectorTask extends BaseSourceTask<InformixPartition, Inf
                         connectorConfig,
                         metadataProvider,
                         schemaNameAdjuster,
-                        (record) -> {
-                            queue.enqueue(new DataChangeEvent(record));
-                        },
+                        record -> queue.enqueue(new DataChangeEvent(record)),
                         topicNamingStrategy.transactionTopic()),
                 signalProcessor,
                 connectorConfig.getServiceRegistry().tryGetService(DebeziumHeaderProducer.class));
@@ -238,6 +236,14 @@ public class InformixConnectorTask extends BaseSourceTask<InformixPartition, Inf
 
         try {
             if (cdcConnection != null) {
+                if (cdcConnection.isConnected()) {
+                    try {
+                        cdcConnection.rollback();
+                    }
+                    catch (SQLException e) {
+                        // ignore
+                    }
+                }
                 cdcConnection.close();
             }
         }

@@ -26,7 +26,7 @@ import io.debezium.pipeline.AbstractBlockingSnapshotTest;
 import io.debezium.relational.history.SchemaHistory;
 
 @ExtendWith(ConditionalFailExtension.class)
-public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
+public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest<InformixConnector> {
 
     private InformixConnection connection;
 
@@ -163,7 +163,6 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
     @Test
     @Disabled("Informix does not support DDL operations on tables defined for replication")
     @Override
-    public void readsSchemaOnlyForSignaledTables() throws Exception {
-        super.readsSchemaOnlyForSignaledTables();
+    public void readsSchemaOnlyForSignaledTables() {
     }
 }

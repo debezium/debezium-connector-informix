@@ -239,7 +239,7 @@ public class TransactionMetadataIT extends AbstractAsyncEngineConnectorTest {
         final String txId = begin.getString("id");
         assertThat(beginKey.getString("id")).isEqualTo(txId);
 
-        final String expectedId = Arrays.stream(txId.split(":")).findFirst().get();
+        final String expectedId = Arrays.stream(txId.split(":")).findFirst().orElse("");
         assertThat(offset.get("transaction_id")).isEqualTo(expectedId);
         return txId;
     }
@@ -249,7 +249,7 @@ public class TransactionMetadataIT extends AbstractAsyncEngineConnectorTest {
         final Struct end = (Struct) record.value();
         final Struct endKey = (Struct) record.key();
         final Map<String, ?> offset = record.sourceOffset();
-        final String expectedId = Arrays.stream(beginTxId.split(":")).findFirst().get();
+        final String expectedId = Arrays.stream(beginTxId.split(":")).findFirst().orElse("");
         final String expectedTxId = String.format("%s:%s", expectedId, offset.get("commit_lsn"));
 
         assertThat(end.getString("status")).isEqualTo("END");
@@ -259,7 +259,7 @@ public class TransactionMetadataIT extends AbstractAsyncEngineConnectorTest {
 
         assertThat(end.getArray("data_collections").stream().map(x -> (Struct) x)
                 .collect(Collectors.toMap(x -> x.getString("data_collection"), x -> x.getInt64("event_count"))))
-                .isEqualTo(expectedPerTableCount.entrySet().stream().collect(Collectors.toMap(x -> x.getKey(), x -> x.getValue().longValue())));
+                .isEqualTo(expectedPerTableCount.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, x -> x.getValue().longValue())));
         assertThat(offset.get("transaction_id")).isEqualTo(expectedId);
     }
 
@@ -267,7 +267,7 @@ public class TransactionMetadataIT extends AbstractAsyncEngineConnectorTest {
     protected void assertRecordTransactionMetadata(SourceRecord record, String beginTxId, long expectedTotalOrder, long expectedCollectionOrder) {
         final Struct change = ((Struct) record.value()).getStruct("transaction");
         final Map<String, ?> offset = record.sourceOffset();
-        final String expectedId = Arrays.stream(beginTxId.split(":")).findFirst().get();
+        final String expectedId = Arrays.stream(beginTxId.split(":")).findFirst().orElse("");
         final String expectedTxId = String.format("%s:%s", expectedId, offset.get("commit_lsn"));
 
         assertThat(change.getString("id")).isEqualTo(expectedTxId);

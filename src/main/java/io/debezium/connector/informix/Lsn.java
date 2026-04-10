@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.informix;
 
+import org.jspecify.annotations.NonNull;
+
 import io.debezium.connector.Nullable;
 
 /**
@@ -115,7 +117,7 @@ public class Lsn implements Comparable<Lsn>, Nullable {
      * Enables ordering of LSNs. The {@code NULL} LSN is always the smallest one.
      */
     @Override
-    public int compareTo(Lsn o) {
+    public int compareTo(@NonNull Lsn o) {
         if (this == o) {
             return 0;
         }

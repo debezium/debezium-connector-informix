@@ -95,13 +95,10 @@ public class InformixValueConverters extends JdbcValueConverters {
 
     @Override
     public ValueConverter converter(Column column, Field fieldDefn) {
-        switch (column.jdbcType()) {
-            case Types.NUMERIC:
-            case Types.DECIMAL:
-                return getNumericConverter(column, fieldDefn);
-            default:
-                return super.converter(column, fieldDefn);
-        }
+        return switch (column.jdbcType()) {
+            case Types.NUMERIC, Types.DECIMAL -> getNumericConverter(column, fieldDefn);
+            default -> super.converter(column, fieldDefn);
+        };
     }
 
     private ValueConverter getNumericConverter(Column column, Field fieldDefn) {

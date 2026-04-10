@@ -149,6 +149,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Infor
     @Override
     protected Builder config() {
         return TestHelper.defaultConfig()
+                .with(InformixConnectorConfig.CDC_MAX_RECORDS, 1)
                 .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .with(InformixConnectorConfig.SIGNAL_DATA_COLLECTION, this::signalTableNameSanitized)
                 .with(InformixConnectorConfig.MSG_KEY_COLUMNS, noPKTableDataCollectionId() + ":pk1,pk2,pk3,pk4");

@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.informix;
 
+import java.lang.reflect.Method;
 import java.sql.SQLException;
 
 import org.junit.jupiter.api.BeforeAll;
@@ -40,7 +41,7 @@ public class SnapshotDatatypesIT extends AbstractInformixDatatypesTest {
 
     @BeforeEach
     public void before(TestInfo testInfo) throws Exception {
-        testMethodName = testInfo.getTestMethod().get().getName();
+        testMethodName = testInfo.getTestMethod().map(Method::getName).orElse("");
         init(TemporalPrecisionMode.ADAPTIVE);
     }
 
@@ -66,24 +67,14 @@ public class SnapshotDatatypesIT extends AbstractInformixDatatypesTest {
     }
 
     private String getTableIncludeList() {
-        switch (testMethodName) {
-            case "stringTypes":
-                return "testdb.informix.type_string";
-            case "fpTypes":
-            case "fpTypesAsString":
-            case "fpTypesAsDouble":
-                return "testdb.informix.type_fp";
-            case "intTypes":
-                return "testdb.informix.type_int";
-            case "timeTypes":
-            case "timeTypesAsAdaptiveMicroseconds":
-            case "timeTypesAsConnect":
-                return "testdb.informix.type_time";
-            case "clobTypes":
-                return "testdb.informix.type_clob";
-            default:
-                throw new IllegalArgumentException("Unexpected test method: " + testMethodName);
-        }
+        return switch (testMethodName) {
+            case "stringTypes" -> "testdb.informix.type_string";
+            case "fpTypes", "fpTypesAsString", "fpTypesAsDouble" -> "testdb.informix.type_fp";
+            case "intTypes" -> "testdb.informix.type_int";
+            case "timeTypes", "timeTypesAsAdaptiveMicroseconds", "timeTypesAsConnect" -> "testdb.informix.type_time";
+            case "clobTypes" -> "testdb.informix.type_clob";
+            default -> throw new IllegalArgumentException("Unexpected test method: " + testMethodName);
+        };
     }
 
     @Override

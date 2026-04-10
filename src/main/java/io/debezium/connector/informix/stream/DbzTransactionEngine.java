@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.informix;
+package io.debezium.connector.informix.stream;
 
 import static com.informix.jdbc.stream.api.StreamRecordType.AFTER_UPDATE;
 import static com.informix.jdbc.stream.api.StreamRecordType.BEFORE_UPDATE;
@@ -32,10 +32,11 @@ import com.informix.jdbc.IfmxTableDescriptor;
 import com.informix.jdbc.stream.api.StreamRecord;
 import com.informix.jdbc.stream.api.StreamRecordType;
 import com.informix.jdbc.stream.api.TransactionEngine;
-import com.informix.jdbc.stream.cdc.CDCEngine;
+import com.informix.jdbc.stream.cdc.CDCEngine.IfmxWatchedTable;
 import com.informix.jdbc.stream.cdc.records.CDCBeginTransactionRecord;
 import com.informix.jdbc.stream.impl.StreamException;
 
+import io.debezium.connector.informix.InformixStreamTransactionRecord;
 import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContext;
 import io.debezium.relational.TableId;
 
@@ -45,13 +46,14 @@ import io.debezium.relational.TableId;
  * @author Lars M Johansson
  *
  */
-public class InformixCdcTransactionEngine implements TransactionEngine {
+public class DbzTransactionEngine implements TransactionEngine {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(InformixCdcTransactionEngine.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(DbzTransactionEngine.class);
     private static final String PROCESSING_RECORD = "Processing {} record";
     private static final String MISSING_TRANSACTION_START_FOR_RECORD = "Missing transaction start for record: {}";
+
     protected final Builder builder;
-    protected final CDCEngine engine;
+    protected final DbzCDCEngine engine;
     protected final ChangeEventSourceContext context;
     protected boolean returnEmptyTransactions;
     protected EnumSet<StreamRecordType> operationFilters;
@@ -59,11 +61,11 @@ public class InformixCdcTransactionEngine implements TransactionEngine {
     protected final Map<Integer, TransactionHolder> transactionMap;
     protected Map<String, TableId> tableIdByLabelId;
 
-    public static Builder builder(DataSource ds) {
-        return new Builder(ds);
+    public static Builder builder(DataSource dataSource) {
+        return new Builder(dataSource);
     }
 
-    protected InformixCdcTransactionEngine(Builder builder) {
+    protected DbzTransactionEngine(Builder builder) {
         this.builder = builder;
         this.engine = builder.engine;
         this.context = builder.context;
@@ -75,66 +77,7 @@ public class InformixCdcTransactionEngine implements TransactionEngine {
 
     @Override
     public StreamRecord getRecord() throws SQLException, StreamException {
-        StreamRecord streamRecord;
-        while (context.isRunning() && (streamRecord = engine.getRecord()) != null) {
-
-            TransactionHolder holder = transactionMap.get(streamRecord.getTransactionId());
-            if (holder != null) {
-                LOGGER.debug("Processing [{}] record for transaction id: {}", streamRecord.getType(), streamRecord.getTransactionId());
-            }
-            switch (streamRecord.getType()) {
-                case BEGIN -> {
-                    holder = new TransactionHolder();
-                    holder.beginRecord = (CDCBeginTransactionRecord) streamRecord;
-                    transactionMap.put(streamRecord.getTransactionId(), holder);
-                    LOGGER.debug("Watching transaction id: {}", streamRecord.getTransactionId());
-                }
-                case INSERT, DELETE, BEFORE_UPDATE, AFTER_UPDATE, TRUNCATE -> {
-                    if (holder == null) {
-                        LOGGER.warn(MISSING_TRANSACTION_START_FOR_RECORD, streamRecord);
-                        break;
-                    }
-                    LOGGER.debug(PROCESSING_RECORD, streamRecord.getType());
-                    holder.records.add(streamRecord);
-                }
-                case DISCARD -> {
-                    if (holder == null) {
-                        LOGGER.warn(MISSING_TRANSACTION_START_FOR_RECORD, streamRecord);
-                        break;
-                    }
-                    LOGGER.debug(PROCESSING_RECORD, streamRecord.getType());
-                    long sequenceId = streamRecord.getSequenceId();
-
-                    if (holder.records.removeIf(r -> r.getSequenceId() >= sequenceId)) {
-                        LOGGER.debug("Discarding records with sequence >={}", sequenceId);
-                    }
-                }
-                case COMMIT, ROLLBACK -> {
-                    if (holder == null) {
-                        LOGGER.warn(MISSING_TRANSACTION_START_FOR_RECORD, streamRecord);
-                        break;
-                    }
-                    LOGGER.debug(PROCESSING_RECORD, streamRecord.getType());
-                    holder.closingRecord = streamRecord;
-                }
-                case METADATA, TIMEOUT, ERROR -> {
-                    if (holder == null) {
-                        return streamRecord;
-                    }
-                    LOGGER.debug(PROCESSING_RECORD, streamRecord.getType());
-                    holder.records.add(streamRecord);
-                }
-                default -> LOGGER.warn("Unknown operation for record: {}", streamRecord);
-            }
-            if (holder != null && holder.closingRecord != null) {
-                transactionMap.remove(streamRecord.getTransactionId());
-                if (!holder.records.isEmpty() || returnEmptyTransactions) {
-                    return new InformixStreamTransactionRecord(holder.beginRecord, holder.closingRecord, holder.records);
-                }
-            }
-        }
-
-        return null;
+        return engine.getRecord();
     }
 
     @Override
@@ -142,35 +85,96 @@ public class InformixCdcTransactionEngine implements TransactionEngine {
         return engine.getRecords();
     }
 
+    StreamRecord processRecord(StreamRecord streamRecord) {
+        TransactionHolder holder = transactionMap.get(streamRecord.getTransactionId());
+        if (holder != null) {
+            LOGGER.debug("Processing [{}] record for transaction id: {}", streamRecord.getType(), streamRecord.getTransactionId());
+        }
+        switch (streamRecord.getType()) {
+            case BEGIN -> {
+                holder = new TransactionHolder();
+                holder.beginRecord = (CDCBeginTransactionRecord) streamRecord;
+                transactionMap.put(streamRecord.getTransactionId(), holder);
+                LOGGER.debug("Watching transaction id: {}", streamRecord.getTransactionId());
+            }
+            case INSERT, DELETE, BEFORE_UPDATE, AFTER_UPDATE, TRUNCATE -> {
+                if (holder == null) {
+                    LOGGER.warn(MISSING_TRANSACTION_START_FOR_RECORD, streamRecord);
+                    break;
+                }
+                LOGGER.debug(PROCESSING_RECORD, streamRecord.getType());
+                holder.records.add(streamRecord);
+            }
+            case DISCARD -> {
+                if (holder == null) {
+                    LOGGER.warn(MISSING_TRANSACTION_START_FOR_RECORD, streamRecord);
+                    break;
+                }
+                LOGGER.debug(PROCESSING_RECORD, streamRecord.getType());
+                long sequenceId = streamRecord.getSequenceId();
+
+                if (holder.records.removeIf(r -> r.getSequenceId() >= sequenceId)) {
+                    LOGGER.debug("Discarding records with sequence >={}", sequenceId);
+                }
+            }
+            case COMMIT, ROLLBACK -> {
+                if (holder == null) {
+                    LOGGER.warn(MISSING_TRANSACTION_START_FOR_RECORD, streamRecord);
+                    break;
+                }
+                LOGGER.debug(PROCESSING_RECORD, streamRecord.getType());
+                holder.closingRecord = streamRecord;
+            }
+            case METADATA, TIMEOUT, ERROR -> {
+                LOGGER.debug(PROCESSING_RECORD, streamRecord.getType());
+                if (holder == null) {
+                    return streamRecord;
+                }
+                holder.records.add(streamRecord);
+            }
+            default -> LOGGER.warn("Unknown operation for record: {}", streamRecord);
+        }
+        if (holder != null && holder.closingRecord != null) {
+            transactionMap.remove(streamRecord.getTransactionId());
+            if (!holder.records.isEmpty() || returnEmptyTransactions) {
+                return new InformixStreamTransactionRecord(holder.beginRecord, holder.closingRecord, holder.records);
+            }
+        }
+
+        return null;
+    }
+
     @Override
     public InformixStreamTransactionRecord getTransaction() throws SQLException, StreamException {
-        StreamRecord streamRecord;
-        while ((streamRecord = getRecord()) != null && !(streamRecord instanceof InformixStreamTransactionRecord)) {
-            LOGGER.debug("Discard non-transaction record: {}", streamRecord);
+        StreamRecord streamRecord = null;
+        while (context.isRunning() && !((streamRecord = processRecord(engine.getRecord())) instanceof InformixStreamTransactionRecord)) {
+            if (streamRecord != null) {
+                LOGGER.debug("Discard non-transaction record: {}", streamRecord);
+            }
         }
         return (InformixStreamTransactionRecord) streamRecord;
     }
 
     @Override
-    public InformixCdcTransactionEngine setOperationFilters(StreamRecordType... recordTypes) {
+    public DbzTransactionEngine setOperationFilters(StreamRecordType... recordTypes) {
         operationFilters = EnumSet.copyOf(Set.of(recordTypes));
         return this;
     }
 
     @Override
-    public InformixCdcTransactionEngine setTransactionFilters(StreamRecordType... recordTypes) {
+    public DbzTransactionEngine setTransactionFilters(StreamRecordType... recordTypes) {
         transactionFilters = EnumSet.copyOf(Set.of(recordTypes));
         return this;
     }
 
     @Override
-    public InformixCdcTransactionEngine returnEmptyTransactions(boolean returnEmptyTransactions) {
+    public DbzTransactionEngine returnEmptyTransactions(boolean returnEmptyTransactions) {
         this.returnEmptyTransactions = returnEmptyTransactions;
         return this;
     }
 
     @Override
-    public void init() throws SQLException, StreamException {
+    public void init() throws StreamException {
         engine.init();
 
         /*
@@ -183,7 +187,7 @@ public class InformixCdcTransactionEngine implements TransactionEngine {
     }
 
     @Override
-    public void close() throws StreamException {
+    public void close() {
         engine.close();
     }
 
@@ -207,13 +211,13 @@ public class InformixCdcTransactionEngine implements TransactionEngine {
 
     public static class Builder {
 
-        private final CDCEngine.Builder builder;
-        private CDCEngine engine;
+        private final DbzCDCEngine.Builder builder;
+        private DbzCDCEngine engine;
         private ChangeEventSourceContext context;
         private boolean returnEmptyTransactions = false;
 
-        protected Builder(DataSource ds) {
-            builder = CDCEngine.builder(ds);
+        protected Builder(DataSource dataSource) {
+            this.builder = DbzCDCEngine.builder(dataSource);
         }
 
         public DataSource getDataSource() {
@@ -271,12 +275,12 @@ public class InformixCdcTransactionEngine implements TransactionEngine {
             return this;
         }
 
-        public Builder watchTable(CDCEngine.IfmxWatchedTable table) {
+        public Builder watchTable(IfmxWatchedTable table) {
             builder.watchTable(table);
             return this;
         }
 
-        public List<CDCEngine.IfmxWatchedTable> getWatchedTables() {
+        public List<IfmxWatchedTable> getWatchedTables() {
             return builder.getWatchedTables();
         }
 
@@ -290,9 +294,9 @@ public class InformixCdcTransactionEngine implements TransactionEngine {
             return this;
         }
 
-        public InformixCdcTransactionEngine build() throws SQLException {
+        public DbzTransactionEngine build() throws SQLException {
             engine = builder.build();
-            return new InformixCdcTransactionEngine(this);
+            return new DbzTransactionEngine(this);
         }
     }
 }
