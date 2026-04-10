@@ -232,6 +232,7 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
         InformixCdcTransactionEngine.Builder builder = InformixCdcTransactionEngine
                 .builder(dataConnection.datasource())
                 .buffer(connectorConfig.getCdcBuffersize())
+                .maxRecords(connectorConfig.getCdcMaxRecords())
                 .timeout(connectorConfig.getCdcTimeout())
                 .stopLoggingOnClose(connectorConfig.stopLoggingOnClose())
                 .returnEmptyTransactions(connectorConfig.returnEmptytransactions())

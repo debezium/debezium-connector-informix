@@ -138,6 +138,11 @@ public class InformixCdcTransactionEngine implements TransactionEngine {
     }
 
     @Override
+    public List<StreamRecord> getRecords() throws SQLException, StreamException {
+        return engine.getRecords();
+    }
+
+    @Override
     public InformixStreamTransactionRecord getTransaction() throws SQLException, StreamException {
         StreamRecord streamRecord;
         while ((streamRecord = getRecord()) != null && !(streamRecord instanceof InformixStreamTransactionRecord)) {
@@ -227,6 +232,15 @@ public class InformixCdcTransactionEngine implements TransactionEngine {
 
         public int getBufferSize() {
             return builder.getBufferSize();
+        }
+
+        public Builder maxRecords(int maxRecords) {
+            builder.maxRecords(maxRecords);
+            return this;
+        }
+
+        public int getMaxRecords() {
+            return builder.getMaxRecords();
         }
 
         public Builder sequenceId(long position) {

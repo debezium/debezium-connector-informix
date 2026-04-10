@@ -195,7 +195,6 @@
         <dependency>
             <groupId>com.ibm.informix</groupId>
             <artifactId>jdbc</artifactId>
-            <version>15.0.1.0</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
