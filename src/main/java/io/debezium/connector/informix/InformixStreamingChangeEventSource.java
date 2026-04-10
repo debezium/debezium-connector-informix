@@ -244,6 +244,7 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
         IfxCDCEngine.Builder builder = IfxCDCEngine
                 .builder(dataConnection.datasource())
                 .buffer(connectorConfig.getCdcBuffersize())
+                .maxRecords(connectorConfig.getCdcMaxRecords())
                 .timeout(connectorConfig.getCdcTimeout())
                 .stopLoggingOnClose(connectorConfig.stopLoggingOnClose());
 
