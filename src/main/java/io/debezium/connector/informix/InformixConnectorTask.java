@@ -129,7 +129,6 @@ public class InformixConnectorTask extends BaseSourceTask<InformixPartition, Inf
         // Set up the task record queue ...
         this.queue = new ChangeEventQueue.Builder<DataChangeEvent>()
                 .pollInterval(connectorConfig.getPollInterval())
-                .pollDispatchInterval(connectorConfig.getPollDispatchInterval())
                 .maxBatchSize(connectorConfig.getMaxBatchSize())
                 .maxQueueSize(connectorConfig.getMaxQueueSize())
                 .loggingContextSupplier(() -> taskContext.configureLoggingContext(CONTEXT_NAME))
