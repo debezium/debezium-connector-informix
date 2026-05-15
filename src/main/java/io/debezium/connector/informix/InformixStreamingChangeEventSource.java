@@ -396,6 +396,7 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
 
                 LOGGER.debug(RECEIVED_GENERIC_RECORD, endRecord, (end - start) / 1000000d);
             }
+            default -> LOGGER.warn("Received unexpected transaction end record type {}", endRecord);
         }
     }
 

@@ -53,7 +53,7 @@ public class DbzTransactionEngine implements TransactionEngine {
     private static final String MISSING_TRANSACTION_START_FOR_RECORD = "Missing transaction start for record: {}";
 
     protected final Builder builder;
-    protected final DbzCDCEngine engine;
+    protected final DbzCdcEngine engine;
     protected final ChangeEventSourceContext context;
     protected boolean returnEmptyTransactions;
     protected EnumSet<StreamRecordType> operationFilters;
@@ -211,13 +211,13 @@ public class DbzTransactionEngine implements TransactionEngine {
 
     public static class Builder {
 
-        private final DbzCDCEngine.Builder builder;
-        private DbzCDCEngine engine;
+        private final DbzCdcEngine.Builder builder;
+        private DbzCdcEngine engine;
         private ChangeEventSourceContext context;
         private boolean returnEmptyTransactions = false;
 
         protected Builder(DataSource dataSource) {
-            this.builder = DbzCDCEngine.builder(dataSource);
+            this.builder = DbzCdcEngine.builder(dataSource);
         }
 
         public DataSource getDataSource() {

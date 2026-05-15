@@ -34,9 +34,9 @@ import com.informix.lang.Messages;
 
 import io.debezium.DebeziumException;
 
-public class DbzCDCEngine implements StreamEngine {
+public class DbzCdcEngine implements StreamEngine {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(DbzCDCEngine.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(DbzCdcEngine.class);
 
     protected final Builder builder;
     protected final DataSource dataSource;
@@ -58,7 +58,7 @@ public class DbzCDCEngine implements StreamEngine {
         return new Builder(connection);
     }
 
-    protected DbzCDCEngine(Builder builder) throws SQLException {
+    protected DbzCdcEngine(Builder builder) throws SQLException {
         this.builder = builder;
         this.dataSource = builder.dataSource;
         this.connection = this.dataSource.getConnection();
@@ -433,8 +433,8 @@ public class DbzCDCEngine implements StreamEngine {
             return this;
         }
 
-        public DbzCDCEngine build() throws SQLException {
-            return new DbzCDCEngine(this);
+        public DbzCdcEngine build() throws SQLException {
+            return new DbzCdcEngine(this);
         }
     }
 }
