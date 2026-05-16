@@ -137,11 +137,6 @@ public class InformixCdcTransactionEngine implements IfxTransactionEngine {
     }
 
     @Override
-    public List<IfmxStreamRecord> getRecords() throws SQLException, IfxStreamException {
-        return engine.getRecords();
-    }
-
-    @Override
     public InformixStreamTransactionRecord getTransaction() throws SQLException, IfxStreamException {
         IfmxStreamRecord streamRecord;
         while ((streamRecord = getRecord()) != null && !(streamRecord instanceof InformixStreamTransactionRecord)) {

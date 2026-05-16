@@ -41,8 +41,6 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
 
     protected static final int DEFAULT_CDC_BUFFERSIZE = 0x10000;
 
-    protected static final int DEFAULT_CDC_MAX_RECORDS = 1;
-
     protected static final int DEFAULT_CDC_TIMEOUT = 5;
 
     protected static final boolean DEFAULT_CDC_STOP_ON_CLOSE = true;
@@ -384,15 +382,6 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
             .withValidation(Field::isBoolean)
             .withDefault(DEFAULT_RETURN_EMPTY_TRANSACTIONS);
 
-    public static final Field CDC_MAX_RECORDS = Field.create("cdc.max.records")
-            .withDisplayName("CDC Engine Max Records")
-            .withType(ConfigDef.Type.INT)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 4))
-            .withWidth(Width.MEDIUM).withImportance(Importance.MEDIUM)
-            .withDescription("The maximum number of CDC records to return per read function call.")
-            .withValidation(Field::isNonNegativeInteger)
-            .withDefault(DEFAULT_CDC_MAX_RECORDS);
-
     public static final Field SOURCE_INFO_STRUCT_MAKER = CommonConnectorConfig.SOURCE_INFO_STRUCT_MAKER
             .withDefault(InformixSourceInfoStructMaker.class.getName());
 
@@ -420,7 +409,6 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
                     FIELD_NAME_ADJUSTMENT_MODE,
                     INCREMENTAL_SNAPSHOT_CHUNK_SIZE,
                     CDC_BUFFERSIZE,
-                    CDC_MAX_RECORDS,
                     CDC_TIMEOUT,
                     CDC_STOP_ON_CLOSE,
                     RETURN_EMPTY_TRANSACTIONS)
@@ -442,7 +430,6 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
     private final SnapshotIsolationMode snapshotIsolationMode;
     private final JdbcConfiguration cdcJdbcConfig;
     private final int cdcBuffersize;
-    private final int cdcMaxRecords;
     private final int cdcTimeout;
     private final boolean stopLoggingOnClose;
     private final boolean returnEmptytransactions;
@@ -465,7 +452,6 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
         this.snapshotLockingMode = SnapshotLockingMode.parse(config.getString(SNAPSHOT_LOCKING_MODE), SNAPSHOT_LOCKING_MODE.defaultValueAsString());
         this.cdcJdbcConfig = JdbcConfiguration.adapt(getJdbcConfig().edit().with(JdbcConfiguration.DATABASE, CDC_DATABASE).build());
         this.cdcBuffersize = config.getInteger(CDC_BUFFERSIZE);
-        this.cdcMaxRecords = config.getInteger(CDC_MAX_RECORDS);
         this.cdcTimeout = config.getInteger(CDC_TIMEOUT);
         this.stopLoggingOnClose = config.getBoolean(CDC_STOP_ON_CLOSE);
         this.returnEmptytransactions = config.getBoolean(RETURN_EMPTY_TRANSACTIONS);
@@ -494,10 +480,6 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
 
     public int getCdcBuffersize() {
         return cdcBuffersize;
-    }
-
-    public int getCdcMaxRecords() {
-        return cdcMaxRecords;
     }
 
     public int getCdcTimeout() {
