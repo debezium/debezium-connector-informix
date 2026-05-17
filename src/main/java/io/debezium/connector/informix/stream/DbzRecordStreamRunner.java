@@ -55,12 +55,6 @@ public class DbzRecordStreamRunner implements RecordStream {
 
         while (context.isRunning() && !currentThread().isInterrupted() && (!stopOnError || exceptions.isEmpty())) {
             try {
-                if (context.isPaused()) {
-                    LOGGER.info("Streaming will now pause");
-                    context.streamingPaused();
-                    context.waitSnapshotCompletion();
-                    LOGGER.info("Streaming resumed");
-                }
                 engine.getRecords().stream().map(engine::processRecord).filter(Objects::nonNull)
                         .forEach(record -> listeners
                                 .forEach(listener -> listener.accept(record)));
@@ -70,10 +64,6 @@ public class DbzRecordStreamRunner implements RecordStream {
             }
             catch (StreamException e) {
                 exceptions.add(e);
-            }
-            catch (InterruptedException e) {
-                LOGGER.error("Caught InterruptedException", e);
-                currentThread().interrupt();
             }
         }
     }
