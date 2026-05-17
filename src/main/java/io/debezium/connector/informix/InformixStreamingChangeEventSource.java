@@ -126,12 +126,17 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
 
             streamRunner.addListener((DbzStreamListener) streamRecord -> {
 
+                if (context.isPaused()) {
+                    LOGGER.info("Streaming will now pause");
+                    context.streamingPaused();
+                    context.waitSnapshotCompletion();
+                    LOGGER.info("Streaming resumed");
+                }
+
                 if (streamRecord == null) {
                     LOGGER.debug(RECEIVED_GENERIC_RECORD, null, 0);
                     return;
                 }
-
-                dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
 
                 switch (streamRecord.getType()) {
                     case TRANSACTION_GROUP -> {

@@ -90,7 +90,7 @@ public class TestHelper {
                 .with(InformixConnectorConfig.SCHEMA_HISTORY, FileSchemaHistory.class)
                 .with(FileSchemaHistory.FILE_PATH, SCHEMA_HISTORY_PATH)
                 .with(InformixConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
-                .with(InformixConnectorConfig.CDC_TIMEOUT, 3)
+                .with(InformixConnectorConfig.CDC_TIMEOUT, 1)
                 .with(CommonConnectorConfig.DRIVER_CONFIG_PREFIX + "LOBCACHE", -1)
                 .with(CommonConnectorConfig.DRIVER_CONFIG_PREFIX + IFX_LOCK_MODE_WAIT, 30);
     }
