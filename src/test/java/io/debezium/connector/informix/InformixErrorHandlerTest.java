@@ -28,7 +28,7 @@ public class InformixErrorHandlerTest {
             new InformixConnectorConfig(Configuration.create()
                     .with(CommonConnectorConfig.TOPIC_PREFIX, "informix")
                     .build()),
-            new ChangeEventQueue.Builder<DataChangeEvent>().queueProvider(new DefaultQueueProvider<>(1000)).build(), null);
+            new ChangeEventQueue.Builder<DataChangeEvent>().queueProvider(createDefaultQueueProvider(1000)).build(), null);
 
     @Test
     public void communicationExceptionIsRetryable() {
@@ -85,5 +85,11 @@ public class InformixErrorHandlerTest {
     @Test
     public void nullThrowableIsNotRetryable() {
         assertThat(errorHandler.isRetriable(null)).isFalse();
+    }
+
+    private static DefaultQueueProvider<DataChangeEvent> createDefaultQueueProvider(int maxQueueSize) {
+        DefaultQueueProvider<DataChangeEvent> provider = new DefaultQueueProvider<>();
+        provider.configure(java.util.Map.of("max.queue.size", String.valueOf(maxQueueSize)));
+        return provider;
     }
 }
