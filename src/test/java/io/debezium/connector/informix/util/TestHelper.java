@@ -12,6 +12,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
+import org.apache.kafka.connect.runtime.WorkerConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -84,13 +85,14 @@ public class TestHelper {
     public static Configuration.Builder defaultConfig() {
 
         return Configuration.copy(defaultJdbcConfig().build().map(key -> ConfigurationNames.DATABASE_CONFIG_PREFIX + key))
+                .with(WorkerConfig.TASK_SHUTDOWN_GRACEFUL_TIMEOUT_MS_CONFIG, 46_368)
                 .with(CommonConnectorConfig.EXECUTOR_SHUTDOWN_TIMEOUT_MS, 28_657)
-                .with(AsyncEngineConfig.TASK_MANAGEMENT_TIMEOUT_MS, 196_418)
+                .with(AsyncEngineConfig.TASK_MANAGEMENT_TIMEOUT_MS, 121_393)
                 .with(CommonConnectorConfig.TOPIC_PREFIX, TEST_DATABASE)
                 .with(InformixConnectorConfig.SCHEMA_HISTORY, FileSchemaHistory.class)
                 .with(FileSchemaHistory.FILE_PATH, SCHEMA_HISTORY_PATH)
                 .with(InformixConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
-                .with(InformixConnectorConfig.CDC_TIMEOUT, 1)
+                .with(InformixConnectorConfig.CDC_TIMEOUT, 0)
                 .with(CommonConnectorConfig.DRIVER_CONFIG_PREFIX + "LOBCACHE", -1)
                 .with(CommonConnectorConfig.DRIVER_CONFIG_PREFIX + IFX_LOCK_MODE_WAIT, 30);
     }
