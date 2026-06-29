@@ -52,7 +52,7 @@ public class DbzCDCEngine implements StreamEngine {
     protected int sessionId;
     protected IfxSmartBlob smartBlob;
     protected int bytesPending;
-    protected boolean closed;
+    protected volatile boolean closed;
 
     public static Builder builder(DataSource connection) {
         return new Builder(connection);
@@ -326,6 +326,36 @@ public class DbzCDCEngine implements StreamEngine {
             if (ex != null) {
                 throw new DebeziumException("Exception caught when closing CDC engine ", ex);
             }
+        }
+    }
+
+    /**
+     * Forces the underlying streaming connection closed without performing the graceful CDC teardown
+     * ({@code cdc_endcapture}/{@code cdc_closesess}). Those calls would themselves block when the source
+     * host has disappeared, since they run on the very connection that is stuck inside {@link #readFromLob()}.
+     * Closing the connection interrupts the in-flight {@code IfxLoRead}, which surfaces as a
+     * {@link SQLException} the streaming loop can react to and retry on. Safe to call from another thread.
+     */
+    public void abort() {
+        LOGGER.warn("Aborting CDC engine: forcing the streaming connection closed to interrupt a stalled read");
+        this.closed = true; // skip the graceful close(); it would issue SQL on a dead connection and hang
+        try {
+            this.connection.abort(Runnable::run);
+        }
+        catch (Throwable t) {
+            LOGGER.debug("Connection.abort() unsupported or failed; falling back to Connection.close()", t);
+            try {
+                this.connection.close();
+            }
+            catch (SQLException e) {
+                LOGGER.debug("Fallback close of streaming connection failed", e);
+            }
+        }
+        try {
+            this.recordBuilder.close();
+        }
+        catch (Throwable t) {
+            LOGGER.debug("Closing record builder during abort failed", t);
         }
     }
 
