@@ -191,6 +191,10 @@ public class DbzTransactionEngine implements TransactionEngine {
         engine.close();
     }
 
+    public void abort() {
+        engine.abort();
+    }
+
     public OptionalLong getLowestBeginSequence() {
         return transactionMap.values().stream().mapToLong(t -> t.beginRecord.getSequenceId()).min();
     }

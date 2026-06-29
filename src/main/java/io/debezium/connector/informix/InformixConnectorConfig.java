@@ -49,6 +49,8 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
 
     protected static final boolean DEFAULT_RETURN_EMPTY_TRANSACTIONS = false;
 
+    protected static final int DEFAULT_CDC_STALL_TIMEOUT_MS = 0;
+
     /**
      * The set of predefined SnapshotMode options or aliases.
      */
@@ -393,6 +395,21 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
             .withValidation(Field::isNonNegativeInteger)
             .withDefault(DEFAULT_CDC_MAX_RECORDS);
 
+    public static final Field CDC_STALL_TIMEOUT_MS = Field.create("cdc.stall.timeout.ms")
+            .withDisplayName("CDC Engine stall timeout (ms)")
+            .withType(ConfigDef.Type.INT)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED))
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("""
+                    Maximum time in milliseconds to wait for the CDC stream to deliver any record, \
+                    including the periodic 'cdc.timeout' heartbeat, before assuming the source connection is dead \
+                    and forcing it closed so streaming can reconnect. Must be larger than 'cdc.timeout' (which is \
+                    expressed in seconds). Set to 0 to disable. Requires 'cdc.timeout' > 0, since it relies on the \
+                    server heartbeat to tell an idle connection apart from a dead one.""")
+            .withValidation(Field::isNonNegativeInteger, InformixConnectorConfig::validateCdcStallTimeout)
+            .withDefault(DEFAULT_CDC_STALL_TIMEOUT_MS);
+
     public static final Field SOURCE_INFO_STRUCT_MAKER = CommonConnectorConfig.SOURCE_INFO_STRUCT_MAKER
             .withDefault(InformixSourceInfoStructMaker.class.getName());
 
@@ -405,7 +422,8 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
             .group(Field.Group.CONNECTOR_SNAPSHOT, SNAPSHOT_MODE, SNAPSHOT_ISOLATION_MODE, SNAPSHOT_QUERY_MODE, SNAPSHOT_QUERY_MODE_CUSTOM_NAME,
                     SNAPSHOT_LOCKING_MODE, SNAPSHOT_LOCKING_MODE_CUSTOM_NAME, INCREMENTAL_SNAPSHOT_CHUNK_SIZE)
             .group(Field.Group.CONNECTOR, BINARY_HANDLING_MODE, SCHEMA_NAME_ADJUSTMENT_MODE, FIELD_NAME_ADJUSTMENT_MODE, SOURCE_INFO_STRUCT_MAKER)
-            .group(Field.Group.CONNECTOR_ADVANCED, CDC_BUFFERSIZE, CDC_MAX_RECORDS, CDC_TIMEOUT, CDC_STOP_ON_CLOSE, RETURN_EMPTY_TRANSACTIONS)
+            .group(Field.Group.CONNECTOR_ADVANCED, CDC_BUFFERSIZE, CDC_MAX_RECORDS, CDC_TIMEOUT, CDC_STOP_ON_CLOSE, RETURN_EMPTY_TRANSACTIONS,
+                    CDC_STALL_TIMEOUT_MS)
             .excluding(INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES)
             .create();
 
@@ -427,6 +445,7 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
     private final int cdcTimeout;
     private final boolean stopLoggingOnClose;
     private final boolean returnEmptytransactions;
+    private final int cdcStallTimeoutMs;
 
     private final SnapshotLockingMode snapshotLockingMode;
 
@@ -450,6 +469,7 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
         this.cdcTimeout = config.getInteger(CDC_TIMEOUT);
         this.stopLoggingOnClose = config.getBoolean(CDC_STOP_ON_CLOSE);
         this.returnEmptytransactions = config.getBoolean(RETURN_EMPTY_TRANSACTIONS);
+        this.cdcStallTimeoutMs = config.getInteger(CDC_STALL_TIMEOUT_MS);
     }
 
     public String getDatabaseName() {
@@ -493,6 +513,10 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
         return returnEmptytransactions;
     }
 
+    public int getCdcStallTimeoutMs() {
+        return cdcStallTimeoutMs;
+    }
+
     @Override
     protected SourceInfoStructMaker<? extends AbstractSourceInfo> getSourceInfoStructMaker(Version version) {
         return getSourceInfoStructMaker(SOURCE_INFO_STRUCT_MAKER, Module.name(), Module.version(), this);
@@ -531,5 +555,43 @@ public class InformixConnectorConfig extends HistorizedRelationalDatabaseConnect
         public boolean isIncluded(TableId t) {
             return !(t.table().toLowerCase().startsWith("sys"));
         }
+    }
+
+    /**
+     * Validates that an enabled stall watchdog is compatible with the heartbeat interval: the watchdog relies on
+     * the periodic {@code cdc.timeout} heartbeat to tell an idle connection apart from a dead one, so a stall
+     * timeout at or below the heartbeat interval would abort healthy idle connections in an endless reconnect loop.
+     */
+    private static int validateCdcStallTimeout(Configuration config, Field field, Field.ValidationOutput problems) {
+        final int stallTimeoutMs;
+        final int cdcTimeoutSeconds;
+        try {
+            stallTimeoutMs = config.getInteger(CDC_STALL_TIMEOUT_MS, DEFAULT_CDC_STALL_TIMEOUT_MS);
+            cdcTimeoutSeconds = config.getInteger(CDC_TIMEOUT, DEFAULT_CDC_TIMEOUT);
+        }
+        catch (NumberFormatException e) {
+            // Non-numeric values are already reported by the per-field integer validators
+            return 0;
+        }
+        if (stallTimeoutMs <= 0) {
+            return 0;
+        }
+        if (cdcTimeoutSeconds <= 0) {
+            problems.accept(field, stallTimeoutMs,
+                    "The stall watchdog requires '" + CDC_TIMEOUT.name() + "' > 0, since it relies on the server "
+                            + "heartbeat to tell an idle connection apart from a dead one. Either set '"
+                            + CDC_TIMEOUT.name() + "' > 0 or set '" + field.name() + "' to 0 to disable the watchdog.");
+            return 1;
+        }
+        final long cdcTimeoutMs = cdcTimeoutSeconds * 1000L;
+        if (stallTimeoutMs <= cdcTimeoutMs) {
+            problems.accept(field, stallTimeoutMs,
+                    "Must be larger than '" + CDC_TIMEOUT.name() + "' (" + cdcTimeoutSeconds + " s = " + cdcTimeoutMs
+                            + " ms), otherwise the watchdog would abort healthy idle connections before the heartbeat "
+                            + "can arrive, causing an endless reconnect loop. Set '" + field.name() + "' to at least "
+                            + (2 * cdcTimeoutMs) + " (twice the heartbeat interval) or to 0 to disable the watchdog.");
+            return 1;
+        }
+        return 0;
     }
 }
