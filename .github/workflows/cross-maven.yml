@@ -64,31 +64,31 @@ jobs:
           ref: ${{ github.base_ref }}
           path: core
 
-      - name: Set up Java
+      - name: Set up JDK
         uses: actions/setup-java@v5
         with:
-          distribution: temurin
+          distribution: 'temurin'
           java-version: 21
 
       # This job builds and creates/restores the cache based on the hash of the POM files from the core
       # repository; therefore, we need to output this so that the matrix job can reuse this cache.
       - name: Generate Cache Key
         id: cache-key-generator
-        run: echo "cache-key=${{ runner.os }}-m2-${{ hashFiles('core/**/pom.xml','core/**/*.java') }}${{ steps.branch.outputs.BRANCH_FOUND == 'true' && github.head_ref || '' }}" >> "$GITHUB_OUTPUT"
+        run: echo "cache-key=${{ runner.os }}-m2-${{ hashFiles('core/**/pom.xml','core/**/*.java') }}-${{ steps.branch.outputs.BRANCH_FOUND == 'true' && github.head_ref || github.base_ref }}" >> "$GITHUB_OUTPUT"
 
-      - name: Cache Maven Repository
+      - name: Cache Maven packages
         id: cache-check
         uses: actions/cache@v6
         with:
-          path: ~/.m2/repository
+          path: ~/.m2
           key: ${{ steps.cache-key-generator.outputs.cache-key }}
-          restore-keys: ${{ steps.cache-key-generator.outputs.cache-key }}
+          restore-keys: ${{ runner.os }}-m2
 
       - name: Build Debezium (Core)
         if: steps.cache-check.outputs.cache-hit != 'true'
         run: >
-          ./core/mvnw clean install -B -ntp -f core/pom.xml
-          -pl debezium-assembly-descriptors,debezium-bom,debezium-connector-common,debezium-config,debezium-util,debezium-embedded,:debezium-storage-file,:debezium-storage-kafka,:debezium-ide-configs,:debezium-checkstyle,:debezium-revapi,debezium-connect-plugins
+          ./core/mvnw clean install -f core/pom.xml
+          -pl debezium-bom,debezium-connector-common,debezium-util,debezium-config,debezium-embedded,debezium-storage,debezium-connect-plugins
           -am
           -DskipTests=true
           -DskipITs=true
@@ -104,42 +104,42 @@ jobs:
       # Runs each combination concurrently
       matrix:
         profile:
-          - 'assembly,informix12'
-          - 'assembly,informix14'
-          - 'assembly,informix15'
+          - 'informix12'
+          - 'informix14'
+          - 'informix15'
       fail-fast: false
     name: 'Informix - ${{ matrix.profile }}'
     needs: [ build_core ]
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Action (Informix)
+      - name: Checkout Informix repository
         uses: actions/checkout@v7
         with:
           path: informix
 
-      - name: Set up Java
+      - name: Set up JDK
         uses: actions/setup-java@v5
         with:
-          distribution: temurin
+          distribution: 'temurin'
           java-version: 21
 
-      - name: Cache Maven Repository
+      - name: Cache Maven packages
         uses: actions/cache@v6
         with:
-          path: ~/.m2/repository
-          key: ${{ needs.build_core.outputs.cache-key }}
+          path: ~/.m2
+          key: ${{ needs.build_core.outputs.cache-key }}-${{ hashFiles('informix/pom.xml') }}
           restore-keys: ${{ needs.build_core.outputs.cache-key }}
 
       - name: Build Informix
         run: >
-          ./informix/mvnw clean install -B -ntp -f informix/pom.xml 
-          -P${{ matrix.profile }}
+          ./informix/mvnw clean install -f informix/pom.xml 
+          -Passembly,${{ matrix.profile }}
           -Dformat.formatter.goal=validate
           -Dformat.imports.goal=check
           -Dhttp.keepAlive=false
           -Dmaven.wagon.http.pool=false
           -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+          -DfailFlakyTests=false
           -Ddebezium.test.engine.waittime=10
           -Ddebezium.test.records.waittime=3
           -Ddebezium.test.records.waittime.after.nulls=7
-          -DfailFlakyTests=false
