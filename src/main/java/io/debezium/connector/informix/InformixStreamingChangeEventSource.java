@@ -122,7 +122,8 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
         Lsn beginLsn = lastBeginLsn.isAvailable() ? lastBeginLsn : lastCommitLsn;
 
         try (DbzTransactionEngine engine = getTransactionEngine(context, schema, beginLsn);
-                DbzRecordStreamRunner streamRunner = new DbzRecordStreamRunner(context, engine, true)) {
+                DbzRecordStreamRunner streamRunner = new DbzRecordStreamRunner(context, engine, true,
+                        connectorConfig.getCdcStallTimeoutMs())) {
 
             streamRunner.addListener((DbzStreamListener) streamRecord -> {
 
