@@ -46,7 +46,7 @@ jobs:
         with:
           path: ~/.m2
           key: ${{ steps.cache-key-generator.outputs.cache-key }}
-          restore-keys: ${{ runner.os }}-m2
+          restore-keys: ${{ steps.cache-key-generator.outputs.cache-key }}
 
       - name: Build Debezium (Core)
         if: steps.cache-check.outputs.cache-hit != 'true'
