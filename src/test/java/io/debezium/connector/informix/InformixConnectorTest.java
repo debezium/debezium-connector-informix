@@ -26,7 +26,7 @@ public class InformixConnectorTest {
             assertThat(key.documentation).isEqualTo(expected.description());
             assertThat(key.type).isEqualTo(expected.type());
             if (expected.equals(InformixConnectorConfig.SCHEMA_HISTORY)) {
-                assertThat(((Class<?>) key.defaultValue).getName()).isEqualTo(expected.defaultValue());
+                assertThat(key.defaultValue).isEqualTo(expected.defaultValue());
             }
             assertThat(key.dependents).isEqualTo(expected.dependents());
             assertThat(key.width).isNotNull();
