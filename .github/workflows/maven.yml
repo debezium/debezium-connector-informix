@@ -106,4 +106,4 @@ jobs:
           -DfailFlakyTests=false
           -Ddebezium.test.engine.waittime=10
           -Ddebezium.test.records.waittime=3
-          -Ddebezium.test.records.waittime.after.nulls=7
+          -Ddebezium.test.records.waittime.after.nulls=10
