@@ -38,7 +38,7 @@
         <informix.version>15</informix.version>
         <informix.init.timeout>300000</informix.init.timeout> <!-- five minutes max -->
         <informix.run.wait.log>SCHAPI: Started \d dbWorker threads</informix.run.wait.log>
-        <informix.size>medium</informix.size>
+        <informix.size>large</informix.size>
         <informix.init.script.name />
         <informix.sch.init.script.name />
         <informix.pre.init.script.name>informix_pre_init.sh</informix.pre.init.script.name>
@@ -614,8 +614,8 @@
             <id>informix15</id>
             <properties>
                 <informix.version>15</informix.version>
-                <informix.image>informix-developer-edition-database</informix.image>
-                <informix.image.tag>15.0</informix.image.tag>
+                <informix.image>informix-developer-database</informix.image>
+                <informix.image.tag>15.0.1.0.3</informix.image.tag>
             </properties>
         </profile>
         <profile>
