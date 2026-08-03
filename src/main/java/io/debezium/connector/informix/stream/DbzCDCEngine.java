@@ -41,7 +41,6 @@ public class DbzCDCEngine implements StreamEngine {
     protected final Builder builder;
     protected final DataSource dataSource;
     protected final Connection connection;
-    protected final int bufferSize;
     protected final int maxRecords;
     protected final long position;
     protected final int timeout;
@@ -62,14 +61,13 @@ public class DbzCDCEngine implements StreamEngine {
         this.builder = builder;
         this.dataSource = builder.dataSource;
         this.connection = this.dataSource.getConnection();
-        this.bufferSize = builder.bufferSize;
         this.maxRecords = builder.maxRecords;
         this.position = builder.position;
         this.timeout = builder.timeout;
         this.watchedTables = builder.watchedTables;
         this.stopLoggingOnClose = builder.stopLoggingOnClose;
         this.recordBuilder = new CDCRecordBuilder(dataSource.getConnection());
-        this.buffer = new byte[bufferSize];
+        this.buffer = new byte[builder.bufferSize];
         this.bytesPending = 0;
         this.closed = false;
     }
@@ -85,7 +83,7 @@ public class DbzCDCEngine implements StreamEngine {
 
         if (record != null) {
             bytesPending = byteBuffer.remaining();
-            System.arraycopy(buffer, byteBuffer.position(), buffer, 0, bytesPending);
+            byteBuffer.get(buffer, 0, bytesPending);
         }
 
         return record;
@@ -109,7 +107,7 @@ public class DbzCDCEngine implements StreamEngine {
     }
 
     protected void readFromLob() throws SQLException, StreamException {
-        int bytesToRead = bufferSize - bytesPending;
+        int bytesToRead = buffer.length - bytesPending;
         ByteBuffer byteBuffer = ByteBuffer.wrap(buffer, bytesPending, bytesToRead);
         OutputStream byteStream = new ByteBufferOutputStream(byteBuffer);
         int bytesRead = smartBlob.IfxLoRead(sessionId, byteStream, bytesToRead);
@@ -123,16 +121,30 @@ public class DbzCDCEngine implements StreamEngine {
         byteBuffer.mark();
         int headerSize = byteBuffer.getInt();
         int payloadSize = byteBuffer.getInt();
+        int packetScheme = byteBuffer.getInt();
+        int recordType = byteBuffer.getInt();
         byteBuffer.reset();
 
-        int recordSize = headerSize + payloadSize;
+        long recordSize = (long) headerSize + (long) payloadSize;
+        if (headerSize < 16 || payloadSize < 0) {
+            LOGGER.warn("Invalid or incomplete CDC header: recordSize={}, headerSize={}, payloadSize={}, offset={}, length={}, recordType={}",
+                    recordSize, headerSize, payloadSize, byteBuffer.position(), byteBuffer.limit(), recordType);
+            return null;
+        }
+        if (recordSize > Integer.MAX_VALUE) {
+            LOGGER.warn("CDC record too large or corrupt: recordSize={}, headerSize={}, payloadSize={}, offset={}, length={}, recordType={}",
+                    recordSize, headerSize, payloadSize, byteBuffer.position(), byteBuffer.limit(), recordType);
+            return null;
+        }
         if (byteBuffer.remaining() < recordSize) {
             return null;
         }
 
-        byte[] recordBytes = new byte[recordSize];
+        byte[] recordBytes = new byte[(int) recordSize];
         byteBuffer.get(recordBytes);
-        return recordBuilder.buildRecord(recordBytes);
+        StreamRecord record = recordBuilder.buildRecord(recordBytes);
+        LOGGER.trace("{}", record);
+        return record;
     }
 
     @Override

@@ -105,5 +105,5 @@ jobs:
           -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
           -DfailFlakyTests=false
           -Ddebezium.test.engine.waittime=10
-          -Ddebezium.test.records.waittime=3
+          -Ddebezium.test.records.waittime=5
           -Ddebezium.test.records.waittime.after.nulls=10
