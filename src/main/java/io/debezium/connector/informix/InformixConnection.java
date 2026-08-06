@@ -141,9 +141,9 @@ public class InformixConnection extends JdbcConnection {
     @Override
     public String buildSelectPrimaryKeyBoundaries(TableId tableId, long size, String projection, String orderBy, String condition) {
         if (Strings.isNullOrBlank(condition)) {
-            return "SELECT SKIP %d FIRST 1 %s FROM %s WHERE %s ORDER BY %s".formatted(size, projection, quotedTableIdString(tableId), condition, orderBy);
+            return "SELECT SKIP %d FIRST 1 %s FROM %s ORDER BY %s".formatted(size, projection, quotedTableIdString(tableId), orderBy);
         }
-        return "SELECT SKIP %d FIRST 1 %s FROM %s ORDER BY %s".formatted(size, projection, quotedTableIdString(tableId), orderBy);
+        return "SELECT SKIP %d FIRST 1 %s FROM %s WHERE %s ORDER BY %s".formatted(size, projection, quotedTableIdString(tableId), condition, orderBy);
     }
 
     @Override
