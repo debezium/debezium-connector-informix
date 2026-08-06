@@ -36,7 +36,6 @@ import com.informix.jdbc.stream.cdc.CDCEngine.IfmxWatchedTable;
 import com.informix.jdbc.stream.cdc.records.CDCBeginTransactionRecord;
 import com.informix.jdbc.stream.impl.StreamException;
 
-import io.debezium.connector.informix.InformixStreamTransactionRecord;
 import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContext;
 import io.debezium.relational.TableId;
 
@@ -137,7 +136,7 @@ public class DbzTransactionEngine implements TransactionEngine {
         if (holder != null && holder.closingRecord != null) {
             transactionMap.remove(streamRecord.getTransactionId());
             if (!holder.records.isEmpty() || returnEmptyTransactions) {
-                return new InformixStreamTransactionRecord(holder.beginRecord, holder.closingRecord, holder.records);
+                return new DbzStreamTransactionRecord(holder.beginRecord, holder.closingRecord, holder.records);
             }
         }
 
@@ -145,14 +144,14 @@ public class DbzTransactionEngine implements TransactionEngine {
     }
 
     @Override
-    public InformixStreamTransactionRecord getTransaction() throws SQLException, StreamException {
+    public DbzStreamTransactionRecord getTransaction() throws SQLException, StreamException {
         StreamRecord streamRecord = null;
-        while (context.isRunning() && !((streamRecord = processRecord(engine.getRecord())) instanceof InformixStreamTransactionRecord)) {
+        while (context.isRunning() && !((streamRecord = processRecord(engine.getRecord())) instanceof DbzStreamTransactionRecord)) {
             if (streamRecord != null) {
                 LOGGER.debug("Discard non-transaction record: {}", streamRecord);
             }
         }
-        return (InformixStreamTransactionRecord) streamRecord;
+        return (DbzStreamTransactionRecord) streamRecord;
     }
 
     @Override

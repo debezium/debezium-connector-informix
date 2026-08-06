@@ -40,7 +40,6 @@ import io.debezium.time.MicroTime;
 import io.debezium.time.MicroTimestamp;
 import io.debezium.time.Time;
 import io.debezium.time.Timestamp;
-import io.debezium.util.Testing;
 
 /**
  * Integration test to verify different Oracle datatypes.
@@ -80,6 +79,13 @@ public abstract class AbstractInformixDatatypesTest extends AbstractAsyncEngineC
             "  val_bigint bigint, " +
             "  val_decimal decimal(10,0), " +
             "  val_numeric numeric(10,0)" +
+            ");";
+
+    private static final String DDL_BOOL = "create table type_bool (" +
+            "  id serial not null primary key, " +
+            "  val_false boolean, " +
+            "  val_true boolean, " +
+            "  val_null boolean " +
             ");";
 
     private static final String DDL_TIME = "create table type_time (" +
@@ -151,6 +157,11 @@ public abstract class AbstractInformixDatatypesTest extends AbstractAsyncEngineC
             new SchemaAndValueField("val_decimal", SpecialValueDecimal.builder(DecimalMode.PRECISE, 10, 0).optional().build(), BigDecimal.valueOf(99999_99999L)),
             new SchemaAndValueField("val_numeric", SpecialValueDecimal.builder(DecimalMode.PRECISE, 10, 0).optional().build(), BigDecimal.valueOf(99999_99999L)));
 
+    private static final List<SchemaAndValueField> EXPECTED_BOOL = Arrays.asList(
+            new SchemaAndValueField("val_false", Schema.OPTIONAL_BOOLEAN_SCHEMA, false),
+            new SchemaAndValueField("val_true", Schema.OPTIONAL_BOOLEAN_SCHEMA, true),
+            new SchemaAndValueField("val_null", Schema.OPTIONAL_BOOLEAN_SCHEMA, null));
+
     private static final List<SchemaAndValueField> EXPECTED_TIME = Arrays.asList(
             new SchemaAndValueField("val_date", Date.builder().optional().build(),
                     (int) LocalDate.of(2024, 3, 27).toEpochDay()),
@@ -212,6 +223,7 @@ public abstract class AbstractInformixDatatypesTest extends AbstractAsyncEngineC
             "informix.type_string",
             "informix.type_fp",
             "informix.type_int",
+            "informix.type_bool",
             "informix.type_time",
             "informix.type_clob"
     };
@@ -220,6 +232,7 @@ public abstract class AbstractInformixDatatypesTest extends AbstractAsyncEngineC
             DDL_STRING,
             DDL_FP,
             DDL_INT,
+            DDL_BOOL,
             DDL_TIME,
             DDL_CLOB
     };
@@ -271,7 +284,6 @@ public abstract class AbstractInformixDatatypesTest extends AbstractAsyncEngineC
         }
         waitForAvailableRecords();
 
-        Testing.debug("Inserted");
         expectedRecordCount++;
 
         final SourceRecords records = consumeRecordsByTopic(expectedRecordCount);
@@ -304,7 +316,6 @@ public abstract class AbstractInformixDatatypesTest extends AbstractAsyncEngineC
         }
         waitForAvailableRecords();
 
-        Testing.debug("Inserted");
         expectedRecordCount++;
 
         final SourceRecords records = consumeRecordsByTopic(expectedRecordCount);
@@ -349,7 +360,6 @@ public abstract class AbstractInformixDatatypesTest extends AbstractAsyncEngineC
         }
         waitForAvailableRecords();
 
-        Testing.debug("Inserted");
         expectedRecordCount++;
 
         final SourceRecords records = consumeRecordsByTopic(expectedRecordCount);
@@ -394,7 +404,6 @@ public abstract class AbstractInformixDatatypesTest extends AbstractAsyncEngineC
         }
         waitForAvailableRecords();
 
-        Testing.debug("Inserted");
         expectedRecordCount++;
 
         final SourceRecords records = consumeRecordsByTopic(expectedRecordCount);
@@ -427,7 +436,6 @@ public abstract class AbstractInformixDatatypesTest extends AbstractAsyncEngineC
         }
         waitForAvailableRecords();
 
-        Testing.debug("Inserted");
         expectedRecordCount++;
 
         final SourceRecords records = consumeRecordsByTopic(expectedRecordCount);
@@ -451,6 +459,39 @@ public abstract class AbstractInformixDatatypesTest extends AbstractAsyncEngineC
     }
 
     @Test
+    @FixFor("dbz#2354")
+    public void boolTypes() throws Exception {
+        int expectedRecordCount = 0;
+
+        if (insertRecordsDuringTest()) {
+            waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
+            insertBoolTypes();
+        }
+        waitForAvailableRecords();
+
+        expectedRecordCount++;
+
+        final SourceRecords records = consumeRecordsByTopic(expectedRecordCount);
+
+        List<SourceRecord> testTableRecords = records.recordsForTopic("testdb.informix.type_bool");
+        assertThat(testTableRecords).hasSize(expectedRecordCount);
+        SourceRecord record = testTableRecords.get(0);
+
+        VerifyRecord.isValid(record);
+
+        // insert
+        if (insertRecordsDuringTest()) {
+            VerifyRecord.isValidInsert(record, true);
+        }
+        else {
+            VerifyRecord.isValidRead(record);
+        }
+
+        Struct after = (Struct) ((Struct) record.value()).get("after");
+        assertRecord(after, EXPECTED_BOOL);
+    }
+
+    @Test
     public void timeTypes() throws Exception {
         int expectedRecordCount = 0;
 
@@ -460,7 +501,6 @@ public abstract class AbstractInformixDatatypesTest extends AbstractAsyncEngineC
         }
         waitForAvailableRecords();
 
-        Testing.debug("Inserted");
         expectedRecordCount++;
 
         final SourceRecords records = consumeRecordsByTopic(expectedRecordCount);
@@ -497,7 +537,6 @@ public abstract class AbstractInformixDatatypesTest extends AbstractAsyncEngineC
         }
         waitForAvailableRecords();
 
-        Testing.debug("Inserted");
         expectedRecordCount++;
 
         final SourceRecords records = consumeRecordsByTopic(expectedRecordCount);
@@ -534,7 +573,6 @@ public abstract class AbstractInformixDatatypesTest extends AbstractAsyncEngineC
         }
         waitForAvailableRecords();
 
-        Testing.debug("Inserted");
         expectedRecordCount++;
 
         final SourceRecords records = consumeRecordsByTopic(expectedRecordCount);
@@ -567,7 +605,6 @@ public abstract class AbstractInformixDatatypesTest extends AbstractAsyncEngineC
         }
         waitForAvailableRecords();
 
-        Testing.debug("Inserted");
         expectedRecordCount++;
 
         SourceRecords records = consumeRecordsByTopic(expectedRecordCount);
@@ -617,6 +654,11 @@ public abstract class AbstractInformixDatatypesTest extends AbstractAsyncEngineC
     protected static void insertIntTypes() throws SQLException {
         connection.execute(
                 "INSERT INTO type_int VALUES (0, 1, 22, 333, 4444, 55555, 9999999999, 9999999999)");
+    }
+
+    protected static void insertBoolTypes() throws SQLException {
+        connection.execute(
+                "INSERT INTO type_bool VALUES (0, 'f', 't', null)");
     }
 
     protected static void insertTimeTypes() throws SQLException {
