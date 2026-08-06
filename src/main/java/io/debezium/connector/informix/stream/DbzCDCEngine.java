@@ -28,7 +28,6 @@ import com.informix.jdbc.IfxSmartBlob;
 import com.informix.jdbc.stream.api.StreamEngine;
 import com.informix.jdbc.stream.api.StreamRecord;
 import com.informix.jdbc.stream.cdc.CDCEngine.IfmxWatchedTable;
-import com.informix.jdbc.stream.cdc.CDCRecordBuilder;
 import com.informix.jdbc.stream.impl.StreamException;
 import com.informix.lang.Messages;
 
@@ -46,7 +45,7 @@ public class DbzCDCEngine implements StreamEngine {
     protected final int timeout;
     protected final List<IfmxWatchedTable> watchedTables;
     protected final boolean stopLoggingOnClose;
-    protected final CDCRecordBuilder recordBuilder;
+    protected final DbzCDCRecordBuilder recordBuilder;
     protected final byte[] buffer;
     protected int sessionId;
     protected IfxSmartBlob smartBlob;
@@ -66,7 +65,7 @@ public class DbzCDCEngine implements StreamEngine {
         this.timeout = builder.timeout;
         this.watchedTables = builder.watchedTables;
         this.stopLoggingOnClose = builder.stopLoggingOnClose;
-        this.recordBuilder = new CDCRecordBuilder(dataSource.getConnection());
+        this.recordBuilder = new DbzCDCRecordBuilder(dataSource.getConnection());
         this.buffer = new byte[builder.bufferSize];
         this.bytesPending = 0;
         this.closed = false;

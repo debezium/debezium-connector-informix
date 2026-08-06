@@ -67,6 +67,7 @@ public class StreamingDatatypesIT extends AbstractInformixDatatypesTest {
             case "stringTypes" -> "testdb.informix.type_string";
             case "fpTypes", "fpTypesAsString", "fpTypesAsDouble" -> "testdb.informix.type_fp";
             case "intTypes" -> "testdb.informix.type_int";
+            case "boolTypes" -> "testdb.informix.type_bool";
             case "timeTypes", "timeTypesAsAdaptiveMicroseconds", "timeTypesAsConnect" -> "testdb.informix.type_time";
             case "clobTypes" -> "testdb.informix.type_clob";
             default -> throw new IllegalArgumentException("Unexpected test method: " + testMethodName);

@@ -34,6 +34,7 @@ import com.informix.lang.IfxTypes;
 
 import io.debezium.connector.informix.stream.DbzRecordStreamRunner;
 import io.debezium.connector.informix.stream.DbzStreamListener;
+import io.debezium.connector.informix.stream.DbzStreamTransactionRecord;
 import io.debezium.connector.informix.stream.DbzTransactionEngine;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.pipeline.ErrorHandler;
@@ -148,7 +149,7 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
 
                 switch (streamRecord.getType()) {
                     case TRANSACTION_GROUP -> {
-                        InformixStreamTransactionRecord transactionRecord = (InformixStreamTransactionRecord) streamRecord;
+                        DbzStreamTransactionRecord transactionRecord = (DbzStreamTransactionRecord) streamRecord;
 
                         if (recovering.get()) {
                             Lsn commitLsn = Lsn.of(transactionRecord.getEndRecord().getSequenceId());
@@ -261,7 +262,7 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
     }
 
     private void handleTransaction(DbzTransactionEngine engine, InformixPartition partition, InformixOffsetContext offsetContext,
-                                   InformixStreamTransactionRecord transactionRecord, boolean recover)
+                                   DbzStreamTransactionRecord transactionRecord, boolean recover)
             throws InterruptedException, StreamException {
         long tStart = System.nanoTime();
 
