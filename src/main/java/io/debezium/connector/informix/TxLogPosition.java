@@ -52,11 +52,20 @@ public class TxLogPosition implements Nullable, Comparable<TxLogPosition> {
 
     public static TxLogPosition cloneAndSet(TxLogPosition position, Lsn commitLsn, Lsn changeLsn, Integer txId, Lsn beginLsn) {
 
-        return valueOf(
-                commitLsn.compareTo(position.commitLsn) > 0 ? commitLsn : position.commitLsn,
-                changeLsn.compareTo(position.changeLsn) > 0 ? changeLsn : position.changeLsn,
-                txId >= 0 ? txId : position.txId,
-                beginLsn.compareTo(position.beginLsn) > 0 ? beginLsn : position.beginLsn);
+        if (txId < 0 || txId.equals(position.txId)) {
+            return valueOf(
+                    commitLsn.compareTo(position.commitLsn) > 0 ? commitLsn : position.commitLsn,
+                    changeLsn.compareTo(position.changeLsn) > 0 ? changeLsn : position.changeLsn,
+                    position.txId,
+                    beginLsn.compareTo(position.beginLsn) > 0 ? beginLsn : position.beginLsn);
+        }
+        else {
+            return valueOf(
+                    commitLsn.compareTo(position.commitLsn) > 0 ? commitLsn : position.commitLsn,
+                    changeLsn,
+                    txId,
+                    beginLsn.compareTo(position.beginLsn) > 0 ? beginLsn : position.beginLsn);
+        }
     }
 
     public Lsn getCommitLsn() {
