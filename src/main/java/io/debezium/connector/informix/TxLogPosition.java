@@ -52,9 +52,18 @@ public class TxLogPosition implements Nullable, Comparable<TxLogPosition> {
 
     public static TxLogPosition cloneAndSet(TxLogPosition position, Lsn commitLsn, Lsn changeLsn, Integer txId, Lsn beginLsn) {
 
+        // changeLsn only needs to be monotonically increasing within the same transaction that
+        // last set this position. When the incoming update belongs to a different transaction,
+        // its own true value must be taken as-is instead of being clamped to whatever the
+        // previous transaction left behind -- otherwise, once a concurrently-committed
+        // transaction bumps changeLsn up to its own commit LSN, that becomes a floor that a
+        // later-processed transaction's own (possibly smaller, since its operations may have
+        // been logged earlier in real time) true positions can never get back below.
+        boolean sameTransaction = txId != null && txId >= 0 && txId.equals(position.txId);
+
         return valueOf(
                 commitLsn.compareTo(position.commitLsn) > 0 ? commitLsn : position.commitLsn,
-                changeLsn.compareTo(position.changeLsn) > 0 ? changeLsn : position.changeLsn,
+                sameTransaction && changeLsn.compareTo(position.changeLsn) <= 0 ? position.changeLsn : changeLsn,
                 txId >= 0 ? txId : position.txId,
                 beginLsn.compareTo(position.beginLsn) > 0 ? beginLsn : position.beginLsn);
     }
