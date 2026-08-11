@@ -222,10 +222,15 @@ public abstract class AbstractInformixDefaultValueIT extends AbstractAsyncEngine
     private void testDefaultValuesByRestartAndLoadingHistoryTopic() throws Exception {
         stopConnector();
 
+        waitForConnectorShutdown(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
+
+        assertConnectorNotRunning();
+
         start(InformixConnector.class, config);
-        assertConnectorIsRunning();
 
         waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
+
+        assertConnectorIsRunning();
     }
 
     /**

@@ -101,6 +101,18 @@ public class TestHelper {
         return new InformixConnection(TestHelper.adminJdbcConfig().build());
     }
 
+    private static class LazyConnectionHolder {
+        static final InformixConnection INSTANCE = new InformixConnection(TestHelper.defaultJdbcConfig().build());
+    }
+
+    public static InformixConnection testConnection() {
+        return LazyConnectionHolder.INSTANCE;
+    }
+
+    public static InformixConnection newConnection() {
+        return new InformixConnection(TestHelper.defaultJdbcConfig().build());
+    }
+
     public static void dropTable(InformixConnection connection, String table) throws SQLException {
         connection.execute("drop table if exists " + table);
     }
@@ -109,14 +121,6 @@ public class TestHelper {
         for (String table : tables) {
             dropTable(connection, table);
         }
-    }
-
-    private static class LazyConnectionHolder {
-        static final InformixConnection INSTANCE = new InformixConnection(TestHelper.defaultJdbcConfig().build());
-    }
-
-    public static InformixConnection testConnection() {
-        return LazyConnectionHolder.INSTANCE;
     }
 
     /**
