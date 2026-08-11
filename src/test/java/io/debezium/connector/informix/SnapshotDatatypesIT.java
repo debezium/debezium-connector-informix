@@ -5,33 +5,23 @@
  */
 package io.debezium.connector.informix;
 
-import java.lang.reflect.Method;
 import java.sql.SQLException;
 
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.TestInfo;
 
-import io.debezium.config.Configuration;
 import io.debezium.config.Configuration.Builder;
+import io.debezium.connector.informix.InformixConnectorConfig.SnapshotMode;
 import io.debezium.connector.informix.util.TestHelper;
-import io.debezium.jdbc.TemporalPrecisionMode;
-import io.debezium.util.Testing;
 
 /**
- * Integration test to verify different Oracle datatypes as captured during initial snapshotting.
+ * Integration test to verify different Informix datatypes as captured during initial snapshotting.
  *
  * @author Jiri Pechanec, Lars M Johansson
  */
 public class SnapshotDatatypesIT extends AbstractInformixDatatypesTest {
 
-    private String testMethodName;
-
     @BeforeAll
     public static void beforeClass() throws SQLException {
-        AbstractInformixDatatypesTest.beforeClass();
-        createTables();
-
         insertStringTypes();
         insertFpTypes();
         insertIntTypes();
@@ -39,42 +29,10 @@ public class SnapshotDatatypesIT extends AbstractInformixDatatypesTest {
         insertClobTypes();
     }
 
-    @BeforeEach
-    public void before(TestInfo testInfo) throws Exception {
-        testMethodName = testInfo.getTestMethod().map(Method::getName).orElse("");
-        init(TemporalPrecisionMode.ADAPTIVE);
-    }
-
     @Override
-    protected void init(TemporalPrecisionMode temporalPrecisionMode) throws Exception {
-        initializeConnectorTestFramework();
-        Testing.Debug.enable();
-        Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
-
-        Configuration config = connectorConfig()
-                .with(InformixConnectorConfig.TIME_PRECISION_MODE, temporalPrecisionMode)
-                .build();
-
-        start(InformixConnector.class, config);
-        assertConnectorIsRunning();
-
-        waitForSnapshotToBeCompleted(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-    }
-
     protected Builder connectorConfig() {
         return TestHelper.defaultConfig()
-                .with(InformixConnectorConfig.TABLE_INCLUDE_LIST, getTableIncludeList());
-    }
-
-    private String getTableIncludeList() {
-        return switch (testMethodName) {
-            case "stringTypes" -> "testdb.informix.type_string";
-            case "fpTypes", "fpTypesAsString", "fpTypesAsDouble" -> "testdb.informix.type_fp";
-            case "intTypes" -> "testdb.informix.type_int";
-            case "timeTypes", "timeTypesAsAdaptiveMicroseconds", "timeTypesAsConnect" -> "testdb.informix.type_time";
-            case "clobTypes" -> "testdb.informix.type_clob";
-            default -> throw new IllegalArgumentException("Unexpected test method: " + testMethodName);
-        };
+                .with(InformixConnectorConfig.SNAPSHOT_MODE, SnapshotMode.ALWAYS);
     }
 
     @Override

@@ -10,12 +10,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.nio.ByteBuffer;
 import java.sql.Blob;
 import java.sql.Clob;
+import java.sql.SQLException;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -35,12 +39,15 @@ import io.debezium.util.Testing;
  */
 public class InformixReselectColumnsProcessorIT extends AbstractReselectProcessorTest<InformixConnector> {
 
-    private InformixConnection connection;
+    private static InformixConnection connection;
+
+    @BeforeAll
+    public static void beforeAll() {
+        connection = TestHelper.testConnection();
+    }
 
     @BeforeEach
     public void beforeEach() throws Exception {
-        connection = TestHelper.testConnection();
-
         initializeConnectorTestFramework();
         Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
         super.beforeEach();
@@ -48,11 +55,18 @@ public class InformixReselectColumnsProcessorIT extends AbstractReselectProcesso
 
     @AfterEach
     public void afterEach() throws Exception {
+        assertNoRecordsToConsume();
         stopConnector();
         waitForConnectorShutdown(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
         assertConnectorNotRunning();
+        dropTable();
+    }
 
-        super.afterEach();
+    @AfterAll
+    public static void afterAll() throws SQLException {
+        if (connection != null) {
+            connection.rollback().close();
+        }
     }
 
     @Override
@@ -114,18 +128,31 @@ public class InformixReselectColumnsProcessorIT extends AbstractReselectProcesso
     protected void waitForStreamingStarted() throws InterruptedException {
         waitForSnapshotToBeCompleted(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
         waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
+        waitForAvailableRecords(waitTimeForRecords(), TimeUnit.SECONDS);
     }
 
     @Override
-    protected SourceRecords consumeRecordsByTopicReselectWhenNullStreaming() throws InterruptedException {
-        waitForAvailableRecords();
-        return super.consumeRecordsByTopicReselectWhenNullStreaming();
+    protected SourceRecords consumeRecordsByTopicReselectWhenNotNullSnapshot() throws InterruptedException {
+        waitForAvailableRecords(waitTimeForRecords(), TimeUnit.SECONDS);
+        return super.consumeRecordsByTopicReselectWhenNotNullSnapshot();
     }
 
     @Override
     protected SourceRecords consumeRecordsByTopicReselectWhenNotNullStreaming() throws InterruptedException {
-        waitForAvailableRecords();
+        waitForAvailableRecords(waitTimeForRecords(), TimeUnit.SECONDS);
         return super.consumeRecordsByTopicReselectWhenNotNullStreaming();
+    }
+
+    @Override
+    protected SourceRecords consumeRecordsByTopicReselectWhenNullSnapshot() throws InterruptedException {
+        waitForAvailableRecords(waitTimeForRecords(), TimeUnit.SECONDS);
+        return super.consumeRecordsByTopicReselectWhenNullSnapshot();
+    }
+
+    @Override
+    protected SourceRecords consumeRecordsByTopicReselectWhenNullStreaming() throws InterruptedException {
+        waitForAvailableRecords(waitTimeForRecords(), TimeUnit.SECONDS);
+        return super.consumeRecordsByTopicReselectWhenNullStreaming();
     }
 
     @Test
@@ -154,6 +181,8 @@ public class InformixReselectColumnsProcessorIT extends AbstractReselectProcesso
 
         final SourceRecords sourceRecords = consumeRecordsByTopic(2);
         final List<SourceRecord> tableRecords = sourceRecords.recordsForTopic("testdb.informix.dbz4321_text");
+
+        assertThat(tableRecords).isNotNull().hasSize(2);
 
         // Check insert
         SourceRecord record = tableRecords.get(0);
@@ -201,6 +230,8 @@ public class InformixReselectColumnsProcessorIT extends AbstractReselectProcesso
 
         final SourceRecords sourceRecords = consumeRecordsByTopic(2);
         final List<SourceRecord> tableRecords = sourceRecords.recordsForTopic("testdb.informix.dbz4321_byte");
+
+        assertThat(tableRecords).isNotNull().hasSize(2);
 
         // Check insert
         SourceRecord record = tableRecords.get(0);
