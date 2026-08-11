@@ -44,7 +44,6 @@ public class InformixDelimitedIdentifiersIT extends AbstractAsyncEngineConnector
                 "INSERT INTO \"UPPER_CASE_TABLE\" VALUES('TEXT')",
                 "INSERT INTO \"mixed_CASE_table\" VALUES('one', 'TWO', 'ThReE')",
                 "INSERT INTO \"TABLE\" VALUES('TEXT')");
-        initializeConnectorTestFramework();
         Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
         Print.enable();
     }
