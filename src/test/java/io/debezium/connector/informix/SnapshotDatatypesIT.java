@@ -25,6 +25,7 @@ public class SnapshotDatatypesIT extends AbstractInformixDatatypesTest {
         insertStringTypes();
         insertFpTypes();
         insertIntTypes();
+        insertBoolTypes();
         insertTimeTypes();
         insertClobTypes();
     }
