@@ -7,6 +7,7 @@ package io.debezium.connector.informix;
 
 import java.sql.SQLException;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.AfterEach;
@@ -15,7 +16,6 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
-import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
 import io.debezium.config.Configuration.Builder;
 import io.debezium.connector.informix.InformixConnectorConfig.SnapshotMode;
@@ -62,12 +62,7 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest<InformixCon
     @Override
     protected void waitForConnectorToStart() {
         super.waitForConnectorToStart();
-        try {
-            waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-        }
-        catch (InterruptedException e) {
-            throw new DebeziumException(e);
-        }
+        waitForAvailableRecords(waitTimeForRecords(), TimeUnit.SECONDS);
     }
 
     @Override

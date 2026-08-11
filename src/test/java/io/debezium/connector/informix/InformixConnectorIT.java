@@ -885,8 +885,8 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
         assertRecord((Struct) value.get(FieldName.AFTER), expectedLastRow);
 
         waitForConnectorShutdown(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-        stopConnector();
         assertConnectorNotRunning();
+        cleanupTestFwkState();
 
         start(InformixConnector.class, config);
         assertConnectorIsRunning();

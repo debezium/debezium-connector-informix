@@ -58,7 +58,7 @@ public class DbzCDCOperationRecord extends CDCOperationRecord {
         this.buffer = buffer;
         this.connection = connection;
         this.columns = columns.get(this.label);
-        this.objects = new LinkedHashMap<>((int) (columns.size() / 0.7F));
+        this.objects = new LinkedHashMap<>((int) (this.columns.size() / 0.7F));
         LOGGER.debug("New DbzCDCOperationRecord created. Label: {}", this.label);
     }
 

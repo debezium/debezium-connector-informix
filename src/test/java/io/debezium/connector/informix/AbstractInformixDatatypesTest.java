@@ -13,15 +13,19 @@ import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.config.Configuration;
@@ -35,14 +39,20 @@ import io.debezium.doc.FixFor;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
+import io.debezium.relational.RelationalDatabaseConnectorConfig.DecimalHandlingMode;
 import io.debezium.time.Date;
 import io.debezium.time.MicroTime;
 import io.debezium.time.MicroTimestamp;
+import io.debezium.time.NanoTime;
+import io.debezium.time.NanoTimestamp;
+import io.debezium.time.StructuredDate;
+import io.debezium.time.StructuredTime;
+import io.debezium.time.StructuredTimestamp;
 import io.debezium.time.Time;
 import io.debezium.time.Timestamp;
 
 /**
- * Integration test to verify different Oracle datatypes.
+ * Integration test to verify different Informix datatypes.
  *
  * @author Jiri Pechanec, Lars M Johansson
  */
@@ -113,7 +123,7 @@ public abstract class AbstractInformixDatatypesTest extends AbstractAsyncEngineC
             new SchemaAndValueField("val_char", Schema.OPTIONAL_STRING_SCHEMA, "c  "),
             new SchemaAndValueField("val_nchar", Schema.OPTIONAL_STRING_SCHEMA, "nc "));
 
-    private static final List<SchemaAndValueField> EXPECTED_FP = Arrays.asList(
+    private static final List<SchemaAndValueField> EXPECTED_FP_AS_PRECISE = Arrays.asList(
             new SchemaAndValueField("val_sf", Schema.OPTIONAL_FLOAT32_SCHEMA, 1.1f),
             new SchemaAndValueField("val_f", Schema.OPTIONAL_FLOAT64_SCHEMA, 2.22d),
             new SchemaAndValueField("val_f_10", Schema.OPTIONAL_FLOAT64_SCHEMA, 3.333d),
@@ -162,7 +172,7 @@ public abstract class AbstractInformixDatatypesTest extends AbstractAsyncEngineC
             new SchemaAndValueField("val_true", Schema.OPTIONAL_BOOLEAN_SCHEMA, true),
             new SchemaAndValueField("val_null", Schema.OPTIONAL_BOOLEAN_SCHEMA, null));
 
-    private static final List<SchemaAndValueField> EXPECTED_TIME = Arrays.asList(
+    private static final List<SchemaAndValueField> EXPECTED_TIME_AS_ADAPTIVE = Arrays.asList(
             new SchemaAndValueField("val_date", Date.builder().optional().build(),
                     (int) LocalDate.of(2024, 3, 27).toEpochDay()),
             new SchemaAndValueField("val_time", Time.builder().optional().build(),
@@ -172,37 +182,79 @@ public abstract class AbstractInformixDatatypesTest extends AbstractAsyncEngineC
             new SchemaAndValueField("val_timestamp", Timestamp.builder().optional().build(),
                     LocalDateTime.of(2024, 3, 27, 12, 34, 56).toEpochSecond(ZoneOffset.UTC) * 1_000 + 123),
             new SchemaAndValueField("val_timestamp_us", MicroTimestamp.builder().optional().build(),
-                    LocalDateTime.of(2024, 3, 27, 12, 34, 56).toEpochSecond(ZoneOffset.UTC) * 1_000_000 + 123450));
-    // new SchemaAndValueField("VAL_INT_YTM", MicroDuration.builder().optional().build(), -110451600_000_000L),
-    // new SchemaAndValueField("VAL_INT_DTS", MicroDuration.builder().optional().build(), -93784_560_000L));
+                    LocalDateTime.of(2024, 3, 27, 12, 34, 56).toEpochSecond(ZoneOffset.UTC) * 1_000_000 + 123_450));
 
-    private static final List<SchemaAndValueField> EXPECTED_TIME_AS_ADAPTIVE = Arrays.asList(
+    private static final List<SchemaAndValueField> EXPECTED_TIME_AS_ADAPTIVE_MICROSECONDS = Arrays.asList(
             new SchemaAndValueField("val_date", Date.builder().optional().build(),
                     (int) LocalDate.of(2024, 3, 27).toEpochDay()),
             new SchemaAndValueField("val_time", MicroTime.builder().optional().build(),
                     LocalTime.of(12, 34, 56).toSecondOfDay() * 1_000_000L),
             new SchemaAndValueField("val_datetime", Timestamp.builder().optional().build(),
-                    LocalDateTime.of(2024, 3, 27, 12, 34, 56).toEpochSecond(ZoneOffset.UTC) * 1_000),
+                    LocalDateTime.of(2024, 3, 27, 12, 34, 56).toEpochSecond(ZoneOffset.UTC) * 1_000L),
             new SchemaAndValueField("val_timestamp", Timestamp.builder().optional().build(),
-                    LocalDateTime.of(2024, 3, 27, 12, 34, 56).toEpochSecond(ZoneOffset.UTC) * 1_000 + 123),
+                    LocalDateTime.of(2024, 3, 27, 12, 34, 56).toEpochSecond(ZoneOffset.UTC) * 1_000L + 123),
             new SchemaAndValueField("val_timestamp_us", MicroTimestamp.builder().optional().build(),
-                    LocalDateTime.of(2024, 3, 27, 12, 34, 56).toEpochSecond(ZoneOffset.UTC) * 1_000_000 + 123450));
-    // new SchemaAndValueField("VAL_INT_YTM", MicroDuration.builder().optional().build(), -110451600_000_000L),
-    // new SchemaAndValueField("VAL_INT_DTS", MicroDuration.builder().optional().build(), -93784_560_000L));
+                    LocalDateTime.of(2024, 3, 27, 12, 34, 56).toEpochSecond(ZoneOffset.UTC) * 1_000_000 + 123_450));
+
+    private static final List<SchemaAndValueField> EXPECTED_TIME_AS_MICROSECONDS = Arrays.asList(
+            new SchemaAndValueField("val_date", Date.builder().optional().build(),
+                    (int) LocalDate.of(2024, 3, 27).toEpochDay()),
+            new SchemaAndValueField("val_time", MicroTime.builder().optional().build(),
+                    LocalTime.of(12, 34, 56).toSecondOfDay() * 1_000_000L),
+            new SchemaAndValueField("val_datetime", MicroTimestamp.builder().optional().build(),
+                    LocalDateTime.of(2024, 3, 27, 12, 34, 56).toEpochSecond(ZoneOffset.UTC) * 1_000_000L),
+            new SchemaAndValueField("val_timestamp", MicroTimestamp.builder().optional().build(),
+                    LocalDateTime.of(2024, 3, 27, 12, 34, 56).toEpochSecond(ZoneOffset.UTC) * 1_000_000L + 123_000),
+            new SchemaAndValueField("val_timestamp_us", MicroTimestamp.builder().optional().build(),
+                    LocalDateTime.of(2024, 3, 27, 12, 34, 56).toEpochSecond(ZoneOffset.UTC) * 1_000_000L + 123_450));
+
+    private static final List<SchemaAndValueField> EXPECTED_TIME_AS_NANOSECONDS = Arrays.asList(
+            new SchemaAndValueField("val_date", Date.builder().optional().build(),
+                    (int) LocalDate.of(2024, 3, 27).toEpochDay()),
+            new SchemaAndValueField("val_time", NanoTime.builder().optional().build(),
+                    LocalTime.of(12, 34, 56).toNanoOfDay()),
+            new SchemaAndValueField("val_datetime", NanoTimestamp.builder().optional().build(),
+                    LocalDateTime.of(2024, 3, 27, 12, 34, 56).toEpochSecond(ZoneOffset.UTC) * 1_000_000_000L),
+            new SchemaAndValueField("val_timestamp", NanoTimestamp.builder().optional().build(),
+                    LocalDateTime.of(2024, 3, 27, 12, 34, 56).toEpochSecond(ZoneOffset.UTC) * 1_000_000_000L + 123_000_000),
+            new SchemaAndValueField("val_timestamp_us", NanoTimestamp.builder().optional().build(),
+                    LocalDateTime.of(2024, 3, 27, 12, 34, 56).toEpochSecond(ZoneOffset.UTC) * 1_000_000_000L + 123_450_000));
 
     private static final List<SchemaAndValueField> EXPECTED_TIME_AS_CONNECT = Arrays.asList(
             new SchemaAndValueField("val_date", org.apache.kafka.connect.data.Date.builder().optional().build(),
-                    java.util.Date.from(LocalDate.of(2024, 3, 27).atStartOfDay().atOffset(ZoneOffset.UTC).toInstant())),
+                    java.util.Date.from(LocalDate.of(2024, 3, 27).atStartOfDay(ZoneOffset.UTC).toInstant())),
             new SchemaAndValueField("val_time", org.apache.kafka.connect.data.Time.builder().optional().build(),
-                    java.util.Date.from(LocalTime.of(12, 34, 56).atDate(LocalDate.EPOCH).atOffset(ZoneOffset.UTC).toInstant())),
+                    java.util.Date.from(LocalTime.of(12, 34, 56).atDate(LocalDate.EPOCH).toInstant(ZoneOffset.UTC))),
             new SchemaAndValueField("val_datetime", org.apache.kafka.connect.data.Timestamp.builder().optional().build(),
-                    java.util.Date.from(LocalDateTime.of(2024, 3, 27, 12, 34, 56).atOffset(ZoneOffset.UTC).toInstant())),
+                    java.util.Date.from(OffsetDateTime.of(2024, 3, 27, 12, 34, 56, 0, ZoneOffset.UTC).toInstant())),
             new SchemaAndValueField("val_timestamp", org.apache.kafka.connect.data.Timestamp.builder().optional().build(),
-                    java.util.Date.from(LocalDateTime.of(2024, 3, 27, 12, 34, 56, 123 * 1_000_000).atOffset(ZoneOffset.UTC).toInstant())),
+                    java.util.Date.from(OffsetDateTime.of(2024, 3, 27, 12, 34, 56, 123_000_000, ZoneOffset.UTC).toInstant())),
             new SchemaAndValueField("val_timestamp_us", org.apache.kafka.connect.data.Timestamp.builder().optional().build(),
-                    java.util.Date.from(LocalDateTime.of(2024, 3, 27, 12, 34, 56, 12345 * 10_000).atOffset(ZoneOffset.UTC).toInstant())));
-    // new SchemaAndValueField("VAL_INT_YTM", MicroDuration.builder().optional().build(), -110451600_000_000L),
-    // new SchemaAndValueField("VAL_INT_DTS", MicroDuration.builder().optional().build(), -93784_560_000L));
+                    java.util.Date.from(OffsetDateTime.of(2024, 3, 27, 12, 34, 56, 123_450_000, ZoneOffset.UTC).toInstant())));
+
+    private static final List<SchemaAndValueField> EXPECTED_TIME_AS_ISOSTRING = Arrays.asList(
+            new SchemaAndValueField("val_date", io.debezium.time.IsoDate.builder().optional().build(),
+                    LocalDate.of(2024, 3, 27).atStartOfDay(ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE)),
+            new SchemaAndValueField("val_time", io.debezium.time.IsoTime.builder().optional().build(),
+                    LocalTime.of(12, 34, 56).atDate(LocalDate.EPOCH).atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_TIME)),
+            new SchemaAndValueField("val_datetime", io.debezium.time.IsoTimestamp.builder().optional().build(),
+                    OffsetDateTime.of(2024, 3, 27, 12, 34, 56, 0, ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)),
+            new SchemaAndValueField("val_timestamp", io.debezium.time.IsoTimestamp.builder().optional().build(),
+                    OffsetDateTime.of(2024, 3, 27, 12, 34, 56, 123_000_000, ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)),
+            new SchemaAndValueField("val_timestamp_us", io.debezium.time.IsoTimestamp.builder().optional().build(),
+                    OffsetDateTime.of(2024, 3, 27, 12, 34, 56, 123_450_000, ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)));
+
+    private static final List<SchemaAndValueField> EXPECTED_TIME_AS_STRUCTURED = Arrays.asList(
+            new SchemaAndValueField("val_date", StructuredDate.builder().optional().build(),
+                    StructuredDate.from(StructuredDate.builder().optional().build(), 2024, 3, 27)),
+            new SchemaAndValueField("val_time", StructuredTime.builder().optional().build(),
+                    StructuredTime.from(StructuredTime.builder().optional().build(), LocalTime.of(12, 34, 56, 0), 0)),
+            new SchemaAndValueField("val_datetime", StructuredTimestamp.builder().optional().build(),
+                    StructuredTimestamp.from(StructuredTimestamp.builder().optional().build(), LocalDateTime.of(2024, 3, 27, 12, 34, 56, 0), 0)),
+            new SchemaAndValueField("val_timestamp", StructuredTimestamp.builder().optional().build(),
+                    StructuredTimestamp.from(StructuredTimestamp.builder().optional().build(), LocalDateTime.of(2024, 3, 27, 12, 34, 56, 123_000_000), 3)),
+            new SchemaAndValueField("val_timestamp_us", StructuredTimestamp.builder().optional().build(),
+                    StructuredTimestamp.from(StructuredTimestamp.builder().optional().build(), LocalDateTime.of(2024, 3, 27, 12, 34, 56, 123_450_000), 5)));
 
     private static final String CLOB_TXT = "TestClob123";
     private static final String CLOB_JSON = Files.readResourceAsString("data/test_lob_data.json");
@@ -220,12 +272,12 @@ public abstract class AbstractInformixDatatypesTest extends AbstractAsyncEngineC
             new SchemaAndValueField("val_clob_long", Schema.OPTIONAL_STRING_SCHEMA, part(CLOB_JSON, 1, 5000)));
 
     private static final String[] ALL_TABLES = {
-            "informix.type_string",
-            "informix.type_fp",
-            "informix.type_int",
-            "informix.type_bool",
-            "informix.type_time",
-            "informix.type_clob"
+            "testdb:informix.type_string",
+            "testdb:informix.type_fp",
+            "testdb:informix.type_int",
+            "testdb:informix.type_bool",
+            "testdb:informix.type_time",
+            "testdb:informix.type_clob"
     };
 
     private static final String[] ALL_DDLS = {
@@ -242,26 +294,27 @@ public abstract class AbstractInformixDatatypesTest extends AbstractAsyncEngineC
     @BeforeAll
     public static void beforeClass() throws SQLException {
         connection = TestHelper.testConnection();
-        dropTables();
+        TestHelper.dropTables(connection, ALL_TABLES);
+        createTables();
+    }
+
+    @BeforeEach
+    public void beforeEach() {
+        Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
+        Print.enable();
     }
 
     @AfterAll
     public static void afterClass() throws SQLException {
         if (connection != null) {
             connection.rollback();
-            dropTables();
+            TestHelper.dropTables(connection, ALL_TABLES);
             connection.close();
         }
     }
 
     protected static void createTables() throws SQLException {
         connection.execute(ALL_DDLS);
-    }
-
-    public static void dropTables() throws SQLException {
-        for (String table : ALL_TABLES) {
-            TestHelper.dropTable(connection, table);
-        }
     }
 
     protected List<String> getAllTables() {
@@ -272,17 +325,35 @@ public abstract class AbstractInformixDatatypesTest extends AbstractAsyncEngineC
 
     protected abstract Builder connectorConfig();
 
-    protected abstract void init(TemporalPrecisionMode temporalPrecisionMode) throws Exception;
+    private void init(String tableIncludeList) throws Exception {
+        init(TemporalPrecisionMode.ADAPTIVE, DecimalHandlingMode.PRECISE, tableIncludeList);
+    }
+
+    protected void init(TemporalPrecisionMode temporalPrecisionMode, DecimalHandlingMode decimalHandlingMode, String tableIncludeList) throws Exception {
+        Configuration config = connectorConfig()
+                .with(InformixConnectorConfig.TIME_PRECISION_MODE, temporalPrecisionMode)
+                .with(InformixConnectorConfig.DECIMAL_HANDLING_MODE, decimalHandlingMode)
+                .with(InformixConnectorConfig.TABLE_INCLUDE_LIST, tableIncludeList)
+                .build();
+
+        start(InformixConnector.class, config);
+        assertConnectorIsRunning();
+
+        waitForSnapshotToBeCompleted(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
+    }
 
     @Test
     public void stringTypes() throws Exception {
+        init("testdb.informix.type_string");
+
         int expectedRecordCount = 0;
 
         if (insertRecordsDuringTest()) {
+            consumeRecord();
             waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
             insertStringTypes();
         }
-        waitForAvailableRecords();
+        waitForAvailableRecords(waitTimeForRecords(), TimeUnit.SECONDS);
 
         expectedRecordCount++;
 
@@ -307,14 +378,17 @@ public abstract class AbstractInformixDatatypesTest extends AbstractAsyncEngineC
     }
 
     @Test
-    public void fpTypes() throws Exception {
+    public void fpTypesAsPrecise() throws Exception {
+        init("testdb.informix.type_fp");
+
         int expectedRecordCount = 0;
 
         if (insertRecordsDuringTest()) {
+            consumeRecord();
             waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
             insertFpTypes();
         }
-        waitForAvailableRecords();
+        waitForAvailableRecords(waitTimeForRecords(), TimeUnit.SECONDS);
 
         expectedRecordCount++;
 
@@ -335,30 +409,22 @@ public abstract class AbstractInformixDatatypesTest extends AbstractAsyncEngineC
         }
 
         Struct after = (Struct) ((Struct) record.value()).get("after");
-        assertRecord(after, EXPECTED_FP);
+        assertRecord(after, EXPECTED_FP_AS_PRECISE);
     }
 
     @Test
     @FixFor("DBZ-1552")
     public void fpTypesAsString() throws Exception {
-        stopConnector();
-        initializeConnectorTestFramework();
-        final Configuration config = connectorConfig()
-                .with(InformixConnectorConfig.DECIMAL_HANDLING_MODE, DecimalMode.STRING)
-                .build();
-
-        start(InformixConnector.class, config);
-        assertConnectorIsRunning();
-
-        waitForSnapshotToBeCompleted(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
+        init(TemporalPrecisionMode.ADAPTIVE, DecimalHandlingMode.STRING, "testdb.informix.type_fp");
 
         int expectedRecordCount = 0;
 
         if (insertRecordsDuringTest()) {
+            consumeRecord();
             waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
             insertFpTypes();
         }
-        waitForAvailableRecords();
+        waitForAvailableRecords(waitTimeForRecords(), TimeUnit.SECONDS);
 
         expectedRecordCount++;
 
@@ -385,24 +451,16 @@ public abstract class AbstractInformixDatatypesTest extends AbstractAsyncEngineC
     @Test
     @FixFor("DBZ-1552")
     public void fpTypesAsDouble() throws Exception {
-        stopConnector();
-        initializeConnectorTestFramework();
-        final Configuration config = connectorConfig()
-                .with(InformixConnectorConfig.DECIMAL_HANDLING_MODE, DecimalMode.DOUBLE)
-                .build();
-
-        start(InformixConnector.class, config);
-        assertConnectorIsRunning();
-
-        waitForSnapshotToBeCompleted(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
+        init(TemporalPrecisionMode.ADAPTIVE, DecimalHandlingMode.DOUBLE, "testdb.informix.type_fp");
 
         int expectedRecordCount = 0;
 
         if (insertRecordsDuringTest()) {
+            consumeRecord();
             waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
             insertFpTypes();
         }
-        waitForAvailableRecords();
+        waitForAvailableRecords(waitTimeForRecords(), TimeUnit.SECONDS);
 
         expectedRecordCount++;
 
@@ -428,13 +486,16 @@ public abstract class AbstractInformixDatatypesTest extends AbstractAsyncEngineC
 
     @Test
     public void intTypes() throws Exception {
+        init("testdb.informix.type_int");
+
         int expectedRecordCount = 0;
 
         if (insertRecordsDuringTest()) {
+            consumeRecord();
             waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
             insertIntTypes();
         }
-        waitForAvailableRecords();
+        waitForAvailableRecords(waitTimeForRecords(), TimeUnit.SECONDS);
 
         expectedRecordCount++;
 
@@ -461,13 +522,16 @@ public abstract class AbstractInformixDatatypesTest extends AbstractAsyncEngineC
     @Test
     @FixFor("dbz#2354")
     public void boolTypes() throws Exception {
+        init("testdb.informix.type_bool");
+
         int expectedRecordCount = 0;
 
         if (insertRecordsDuringTest()) {
+            consumeRecord();
             waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
             insertBoolTypes();
         }
-        waitForAvailableRecords();
+        waitForAvailableRecords(waitTimeForRecords(), TimeUnit.SECONDS);
 
         expectedRecordCount++;
 
@@ -492,50 +556,17 @@ public abstract class AbstractInformixDatatypesTest extends AbstractAsyncEngineC
     }
 
     @Test
-    public void timeTypes() throws Exception {
-        int expectedRecordCount = 0;
-
-        if (insertRecordsDuringTest()) {
-            waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-            insertTimeTypes();
-        }
-        waitForAvailableRecords();
-
-        expectedRecordCount++;
-
-        final SourceRecords records = consumeRecordsByTopic(expectedRecordCount);
-
-        List<SourceRecord> testTableRecords = records.recordsForTopic("testdb.informix.type_time");
-        assertThat(testTableRecords).hasSize(expectedRecordCount);
-        SourceRecord record = testTableRecords.get(0);
-
-        VerifyRecord.isValid(record);
-
-        // insert
-        if (insertRecordsDuringTest()) {
-            VerifyRecord.isValidInsert(record, true);
-        }
-        else {
-            VerifyRecord.isValidRead(record);
-        }
-
-        Struct after = (Struct) ((Struct) record.value()).get("after");
-        assertRecord(after, EXPECTED_TIME);
-    }
-
-    @Test
-    @FixFor("DBZ-3268")
-    public void timeTypesAsAdaptiveMicroseconds() throws Exception {
-        stopConnector();
-        init(TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS);
+    public void timeTypesAsAdaptive() throws Exception {
+        init("testdb.informix.type_time");
 
         int expectedRecordCount = 0;
 
         if (insertRecordsDuringTest()) {
+            consumeRecord();
             waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
             insertTimeTypes();
         }
-        waitForAvailableRecords();
+        waitForAvailableRecords(waitTimeForRecords(), TimeUnit.SECONDS);
 
         expectedRecordCount++;
 
@@ -561,17 +592,123 @@ public abstract class AbstractInformixDatatypesTest extends AbstractAsyncEngineC
 
     @Test
     @FixFor("DBZ-3268")
-    public void timeTypesAsConnect() throws Exception {
-        stopConnector();
-        init(TemporalPrecisionMode.CONNECT);
+    public void timeTypesAsAdaptiveMicroseconds() throws Exception {
+        init(TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS, DecimalHandlingMode.PRECISE, "testdb.informix.type_time");
 
         int expectedRecordCount = 0;
 
         if (insertRecordsDuringTest()) {
+            consumeRecord();
             waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
             insertTimeTypes();
         }
-        waitForAvailableRecords();
+        waitForAvailableRecords(waitTimeForRecords(), TimeUnit.SECONDS);
+
+        expectedRecordCount++;
+
+        final SourceRecords records = consumeRecordsByTopic(expectedRecordCount);
+
+        List<SourceRecord> testTableRecords = records.recordsForTopic("testdb.informix.type_time");
+        assertThat(testTableRecords).hasSize(expectedRecordCount);
+        SourceRecord record = testTableRecords.get(0);
+
+        VerifyRecord.isValid(record);
+
+        // insert
+        if (insertRecordsDuringTest()) {
+            VerifyRecord.isValidInsert(record, true);
+        }
+        else {
+            VerifyRecord.isValidRead(record);
+        }
+
+        Struct after = (Struct) ((Struct) record.value()).get("after");
+        assertRecord(after, EXPECTED_TIME_AS_ADAPTIVE_MICROSECONDS);
+    }
+
+    @Test
+    public void timeTypesAsMicroseconds() throws Exception {
+        init(TemporalPrecisionMode.MICROSECONDS, DecimalHandlingMode.PRECISE, "testdb.informix.type_time");
+
+        int expectedRecordCount = 0;
+
+        if (insertRecordsDuringTest()) {
+            consumeRecord();
+            waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
+            insertTimeTypes();
+        }
+        waitForAvailableRecords(waitTimeForRecords(), TimeUnit.SECONDS);
+
+        expectedRecordCount++;
+
+        final SourceRecords records = consumeRecordsByTopic(expectedRecordCount);
+
+        List<SourceRecord> testTableRecords = records.recordsForTopic("testdb.informix.type_time");
+        assertThat(testTableRecords).hasSize(expectedRecordCount);
+        SourceRecord record = testTableRecords.get(0);
+
+        VerifyRecord.isValid(record);
+
+        // insert
+        if (insertRecordsDuringTest()) {
+            VerifyRecord.isValidInsert(record, true);
+        }
+        else {
+            VerifyRecord.isValidRead(record);
+        }
+
+        Struct after = (Struct) ((Struct) record.value()).get("after");
+        assertRecord(after, EXPECTED_TIME_AS_MICROSECONDS);
+    }
+
+    @Test
+    public void timeTypesAsNanoseconds() throws Exception {
+        init(TemporalPrecisionMode.NANOSECONDS, DecimalHandlingMode.PRECISE, "testdb.informix.type_time");
+
+        int expectedRecordCount = 0;
+
+        if (insertRecordsDuringTest()) {
+            consumeRecord();
+            waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
+            insertTimeTypes();
+        }
+        waitForAvailableRecords(waitTimeForRecords(), TimeUnit.SECONDS);
+
+        expectedRecordCount++;
+
+        final SourceRecords records = consumeRecordsByTopic(expectedRecordCount);
+
+        List<SourceRecord> testTableRecords = records.recordsForTopic("testdb.informix.type_time");
+        assertThat(testTableRecords).hasSize(expectedRecordCount);
+        SourceRecord record = testTableRecords.get(0);
+
+        VerifyRecord.isValid(record);
+
+        // insert
+        if (insertRecordsDuringTest()) {
+            VerifyRecord.isValidInsert(record, true);
+        }
+        else {
+            VerifyRecord.isValidRead(record);
+        }
+
+        Struct after = (Struct) ((Struct) record.value()).get("after");
+        assertRecord(after, EXPECTED_TIME_AS_NANOSECONDS);
+    }
+
+    @Test
+    @FixFor("DBZ-3268")
+    public void timeTypesAsConnect() throws Exception {
+        init(TemporalPrecisionMode.CONNECT, DecimalHandlingMode.PRECISE, "testdb.informix.type_time");
+
+        int expectedRecordCount = 0;
+
+        if (insertRecordsDuringTest()) {
+            consumeRecord();
+            waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
+            insertTimeTypes();
+        }
+        waitForAvailableRecords(waitTimeForRecords(), TimeUnit.SECONDS);
 
         expectedRecordCount++;
 
@@ -596,14 +733,87 @@ public abstract class AbstractInformixDatatypesTest extends AbstractAsyncEngineC
     }
 
     @Test
-    public void clobTypes() throws Exception {
+    public void timeTypesAsIsoString() throws Exception {
+        init(TemporalPrecisionMode.ISOSTRING, DecimalHandlingMode.PRECISE, "testdb.informix.type_time");
+
         int expectedRecordCount = 0;
 
         if (insertRecordsDuringTest()) {
+            consumeRecord();
+            waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
+            insertTimeTypes();
+        }
+        waitForAvailableRecords(waitTimeForRecords(), TimeUnit.SECONDS);
+
+        expectedRecordCount++;
+
+        final SourceRecords records = consumeRecordsByTopic(expectedRecordCount);
+
+        List<SourceRecord> testTableRecords = records.recordsForTopic("testdb.informix.type_time");
+        assertThat(testTableRecords).hasSize(expectedRecordCount);
+        SourceRecord record = testTableRecords.get(0);
+
+        VerifyRecord.isValid(record);
+
+        // insert
+        if (insertRecordsDuringTest()) {
+            VerifyRecord.isValidInsert(record, true);
+        }
+        else {
+            VerifyRecord.isValidRead(record);
+        }
+
+        Struct after = (Struct) ((Struct) record.value()).get("after");
+        assertRecord(after, EXPECTED_TIME_AS_ISOSTRING);
+    }
+
+    @Test
+    public void timeTypesAsStructured() throws Exception {
+        init(TemporalPrecisionMode.STRUCTURED, DecimalHandlingMode.PRECISE, "testdb.informix.type_time");
+
+        int expectedRecordCount = 0;
+
+        if (insertRecordsDuringTest()) {
+            consumeRecord();
+            waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
+            insertTimeTypes();
+        }
+        waitForAvailableRecords(waitTimeForRecords(), TimeUnit.SECONDS);
+
+        expectedRecordCount++;
+
+        final SourceRecords records = consumeRecordsByTopic(expectedRecordCount);
+
+        List<SourceRecord> testTableRecords = records.recordsForTopic("testdb.informix.type_time");
+        assertThat(testTableRecords).hasSize(expectedRecordCount);
+        SourceRecord record = testTableRecords.get(0);
+
+        VerifyRecord.isValid(record);
+
+        // insert
+        if (insertRecordsDuringTest()) {
+            VerifyRecord.isValidInsert(record, true);
+        }
+        else {
+            VerifyRecord.isValidRead(record);
+        }
+
+        Struct after = (Struct) ((Struct) record.value()).get("after");
+        assertRecord(after, EXPECTED_TIME_AS_STRUCTURED);
+    }
+
+    @Test
+    public void clobTypes() throws Exception {
+        init("testdb.informix.type_clob");
+
+        int expectedRecordCount = 0;
+
+        if (insertRecordsDuringTest()) {
+            consumeRecord();
             waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
             insertClobTypes();
         }
-        waitForAvailableRecords();
+        waitForAvailableRecords(waitTimeForRecords(), TimeUnit.SECONDS);
 
         expectedRecordCount++;
 
@@ -712,5 +922,4 @@ public abstract class AbstractInformixDatatypesTest extends AbstractAsyncEngineC
     private void assertRecord(Struct record, List<SchemaAndValueField> expected) {
         expected.forEach(schemaAndValueField -> schemaAndValueField.assertFor(record));
     }
-
 }
