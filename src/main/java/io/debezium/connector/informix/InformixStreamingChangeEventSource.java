@@ -38,6 +38,8 @@ import io.debezium.connector.informix.stream.DbzTransactionEngine;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.monitor.OffsetActivityMonitor;
+import io.debezium.pipeline.monitor.OffsetActivityMonitorService;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.relational.Column;
 import io.debezium.relational.TableId;
@@ -62,6 +64,8 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
     private final Multimap<TableId, Column> reselectColumns = ArrayListMultimap.create();
     private InformixOffsetContext effectiveOffsetContext;
     private final AtomicBoolean recovering = new AtomicBoolean();
+    private final OffsetActivityMonitorService offsetActivityMonitorService;
+    private OffsetActivityMonitor<InformixPartition, InformixOffsetContext> offsetActivityMonitor;
 
     public InformixStreamingChangeEventSource(InformixConnectorConfig connectorConfig,
                                               InformixConnection dataConnection, InformixConnection metadataConnection,
@@ -75,6 +79,7 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
         this.clock = clock;
         this.schema = schema;
         this.unavailableValuePlaceholder = connectorConfig.getUnavailableValuePlaceholder();
+        this.offsetActivityMonitorService = OffsetActivityMonitorService.lookup(connectorConfig.getServiceRegistry());
     }
 
     @Override
@@ -133,6 +138,8 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
                     context.waitSnapshotCompletion();
                     LOGGER.info("Streaming resumed");
                 }
+
+                offsetActivityMonitorService.pulse(partition, offsetContext);
 
                 if (streamRecord == null) {
                     LOGGER.debug(RECEIVED_GENERIC_RECORD, null, 0);
@@ -201,6 +208,14 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
     @Override
     public InformixOffsetContext getOffsetContext() {
         return effectiveOffsetContext;
+    }
+
+    @Override
+    public Optional<OffsetActivityMonitor<InformixPartition, InformixOffsetContext>> getOffsetActivityMonitor() {
+        if (offsetActivityMonitor == null) {
+            offsetActivityMonitor = new InformixOffsetActivityMonitor(connectorConfig.getOffsetActivityMonitorInterval());
+        }
+        return Optional.of(offsetActivityMonitor);
     }
 
     private DbzTransactionEngine getTransactionEngine(ChangeEventSourceContext context, InformixDatabaseSchema schema, Lsn startLsn)
