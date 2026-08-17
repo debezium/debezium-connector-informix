@@ -27,9 +27,7 @@ public class NotificationsIT extends AbstractNotificationsIT<InformixConnector> 
         TestHelper.dropTable(connection, "tablea");
         connection.execute("CREATE TABLE tablea (id int not null, cola varchar(30), primary key(id))");
 
-        initializeConnectorTestFramework();
         Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
-        Print.enable();
     }
 
     @AfterEach
