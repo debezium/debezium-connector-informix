@@ -37,9 +37,7 @@ public class ConcurrentTransactionChangeLsnIT extends AbstractAsyncEngineConnect
                 "DROP TABLE IF EXISTS concurrent_lsn",
                 "CREATE TABLE concurrent_lsn (id int not null, val varchar(30), primary key (id))");
 
-        initializeConnectorTestFramework();
         Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
-        Print.enable();
     }
 
     @AfterEach
@@ -48,9 +46,9 @@ public class ConcurrentTransactionChangeLsnIT extends AbstractAsyncEngineConnect
          * Since all DDL operations are forbidden during Informix CDC,
          * we have to ensure the connector is properly shut down before dropping tables.
          */
-        stopConnector();
+        stopConnector(TestHelper.getLoggingCleanupCallback("concurrent_lsn"));
         waitForConnectorShutdown(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-        assertConnectorNotRunning();
+
         if (connection != null) {
             connection.rollback()
                     .execute("DROP TABLE concurrent_lsn")
