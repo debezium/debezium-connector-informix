@@ -47,9 +47,7 @@ public class SchemaHistoryTopicIT extends AbstractAsyncEngineConnectorTest {
                 "CREATE TABLE tableb (id int not null, colb varchar(30), primary key(id))",
                 "CREATE TABLE tablec (id int not null, colc varchar(30), primary key(id))");
 
-        initializeConnectorTestFramework();
         Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
-        Print.enable();
     }
 
     @AfterEach

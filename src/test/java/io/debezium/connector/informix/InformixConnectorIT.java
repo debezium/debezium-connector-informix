@@ -85,9 +85,7 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
                 "CREATE TABLE always_snapshot (id int not null, data varchar(50) not null, primary key(id))",
                 "CREATE TABLE test_heartbeat_table (text varchar(255))",
                 "INSERT INTO tablea VALUES(1, 'a')");
-        initializeConnectorTestFramework();
         Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
-        Print.enable();
     }
 
     @AfterEach

@@ -301,7 +301,6 @@ public abstract class AbstractInformixDatatypesTest extends AbstractAsyncEngineC
     @BeforeEach
     public void beforeEach() {
         Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
-        Print.enable();
     }
 
     @AfterAll

@@ -44,9 +44,7 @@ public class TransactionMetadataIT extends AbstractAsyncEngineConnectorTest {
                 "CREATE TABLE tableb (id int not null, colb varchar(30), primary key (id))",
                 "INSERT INTO tablea VALUES(1, 'a')");
 
-        initializeConnectorTestFramework();
         Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
-        Print.enable();
     }
 
     @AfterEach

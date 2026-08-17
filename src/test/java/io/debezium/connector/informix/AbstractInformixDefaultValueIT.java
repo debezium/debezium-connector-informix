@@ -51,9 +51,7 @@ public abstract class AbstractInformixDefaultValueIT extends AbstractAsyncEngine
 
         connection.execute("DROP TABLE IF EXISTS dv_test");
 
-        initializeConnectorTestFramework();
         Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
-        Print.enable();
     }
 
     @AfterEach

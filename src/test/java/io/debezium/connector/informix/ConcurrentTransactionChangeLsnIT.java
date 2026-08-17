@@ -37,9 +37,7 @@ public class ConcurrentTransactionChangeLsnIT extends AbstractAsyncEngineConnect
                 "DROP TABLE IF EXISTS concurrent_lsn",
                 "CREATE TABLE concurrent_lsn (id int not null, val varchar(30), primary key (id))");
 
-        initializeConnectorTestFramework();
         Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
-        Print.enable();
     }
 
     @AfterEach
