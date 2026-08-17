@@ -62,20 +62,23 @@ import io.debezium.schema.DatabaseSchema;
 @ExtendWith(ConditionalFailExtension.class)
 public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
 
+    private static final String[] ALL_TABLES = {
+            "tablea",
+            "tableb",
+            "masked_hashed_column_table",
+            "truncated_column_table",
+            "truncate_table",
+            "dt_table",
+            "always_snapshot",
+            "test_heartbeat_table" };
+
     private InformixConnection connection;
 
     @BeforeEach
     public void before() throws SQLException {
         connection = TestHelper.testConnection();
+        TestHelper.dropTables(ALL_TABLES);
         connection.execute(
-                "DROP TABLE IF EXISTS tablea",
-                "DROP TABLE IF EXISTS tableb",
-                "DROP TABLE IF EXISTS masked_hashed_column_table",
-                "DROP TABLE IF EXISTS truncated_column_table",
-                "DROP TABLE IF EXISTS truncate_table",
-                "DROP TABLE IF EXISTS dt_table",
-                "DROP TABLE IF EXISTS always_snapshot",
-                "DROP TABLE IF EXISTS test_heartbeat_table",
                 "CREATE TABLE tablea (id int not null, cola varchar(30), primary key (id))",
                 "CREATE TABLE tableb (id int not null, colb varchar(30), primary key (id))",
                 "CREATE TABLE masked_hashed_column_table (id int not null, name varchar(255), name2 varchar(255), name3 varchar(20), primary key (id))",
@@ -85,9 +88,7 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
                 "CREATE TABLE always_snapshot (id int not null, data varchar(50) not null, primary key(id))",
                 "CREATE TABLE test_heartbeat_table (text varchar(255))",
                 "INSERT INTO tablea VALUES(1, 'a')");
-        initializeConnectorTestFramework();
         Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
-        Print.enable();
     }
 
     @AfterEach
@@ -96,21 +97,13 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
          * Since all DDL operations are forbidden during Informix CDC,
          * we have to ensure the connector is properly shut down before dropping tables.
          */
-        stopConnector();
+        stopConnector(TestHelper.getLoggingCleanupCallback(ALL_TABLES));
         waitForConnectorShutdown(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-        assertConnectorNotRunning();
+
         if (connection != null) {
-            connection.rollback()
-                    .execute(
-                            "DROP TABLE tablea",
-                            "DROP TABLE tableb",
-                            "DROP TABLE masked_hashed_column_table",
-                            "DROP TABLE truncated_column_table",
-                            "DROP TABLE truncate_table",
-                            "DROP TABLE dt_table",
-                            "DROP TABLE always_snapshot",
-                            "DROP TABLE test_heartbeat_table")
-                    .close();
+            connection.rollback();
+            TestHelper.dropTables(ALL_TABLES);
+            connection.close();
         }
     }
 

@@ -20,6 +20,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -59,7 +60,7 @@ public abstract class AbstractInformixDatatypesTest extends AbstractAsyncEngineC
             "  id serial not null primary key, " +
             "  val_varchar varchar(255), " +
             "  val_nvarchar nvarchar(255), " +
-            "  val_lvarchar lvarchar(1000), " +
+            "  val_lvarchar lvarchar(3000), " +
             "  val_char char(3), " +
             "  val_nchar nchar(3)" +
             ");";
@@ -112,9 +113,9 @@ public abstract class AbstractInformixDatatypesTest extends AbstractAsyncEngineC
             ");";
 
     private static final List<SchemaAndValueField> EXPECTED_STRING = Arrays.asList(
-            new SchemaAndValueField("val_varchar", Schema.OPTIONAL_STRING_SCHEMA, "vc"),
-            new SchemaAndValueField("val_nvarchar", Schema.OPTIONAL_STRING_SCHEMA, "nvc"),
-            new SchemaAndValueField("val_lvarchar", Schema.OPTIONAL_STRING_SCHEMA, "lvc"),
+            new SchemaAndValueField("val_varchar", Schema.OPTIONAL_STRING_SCHEMA, StringUtils.repeat("vc", 127)),
+            new SchemaAndValueField("val_nvarchar", Schema.OPTIONAL_STRING_SCHEMA, StringUtils.repeat("nvc", 85)),
+            new SchemaAndValueField("val_lvarchar", Schema.OPTIONAL_STRING_SCHEMA, StringUtils.repeat("lvc", 1000)),
             new SchemaAndValueField("val_char", Schema.OPTIONAL_STRING_SCHEMA, "c  "),
             new SchemaAndValueField("val_nchar", Schema.OPTIONAL_STRING_SCHEMA, "nc "));
 
@@ -277,21 +278,20 @@ public abstract class AbstractInformixDatatypesTest extends AbstractAsyncEngineC
     @BeforeAll
     public static void beforeClass() throws SQLException {
         connection = TestHelper.testConnection();
-        TestHelper.dropTables(connection, ALL_TABLES);
+        TestHelper.dropTables(ALL_TABLES);
         createTables();
     }
 
     @BeforeEach
     public void beforeEach() {
         Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
-        Print.enable();
     }
 
     @AfterAll
     public static void afterClass() throws SQLException {
         if (connection != null) {
             connection.rollback();
-            TestHelper.dropTables(connection, ALL_TABLES);
+            TestHelper.dropTables(ALL_TABLES);
             connection.close();
         }
     }
@@ -802,7 +802,10 @@ public abstract class AbstractInformixDatatypesTest extends AbstractAsyncEngineC
     }
 
     protected static void insertStringTypes() throws SQLException {
-        connection.execute("INSERT INTO type_string VALUES (0, 'vc', 'nvc', 'lvc', 'c', 'nc');");
+        connection.execute("INSERT INTO type_string VALUES (0, '%s', '%s', '%s', 'c', 'nc');"
+                .formatted(StringUtils.repeat("vc", 127),
+                        StringUtils.repeat("nvc", 85),
+                        StringUtils.repeat("lvc", 1000)));
     }
 
     protected static void insertFpTypes() throws SQLException {
