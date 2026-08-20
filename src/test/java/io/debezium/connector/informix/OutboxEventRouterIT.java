@@ -43,21 +43,18 @@ public class OutboxEventRouterIT extends AbstractEventRouterTest<InformixConnect
     @Override
     public void beforeEach() throws Exception {
         connection = TestHelper.testConnection();
-
-        initializeConnectorTestFramework();
-        Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
-
         super.beforeEach();
+        Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
     }
 
     @AfterEach
     public void afterEach() throws Exception {
-        stopConnector();
+        stopConnector(TestHelper.getLoggingCleanupCallback(tableName()));
         waitForConnectorShutdown(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-        assertConnectorNotRunning();
-        if (connection != null && connection.isConnected()) {
+        cleanupTestFwkState();
+        if (connection != null) {
             connection.rollback();
-            TestHelper.dropTable(connection, tableName());
+            TestHelper.dropTable(tableName());
             connection.close();
         }
     }
@@ -77,7 +74,7 @@ public class OutboxEventRouterIT extends AbstractEventRouterTest<InformixConnect
         final SnapshotMode snapshotMode = initialSnapshot ? SnapshotMode.INITIAL : SnapshotMode.NO_DATA;
         return TestHelper.defaultConfig()
                 .with(InformixConnectorConfig.SNAPSHOT_MODE, snapshotMode.getValue())
-                .with(InformixConnectorConfig.TABLE_INCLUDE_LIST, TestHelper.TEST_DATABASE + "." + tableName());
+                .with(InformixConnectorConfig.TABLE_INCLUDE_LIST, fullTableName());
     }
 
     @Override
@@ -92,17 +89,21 @@ public class OutboxEventRouterIT extends AbstractEventRouterTest<InformixConnect
 
     @Override
     protected String tableName() {
-        return "informix.outbox";
+        return "outbox";
+    }
+
+    protected String fullTableName() {
+        return "%s.informix.%s".formatted(TestHelper.TEST_DATABASE, tableName());
     }
 
     @Override
     protected String topicName() {
-        return TestHelper.TEST_DATABASE + ".informix.outbox";
+        return fullTableName();
     }
 
     @Override
     protected void createTable() throws Exception {
-        TestHelper.dropTable(connection, tableName());
+        TestHelper.dropTable(tableName());
         connection.execute(SETUP_OUTBOX_TABLE);
     }
 

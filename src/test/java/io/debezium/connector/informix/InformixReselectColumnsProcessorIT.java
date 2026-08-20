@@ -48,17 +48,15 @@ public class InformixReselectColumnsProcessorIT extends AbstractReselectProcesso
 
     @BeforeEach
     public void beforeEach() throws Exception {
-        initializeConnectorTestFramework();
         Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
         super.beforeEach();
     }
 
     @AfterEach
     public void afterEach() throws Exception {
-        assertNoRecordsToConsume();
-        stopConnector();
+        stopConnector(TestHelper.getLoggingCleanupCallback("dbz4321", "dbz4321_byte", "dbz4321_text"));
         waitForConnectorShutdown(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-        assertConnectorNotRunning();
+        cleanupTestFwkState();
         dropTable();
     }
 
@@ -108,10 +106,7 @@ public class InformixReselectColumnsProcessorIT extends AbstractReselectProcesso
 
     @Override
     protected void dropTable() throws Exception {
-        connection.execute(
-                "DROP TABLE IF EXISTS dbz4321",
-                "DROP TABLE IF EXISTS dbz4321_byte",
-                "DROP TABLE IF EXISTS dbz4321_text");
+        TestHelper.dropTables("dbz4321", "dbz4321_byte", "dbz4321_text");
     }
 
     @Override

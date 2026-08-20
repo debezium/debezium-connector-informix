@@ -23,15 +23,14 @@ import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.ConditionalFailExtension;
 import io.debezium.junit.Flaky;
 import io.debezium.pipeline.AbstractChunkedSnapshotTest;
-import io.debezium.util.Testing;
 
 /**
  * Informix-specific chunked table snapshot integration tests.
  *
  * @author Chris Cranford
  */
-@ExtendWith(ConditionalFailExtension.class)
 @Flaky("dbz#1220")
+@ExtendWith(ConditionalFailExtension.class)
 public class InformixChunkedSnapshotIT extends AbstractChunkedSnapshotTest<InformixConnector> {
 
     private InformixConnection connection;
@@ -39,26 +38,24 @@ public class InformixChunkedSnapshotIT extends AbstractChunkedSnapshotTest<Infor
     @BeforeEach
     public void beforeEach() throws Exception {
         connection = TestHelper.testConnection();
-        TestHelper.dropTables(connection, getAllTableNames().toArray(new String[5]));
-
-        initializeConnectorTestFramework();
-        Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
-
+        TestHelper.forceLoggingOff(getAllTableNamesAsArray());
+        TestHelper.dropTables(getAllTableNamesAsArray());
+        Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
         super.beforeEach();
     }
 
     @AfterEach
     public void afterEach() throws Exception {
-        stopConnector();
+        super.afterEach();
+        stopConnector(TestHelper.getLoggingCleanupCallback(getAllTableNamesAsArray()));
         waitForConnectorShutdown(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-        assertConnectorNotRunning();
+        cleanupTestFwkState();
 
         if (connection != null) {
             connection.rollback();
-            TestHelper.dropTables(connection, getAllTableNames().toArray(new String[5]));
+            TestHelper.dropTables(getAllTableNamesAsArray());
             connection.close();
         }
-        super.afterEach();
     }
 
     @Override
@@ -107,6 +104,10 @@ public class InformixChunkedSnapshotIT extends AbstractChunkedSnapshotTest<Infor
         List<String> tableNames = new ArrayList<>(getMultipleSingleKeyTableNames());
         tableNames.add(getSingleKeyTableName());
         return Collections.unmodifiableList(tableNames);
+    }
+
+    protected String[] getAllTableNamesAsArray() {
+        return getAllTableNames().toArray(new String[0]);
     }
 
     @Override
