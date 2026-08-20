@@ -16,13 +16,16 @@ import org.apache.kafka.connect.runtime.WorkerConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.ConfigurationNames;
 import io.debezium.connector.informix.InformixConnection;
 import io.debezium.connector.informix.InformixConnectorConfig;
 import io.debezium.embedded.async.AsyncEngineConfig;
+import io.debezium.function.BooleanConsumer;
 import io.debezium.jdbc.JdbcConfiguration;
+import io.debezium.jdbc.JdbcConnection;
 import io.debezium.storage.file.history.FileSchemaHistory;
 import io.debezium.util.Testing;
 
@@ -113,8 +116,16 @@ public class TestHelper {
         return new InformixConnection(TestHelper.defaultJdbcConfig().build());
     }
 
+    public static void dropTable(String table) throws SQLException {
+        dropTable(testConnection(), table);
+    }
+
     public static void dropTable(InformixConnection connection, String table) throws SQLException {
         connection.execute("drop table if exists " + table);
+    }
+
+    public static void dropTables(String... tables) throws SQLException {
+        dropTables(testConnection(), tables);
     }
 
     public static void dropTables(InformixConnection connection, String... tables) throws SQLException {
@@ -142,4 +153,27 @@ public class TestHelper {
         assertThat(is_logging + is_buff_logging).isPositive();
     }
 
+    public static BooleanConsumer getLoggingCleanupCallback(String... tableNames) {
+        return running -> {
+            if (running) {
+                for (String tableName : tableNames) {
+                    try (JdbcConnection connection = testConnection()) {
+                        LOGGER.debug("Setting full row logging on [{}] to 'false'", tableName);
+                        connection.prepareQuery("execute function syscdcv1:informix.cdc_set_fullrowlogging(?,?)", ps -> {
+                            ps.setString(1, "testdb:informix.%s".formatted(tableName));
+                            ps.setInt(2, 0);
+                        }, rs -> {
+                            int resultCode = rs.next() ? rs.getInt(1) : -1;
+                            if (resultCode != 0) {
+                                LOGGER.warn("Unable to set full row logging on [{}] to 'false', result code: {}", tableName, resultCode);
+                            }
+                        });
+                    }
+                    catch (SQLException e) {
+                        throw new DebeziumException("Unable to set full row logging on [%s] to 'false', ".formatted(tableName), e);
+                    }
+                }
+            }
+        };
+    }
 }

@@ -33,12 +33,11 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest<InformixCon
     @BeforeEach
     public void before() throws SQLException {
         connection = TestHelper.testConnection();
-        TestHelper.dropTables(connection, "a", "b", "debezium_signal");
+        TestHelper.dropTables("a", "b", "debezium_signal");
         connection.execute(
                 "CREATE TABLE a (pk int not null, aa int, primary key (pk))",
                 "CREATE TABLE b (pk int not null, aa int, primary key (pk))",
                 "CREATE TABLE debezium_signal (id varchar(64), type varchar(32), data lvarchar(2048))");
-        initializeConnectorTestFramework();
         Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
         Print.disable();
     }
@@ -49,12 +48,12 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest<InformixCon
          * Since all DDL operations are forbidden during Informix CDC,
          * we have to ensure the connector is properly shut down before dropping tables.
          */
-        stopConnector();
+        stopConnector(TestHelper.getLoggingCleanupCallback("a", "b", "debezium_signal"));
         waitForConnectorShutdown(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
         assertConnectorNotRunning();
         if (connection != null) {
             connection.rollback();
-            TestHelper.dropTables(connection, "a", "b", "debezium_signal");
+            TestHelper.dropTables("a", "b", "debezium_signal");
             connection.close();
         }
     }
