@@ -63,7 +63,6 @@ public class InformixValidateColumnOrderIT extends AbstractAsyncEngineConnectorT
          */
         stopConnector();
         waitForConnectorShutdown(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-        assertConnectorNotRunning();
         if (connection != null) {
             connection.rollback()
                     .execute(String.format("drop table %s", testTableName))

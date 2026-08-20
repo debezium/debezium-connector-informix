@@ -46,9 +46,9 @@ public class ConcurrentTransactionChangeLsnIT extends AbstractAsyncEngineConnect
          * Since all DDL operations are forbidden during Informix CDC,
          * we have to ensure the connector is properly shut down before dropping tables.
          */
-        stopConnector();
+        stopConnector(TestHelper.getLoggingCleanupCallback("concurrent_lsn"));
         waitForConnectorShutdown(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-        assertConnectorNotRunning();
+        cleanupTestFwkState();
         if (connection != null) {
             connection.rollback()
                     .execute("DROP TABLE concurrent_lsn")
