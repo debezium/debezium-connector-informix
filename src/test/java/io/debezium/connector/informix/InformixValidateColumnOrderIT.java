@@ -52,9 +52,7 @@ public class InformixValidateColumnOrderIT extends AbstractAsyncEngineConnectorT
         connection.execute(String.format("drop table if exists %s", testTableName))
                 .execute(String.format("create table %s(%s)", testTableName, columns));
 
-        initializeConnectorTestFramework();
         Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
-        Print.enable();
     }
 
     @AfterEach

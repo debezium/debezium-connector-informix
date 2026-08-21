@@ -23,13 +23,9 @@ public class NotificationsIT extends AbstractNotificationsIT<InformixConnector> 
     @BeforeEach
     public void before() throws SQLException {
         connection = TestHelper.testConnection();
-
-        TestHelper.dropTable(connection, "tablea");
+        TestHelper.dropTable("tablea");
         connection.execute("CREATE TABLE tablea (id int not null, cola varchar(30), primary key(id))");
-
-        initializeConnectorTestFramework();
         Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
-        Print.enable();
     }
 
     @AfterEach
@@ -38,12 +34,12 @@ public class NotificationsIT extends AbstractNotificationsIT<InformixConnector> 
          * Since all DDL operations are forbidden during Informix CDC,
          * we have to ensure the connector is properly shut down before dropping tables.
          */
-        stopConnector();
+        stopConnector(TestHelper.getLoggingCleanupCallback("tablea"));
         waitForConnectorShutdown(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
         assertConnectorNotRunning();
         if (connection != null) {
             connection.rollback();
-            TestHelper.dropTable(connection, "tablea");
+            TestHelper.dropTable("tablea");
             connection.close();
         }
     }

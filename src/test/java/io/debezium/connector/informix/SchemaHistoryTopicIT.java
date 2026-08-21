@@ -39,17 +39,12 @@ public class SchemaHistoryTopicIT extends AbstractAsyncEngineConnectorTest {
     @BeforeEach
     public void before() throws SQLException {
         connection = TestHelper.testConnection();
+        TestHelper.dropTables("tablea", "tableb", "tablec");
         connection.execute(
-                "DROP TABLE IF EXISTS tablea",
-                "DROP TABLE IF EXISTS tableb",
-                "DROP TABLE IF EXISTS tablec",
                 "CREATE TABLE tablea (id int not null, cola varchar(30), primary key(id))",
                 "CREATE TABLE tableb (id int not null, colb varchar(30), primary key(id))",
                 "CREATE TABLE tablec (id int not null, colc varchar(30), primary key(id))");
-
-        initializeConnectorTestFramework();
         Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
-        Print.enable();
     }
 
     @AfterEach
@@ -58,16 +53,13 @@ public class SchemaHistoryTopicIT extends AbstractAsyncEngineConnectorTest {
          * Since all DDL operations are forbidden during Informix CDC,
          * we have to ensure the connector is properly shut down before dropping tables.
          */
-        stopConnector();
+        stopConnector(TestHelper.getLoggingCleanupCallback("tablea", "tableb", "tablec"));
         waitForConnectorShutdown(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
         assertConnectorNotRunning();
         if (connection != null) {
-            connection.rollback()
-                    .execute(
-                            "DROP TABLE tablea",
-                            "DROP TABLE tableb",
-                            "DROP TABLE tablec")
-                    .close();
+            connection.rollback();
+            TestHelper.dropTables("tablea", "tableb", "tablec");
+            connection.close();
         }
     }
 

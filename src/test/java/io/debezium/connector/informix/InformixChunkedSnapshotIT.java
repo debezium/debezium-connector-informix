@@ -6,11 +6,13 @@
 package io.debezium.connector.informix;
 
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 import io.debezium.config.Configuration;
@@ -19,8 +21,8 @@ import io.debezium.connector.informix.InformixConnectorConfig.SnapshotLockingMod
 import io.debezium.connector.informix.util.TestHelper;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.ConditionalFailExtension;
+import io.debezium.junit.Flaky;
 import io.debezium.pipeline.AbstractChunkedSnapshotTest;
-import io.debezium.util.Testing;
 
 /**
  * Informix-specific chunked table snapshot integration tests.
@@ -28,7 +30,7 @@ import io.debezium.util.Testing;
  * @author Chris Cranford
  */
 @ExtendWith(ConditionalFailExtension.class)
-@Disabled
+@Flaky("dbz#1220")
 public class InformixChunkedSnapshotIT extends AbstractChunkedSnapshotTest<InformixConnector> {
 
     private InformixConnection connection;
@@ -36,36 +38,23 @@ public class InformixChunkedSnapshotIT extends AbstractChunkedSnapshotTest<Infor
     @BeforeEach
     public void beforeEach() throws Exception {
         connection = TestHelper.testConnection();
-        TestHelper.dropTables(connection, "dbz1220a", "dbz1220b", "dbz1220c", "dbz1220d", "dbz1220");
-
-        initializeConnectorTestFramework();
-        Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
-
+        TestHelper.dropTables(getAllTableNames().toArray(new String[5]));
+        Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
         super.beforeEach();
     }
 
     @AfterEach
     public void afterEach() throws Exception {
-        stopConnector();
+        super.afterEach();
+        stopConnector(TestHelper.getLoggingCleanupCallback(getAllTableNames().toArray(new String[5])));
         waitForConnectorShutdown(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
         assertConnectorNotRunning();
 
         if (connection != null) {
             connection.rollback();
-            TestHelper.dropTables(connection, "dbz1220a", "dbz1220b", "dbz1220c", "dbz1220d", "dbz1220");
+            TestHelper.dropTables(getAllTableNames().toArray(new String[5]));
             connection.close();
         }
-        super.afterEach();
-    }
-
-    @Override
-    protected void populateSingleKeyTable(String tableName, int rowCount) throws SQLException {
-        super.populateSingleKeyTable(tableName, rowCount);
-    }
-
-    @Override
-    protected void populateCompositeKeyTable(String tableName, int rowCount) throws SQLException {
-        super.populateCompositeKeyTable(tableName, rowCount);
     }
 
     @Override
@@ -84,7 +73,9 @@ public class InformixChunkedSnapshotIT extends AbstractChunkedSnapshotTest<Infor
                 // todo: using default of repeatable_read blocks, despite locks being released?
                 .with(InformixConnectorConfig.SNAPSHOT_ISOLATION_MODE, SnapshotIsolationMode.READ_COMMITTED)
                 .with(InformixConnectorConfig.SNAPSHOT_LOCKING_MODE, SnapshotLockingMode.SHARE)
-                .with(InformixConnectorConfig.SNAPSHOT_LOCK_TIMEOUT_MS, 30_000L);
+                .with(InformixConnectorConfig.SNAPSHOT_LOCK_TIMEOUT_MS, 30_000L)
+                .with(InformixConnectorConfig.CDC_BUFFERSIZE, 0x10_0000)
+                .with(InformixConnectorConfig.CDC_MAX_RECORDS, 256);
     }
 
     @Override
@@ -95,6 +86,7 @@ public class InformixChunkedSnapshotIT extends AbstractChunkedSnapshotTest<Infor
     @Override
     protected void waitForStreamingRunning() throws InterruptedException {
         waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
+        waitForAvailableRecords();
     }
 
     @Override
@@ -107,19 +99,25 @@ public class InformixChunkedSnapshotIT extends AbstractChunkedSnapshotTest<Infor
         return TestHelper.TEST_DATABASE;
     }
 
+    protected List<String> getAllTableNames() {
+        List<String> tableNames = new ArrayList<>(getMultipleSingleKeyTableNames());
+        tableNames.add(getSingleKeyTableName());
+        return Collections.unmodifiableList(tableNames);
+    }
+
     @Override
     protected String getSingleKeyCollectionName() {
-        return "testdb.informix.dbz1220";
+        return getFullyQualifiedTableName(getSingleKeyTableName());
     }
 
     @Override
     protected String getCompositeKeyCollectionName() {
-        return getSingleKeyCollectionName();
+        return getFullyQualifiedTableName(getCompositeKeyTableName());
     }
 
     @Override
     protected String getMultipleSingleKeyCollectionNames() {
-        return String.join(",", List.of("testdb.informix.dbz1220a", "testdb.informix.dbz1220b", "testdb.informix.dbz1220c", "testdb.informix.dbz1220d"));
+        return getMultipleSingleKeyTableNames().stream().map(this::getFullyQualifiedTableName).collect(Collectors.joining(","));
     }
 
     @Override
@@ -150,7 +148,7 @@ public class InformixChunkedSnapshotIT extends AbstractChunkedSnapshotTest<Infor
 
     @Override
     protected String getTableTopicName(String tableName) {
-        return "testdb.informix.%s".formatted(tableName);
+        return getFullyQualifiedTableName(tableName);
     }
 
     @Override
@@ -158,4 +156,17 @@ public class InformixChunkedSnapshotIT extends AbstractChunkedSnapshotTest<Infor
         return "testdb.informix.%s".formatted(tableName);
     }
 
+    protected String quotedTableIdString(String tableName) {
+        return "testdb:informix.%s".formatted(tableName);
+    }
+
+    @Override
+    protected String getSnapshotSelectOverrideQuery() {
+        return "SELECT * FROM %s WHERE id = 0".formatted(quotedTableIdString(getSingleKeyTableName()));
+    }
+
+    @Override
+    protected int getMaximumEnqueuedRecordCount() {
+        return 30_000 * 5 + 1;
+    }
 }

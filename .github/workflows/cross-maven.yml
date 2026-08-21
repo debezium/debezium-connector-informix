@@ -88,7 +88,7 @@ jobs:
         if: steps.cache-check.outputs.cache-hit != 'true'
         run: >
           ./core/mvnw clean install -f core/pom.xml
-          -pl debezium-bom,debezium-connector-common,debezium-util,debezium-config,debezium-embedded,debezium-storage,debezium-connect-plugins
+          -pl debezium-bom,debezium-connector-common,debezium-util,debezium-config,debezium-embedded,debezium-storage/debezium-storage-kafka,debezium-storage/debezium-storage-file,debezium-connect-plugins,debezium-assembly-descriptors
           -am
           -DskipTests=true
           -DskipITs=true
