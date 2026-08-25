@@ -99,7 +99,7 @@ public class DbzCDCOperationRecord extends CDCOperationRecord {
                         }
                         else if (ifxObject instanceof IfxDecimal ifxDecimal) {
                             short encodedLength = (short) column.getColumnLength();
-                            int length = ((encodedLength >> 8 & 255) + (encodedLength & 255 & 1) + 3) / 2 - 1 + 1;
+                            int length = (encodedLength >> 8 & 255) + (encodedLength & 1) + 3 >> 1;
                             ifxDecimal.fromIfx(buffer, offset, length, encodedLength);
                             offset += length;
                         }
@@ -130,15 +130,20 @@ public class DbzCDCOperationRecord extends CDCOperationRecord {
                             offset += length + 2;
                         }
                         else if (ifxObject instanceof IfxVarChar ifxVarChar) {
-                            int length = buffer[offset] & 255;
+                            short length = (short) (buffer[offset] & 255);
                             ifxVarChar.fromIfx(buffer, offset, length);
                             offset += length + 1;
                         }
                         else if (ifxObject instanceof IfxSmBlob) {
-                            byte[] bytes = new byte[72];
-                            System.arraycopy(buffer, offset + 4, bytes, 0, 72);
-                            ifxObject = new IfxSmBlob((IfxConnection) connection, new IfxLocator(bytes, connection));
-                            offset += 76;
+                            byte[] lo_ptr = new byte[IfxLocator.IFX_LOCATOR_SIZE];
+                            // The locator starts with a non-zero byte. It is preceded by up to four(?) zero bytes that are stripped...
+                            int lo_offset = offset;
+                            for (int magic = offset; buffer[magic] == 0; magic++) {
+                                lo_offset = magic + 1;
+                            }
+                            System.arraycopy(buffer, lo_offset, lo_ptr, 0, IfxLocator.IFX_LOCATOR_SIZE);
+                            ifxObject = new IfxSmBlob((IfxConnection) connection, new IfxLocator(lo_ptr, connection));
+                            offset = lo_offset + IfxLocator.IFX_LOCATOR_SIZE;
                         }
                         else {
                             throw new StreamException("Unsupported column type: " + column);
