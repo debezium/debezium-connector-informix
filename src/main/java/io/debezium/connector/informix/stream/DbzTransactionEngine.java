@@ -51,7 +51,6 @@ public class DbzTransactionEngine implements TransactionEngine {
     private static final String PROCESSING_RECORD = "Processing {} record";
     private static final String MISSING_TRANSACTION_START_FOR_RECORD = "Missing transaction start for record: {}";
 
-    protected final Builder builder;
     protected final DbzCDCEngine engine;
     protected final ChangeEventSourceContext context;
     protected boolean returnEmptyTransactions;
@@ -65,7 +64,6 @@ public class DbzTransactionEngine implements TransactionEngine {
     }
 
     protected DbzTransactionEngine(Builder builder) {
-        this.builder = builder;
         this.engine = builder.engine;
         this.context = builder.context;
         this.returnEmptyTransactions = builder.returnEmptyTransactions;
@@ -179,7 +177,7 @@ public class DbzTransactionEngine implements TransactionEngine {
         /*
          * Build Map of Label_id to TableId.
          */
-        tableIdByLabelId = builder.getWatchedTables().stream()
+        tableIdByLabelId = engine.getWatchedTables().stream()
                 .collect(Collectors.toUnmodifiableMap(
                         t -> String.valueOf(t.getLabel()),
                         t -> TableId.parse("%s.%s.%s".formatted(t.getDatabaseName(), t.getNamespace(), t.getTableName()))));
@@ -202,10 +200,6 @@ public class DbzTransactionEngine implements TransactionEngine {
         final List<StreamRecord> records = new ArrayList<>();
         CDCBeginTransactionRecord beginRecord;
         StreamRecord closingRecord;
-    }
-
-    public Builder getBuilder() {
-        return builder;
     }
 
     public static class Builder {
