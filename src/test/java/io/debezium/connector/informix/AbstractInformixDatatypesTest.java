@@ -60,7 +60,7 @@ public abstract class AbstractInformixDatatypesTest extends AbstractAsyncEngineC
             "  id serial not null primary key, " +
             "  val_varchar varchar(255), " +
             "  val_nvarchar nvarchar(255), " +
-            "  val_lvarchar lvarchar(3000), " +
+            "  val_lvarchar lvarchar(2048), " +
             "  val_char char(3), " +
             "  val_nchar nchar(3)" +
             ");";
@@ -72,8 +72,8 @@ public abstract class AbstractInformixDatatypesTest extends AbstractAsyncEngineC
             "  val_f_10 float (10), " +
             "  val_r real, " +
             "  val_dp double precision, " +
-            "  val_numeric numeric(10, 6), " +
-            "  val_decimal decimal(10, 6), " +
+            "  val_numeric numeric(10,6), " +
+            "  val_decimal decimal(10,6), " +
             "  val_decimal_vs decimal(10), " +
             "  val_decimal_vs2 decimal" +
             ");";
@@ -112,10 +112,22 @@ public abstract class AbstractInformixDatatypesTest extends AbstractAsyncEngineC
             "  val_clob_long clob" +
             ");";
 
+    private static final String DDL_LVARCHAR = "CREATE TABLE lvarchar (" +
+            "  id serial not null primary key, " +
+            "  val_lvarchar1 lvarchar(2048), " +
+            "  val_clob1 clob, " +
+            "  val_lvarchar2 lvarchar(2048), " +
+            "  val_clob2 clob, " +
+            "  val_lvarchar3 lvarchar(2048), " +
+            "  val_clob3 clob, " +
+            "  val_lvarchar4 lvarchar(2048), " +
+            "  val_clob4 clob " +
+            ");";
+
     private static final List<SchemaAndValueField> EXPECTED_STRING = Arrays.asList(
-            new SchemaAndValueField("val_varchar", Schema.OPTIONAL_STRING_SCHEMA, StringUtils.repeat("vc", 127)),
-            new SchemaAndValueField("val_nvarchar", Schema.OPTIONAL_STRING_SCHEMA, StringUtils.repeat("nvc", 85)),
-            new SchemaAndValueField("val_lvarchar", Schema.OPTIONAL_STRING_SCHEMA, StringUtils.repeat("lvc", 1000)),
+            new SchemaAndValueField("val_varchar", Schema.OPTIONAL_STRING_SCHEMA, StringUtils.repeat("varchar", "-", 32)),
+            new SchemaAndValueField("val_nvarchar", Schema.OPTIONAL_STRING_SCHEMA, StringUtils.repeat("vårchär", "-", 32)),
+            new SchemaAndValueField("val_lvarchar", Schema.OPTIONAL_STRING_SCHEMA, StringUtils.repeat("lvarchar", "-", 227)),
             new SchemaAndValueField("val_char", Schema.OPTIONAL_STRING_SCHEMA, "c  "),
             new SchemaAndValueField("val_nchar", Schema.OPTIONAL_STRING_SCHEMA, "nc "));
 
@@ -255,13 +267,16 @@ public abstract class AbstractInformixDatatypesTest extends AbstractAsyncEngineC
             new SchemaAndValueField("val_clob_short", Schema.OPTIONAL_STRING_SCHEMA, part(CLOB_JSON, 1, 512)),
             new SchemaAndValueField("val_clob_long", Schema.OPTIONAL_STRING_SCHEMA, part(CLOB_JSON, 1, 5000)));
 
+    private static final List<SchemaAndValueField> EXPECTED_LVARCHAR = List.of();
+
     private static final String[] ALL_TABLES = {
             "testdb:informix.type_string",
             "testdb:informix.type_fp",
             "testdb:informix.type_int",
             "testdb:informix.type_bool",
             "testdb:informix.type_time",
-            "testdb:informix.type_clob"
+            "testdb:informix.type_clob",
+            "testdb:informix.lvarchar"
     };
 
     private static final String[] ALL_DDLS = {
@@ -270,7 +285,8 @@ public abstract class AbstractInformixDatatypesTest extends AbstractAsyncEngineC
             DDL_INT,
             DDL_BOOL,
             DDL_TIME,
-            DDL_CLOB
+            DDL_CLOB,
+            DDL_LVARCHAR
     };
 
     private static InformixConnection connection;
@@ -801,11 +817,49 @@ public abstract class AbstractInformixDatatypesTest extends AbstractAsyncEngineC
         }
     }
 
+    @Test
+    public void testLvarchar() throws Exception {
+        init("testdb.informix.lvarchar");
+
+        Print.enable();
+
+        int expectedRecordCount = 0;
+
+        if (insertRecordsDuringTest()) {
+            consumeRecord();
+            waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
+            insertLvarchar();
+        }
+        waitForAvailableRecords(waitTimeForRecords(), TimeUnit.SECONDS);
+
+        expectedRecordCount++;
+
+        SourceRecords records = consumeRecordsByTopic(expectedRecordCount);
+
+        List<SourceRecord> testTableRecords = records.recordsForTopic("testdb.informix.lvarchar");
+        assertThat(testTableRecords).hasSize(expectedRecordCount);
+        SourceRecord record = testTableRecords.get(0);
+
+        VerifyRecord.isValid(record);
+
+        // insert
+        if (insertRecordsDuringTest()) {
+            VerifyRecord.isValidInsert(record, true);
+        }
+        else {
+            VerifyRecord.isValidRead(record);
+        }
+
+        Struct after = (Struct) ((Struct) record.value()).get("after");
+        assertRecord(after, EXPECTED_LVARCHAR);
+
+    }
+
     protected static void insertStringTypes() throws SQLException {
         connection.execute("INSERT INTO type_string VALUES (0, '%s', '%s', '%s', 'c', 'nc');"
-                .formatted(StringUtils.repeat("vc", 127),
-                        StringUtils.repeat("nvc", 85),
-                        StringUtils.repeat("lvc", 1000)));
+                .formatted(StringUtils.repeat("varchar", "-", 32),
+                        StringUtils.repeat("vårchär", "-", 32),
+                        StringUtils.repeat("lvarchar", "-", 227)));
     }
 
     protected static void insertFpTypes() throws SQLException {
@@ -861,6 +915,27 @@ public abstract class AbstractInformixDatatypesTest extends AbstractAsyncEngineC
                     ps.setClob(2, clob1);
                     ps.setClob(3, clob2);
                 });
+        connection.commit();
+    }
+
+    protected static void insertLvarchar() throws SQLException {
+        Clob clob1 = connection.connection().createClob();
+        clob1.setString(1, part(CLOB_JSON, 0, 512));
+
+        Clob clob2 = connection.connection().createClob();
+        clob2.setString(1, part(CLOB_JSON, 0, 5000));
+
+        connection.prepareUpdate("INSERT INTO lvarchar VALUES (0, ?, ?, ?, ?, ?, ?, ?, ?)", ps -> {
+            short s = 0;
+            ps.setString(++s, s + StringUtils.repeat(" LVARCHAR", 227));
+            ps.setString(++s, CLOB_TXT);
+            ps.setString(++s, s + StringUtils.repeat(" LVARCHAR", 227));
+            ps.setClob(++s, clob1);
+            ps.setString(++s, s + StringUtils.repeat(" LVARCHAR", 227));
+            ps.setClob(++s, clob2);
+            ps.setString(++s, s + StringUtils.repeat(" LVARCHAR", 227));
+            ps.setString(++s, CLOB_TXT_UPDATE);
+        });
         connection.commit();
     }
 

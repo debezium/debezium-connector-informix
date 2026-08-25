@@ -28,6 +28,7 @@ public class SnapshotDatatypesIT extends AbstractInformixDatatypesTest {
         insertBoolTypes();
         insertTimeTypes();
         insertClobTypes();
+        insertLvarchar();
     }
 
     @Override
