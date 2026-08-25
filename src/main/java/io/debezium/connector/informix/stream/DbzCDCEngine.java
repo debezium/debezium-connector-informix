@@ -28,6 +28,7 @@ import com.informix.jdbc.IfxSmartBlob;
 import com.informix.jdbc.stream.api.StreamEngine;
 import com.informix.jdbc.stream.api.StreamRecord;
 import com.informix.jdbc.stream.cdc.CDCEngine.IfmxWatchedTable;
+import com.informix.jdbc.stream.cdc.CDCRecordBuilder;
 import com.informix.jdbc.stream.impl.StreamException;
 import com.informix.lang.Messages;
 
@@ -37,15 +38,13 @@ public class DbzCDCEngine implements StreamEngine {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DbzCDCEngine.class);
 
-    protected final Builder builder;
-    protected final DataSource dataSource;
     protected final Connection connection;
     protected final int maxRecords;
     protected final long position;
     protected final int timeout;
     protected final List<IfmxWatchedTable> watchedTables;
     protected final boolean stopLoggingOnClose;
-    protected final DbzCDCRecordBuilder recordBuilder;
+    protected final CDCRecordBuilder recordBuilder;
     protected final byte[] buffer;
     protected int sessionId;
     protected IfxSmartBlob smartBlob;
@@ -57,15 +56,13 @@ public class DbzCDCEngine implements StreamEngine {
     }
 
     protected DbzCDCEngine(Builder builder) throws SQLException {
-        this.builder = builder;
-        this.dataSource = builder.dataSource;
-        this.connection = this.dataSource.getConnection();
+        this.connection = builder.dataSource.getConnection();
         this.maxRecords = builder.maxRecords;
         this.position = builder.position;
         this.timeout = builder.timeout;
         this.watchedTables = builder.watchedTables;
         this.stopLoggingOnClose = builder.stopLoggingOnClose;
-        this.recordBuilder = new DbzCDCRecordBuilder(dataSource.getConnection());
+        this.recordBuilder = new DbzCDCRecordBuilder(builder.dataSource.getConnection());
         this.buffer = new byte[builder.bufferSize];
         this.bytesPending = 0;
         this.closed = false;
@@ -150,9 +147,9 @@ public class DbzCDCEngine implements StreamEngine {
     public void init() throws StreamException {
         openSession();
 
-        this.smartBlob = new IfxSmartBlob(this.connection);
+        smartBlob = new IfxSmartBlob(connection);
 
-        for (IfmxWatchedTable table : this.watchedTables) {
+        for (IfmxWatchedTable table : watchedTables) {
             watchTable(table);
         }
 
@@ -160,21 +157,21 @@ public class DbzCDCEngine implements StreamEngine {
     }
 
     private void openSession() throws StreamException {
-        try (CallableStatement cs = this.connection.prepareCall("select env_value from sysmaster:sysenv where env_name = 'INFORMIXSERVER'");
-                PreparedStatement ps = this.connection.prepareStatement("execute function informix.cdc_opensess(?,?,?,?,?,?)")) {
+        try (CallableStatement cs = connection.prepareCall("select env_value from sysmaster:sysenv where env_name = 'INFORMIXSERVER'");
+                PreparedStatement ps = connection.prepareStatement("execute function informix.cdc_opensess(?,?,?,?,?,?)")) {
             ResultSet rs = cs.executeQuery();
             String serverName = rs.next() ? rs.getString(1).trim() : "";
             LOGGER.debug("Server name detected: {}", serverName);
             ps.setString(1, serverName);
             ps.setInt(2, 0);
-            ps.setInt(3, this.timeout);
-            ps.setInt(4, this.maxRecords);
+            ps.setInt(3, timeout);
+            ps.setInt(4, maxRecords);
             ps.setInt(5, 1);
             ps.setInt(6, 1);
             rs = ps.executeQuery();
-            this.sessionId = rs.next() ? rs.getInt(1) : -1;
-            if (this.sessionId < 0) {
-                throw new StreamException("Unable to create CDC session: %s".formatted(Messages.getMessage(this.sessionId)), this.sessionId);
+            sessionId = rs.next() ? rs.getInt(1) : -1;
+            if (sessionId < 0) {
+                throw new StreamException("Unable to create CDC session: %s".formatted(Messages.getMessage(sessionId)), sessionId);
             }
         }
         catch (SQLException e) {
@@ -190,7 +187,7 @@ public class DbzCDCEngine implements StreamEngine {
 
     private void setFullRowLogging(String tableName, boolean enable) throws StreamException {
         LOGGER.debug("Setting full row logging on [{}] to '{}'", tableName, enable);
-        try (PreparedStatement ps = this.connection.prepareStatement("execute function informix.cdc_set_fullrowlogging(?,?)")) {
+        try (PreparedStatement ps = connection.prepareStatement("execute function informix.cdc_set_fullrowlogging(?,?)")) {
             ps.setString(1, tableName);
             ps.setInt(2, enable ? 1 : 0);
             ResultSet rs = ps.executeQuery();
@@ -205,8 +202,8 @@ public class DbzCDCEngine implements StreamEngine {
     }
 
     private void startCapture(IfmxWatchedTable table) throws StreamException {
-        try (CallableStatement cs = this.connection.prepareCall("SELECT FIRST 1 * FROM %s".formatted(table.getDesciptorString()));
-                PreparedStatement ps = this.connection.prepareStatement("execute function informix.cdc_startcapture(?,?,?,?,?)")) {
+        try (CallableStatement cs = connection.prepareCall("SELECT FIRST 1 * FROM %s".formatted(table.getDesciptorString()));
+                PreparedStatement ps = connection.prepareStatement("execute function informix.cdc_startcapture(?,?,?,?,?)")) {
 
             if (table.getColumnDescriptorString().equals("*")) {
                 LOGGER.debug("Starting column lookup for [{}]", table.getDesciptorString());
@@ -221,7 +218,7 @@ public class DbzCDCEngine implements StreamEngine {
             }
 
             LOGGER.debug("Starting capture on [{}]", table);
-            ps.setInt(1, this.sessionId);
+            ps.setInt(1, sessionId);
             ps.setLong(2, 0L);
             ps.setString(3, table.getDesciptorString());
             ps.setString(4, table.getColumnDescriptorString());
@@ -239,9 +236,9 @@ public class DbzCDCEngine implements StreamEngine {
 
     private void activateSession() throws StreamException {
         LOGGER.debug("Activating CDC session");
-        try (PreparedStatement ps = this.connection.prepareStatement("execute function informix.cdc_activatesess(?,?)")) {
-            ps.setInt(1, this.sessionId);
-            ps.setLong(2, this.position);
+        try (PreparedStatement ps = connection.prepareStatement("execute function informix.cdc_activatesess(?,?)")) {
+            ps.setInt(1, sessionId);
+            ps.setLong(2, position);
             ResultSet rs = ps.executeQuery();
             int resultCode = rs.next() ? rs.getInt(1) : -1;
             if (resultCode != 0) {
@@ -256,15 +253,15 @@ public class DbzCDCEngine implements StreamEngine {
     private void unwatchTable(IfmxWatchedTable table) throws StreamException {
         LOGGER.debug("Ending watch on table [{}]", table);
         endCapture(table);
-        if (this.stopLoggingOnClose) {
+        if (stopLoggingOnClose) {
             setFullRowLogging(table.getDesciptorString(), false);
         }
     }
 
     private void endCapture(IfmxWatchedTable table) throws StreamException {
         LOGGER.debug("Ending capture on [{}]", table);
-        try (PreparedStatement ps = this.connection.prepareStatement("execute function informix.cdc_endcapture(?,?,?)")) {
-            ps.setInt(1, this.sessionId);
+        try (PreparedStatement ps = connection.prepareStatement("execute function informix.cdc_endcapture(?,?,?)")) {
+            ps.setInt(1, sessionId);
             ps.setLong(2, 0L);
             ps.setString(3, table.getDesciptorString());
             ResultSet rs = ps.executeQuery();
@@ -280,8 +277,8 @@ public class DbzCDCEngine implements StreamEngine {
 
     private void closeSession() throws StreamException {
         LOGGER.debug("Closing CDC session");
-        try (PreparedStatement ps = this.connection.prepareStatement("execute function informix.cdc_closesess(?)")) {
-            ps.setInt(1, this.sessionId);
+        try (PreparedStatement ps = connection.prepareStatement("execute function informix.cdc_closesess(?)")) {
+            ps.setInt(1, sessionId);
             ResultSet rs = ps.executeQuery();
             int resultCode = rs.next() ? rs.getInt(1) : -1;
             if (resultCode != 0) {
@@ -295,11 +292,11 @@ public class DbzCDCEngine implements StreamEngine {
 
     @Override
     public void close() {
-        if (!this.closed) {
+        if (!closed) {
             LOGGER.debug("Closing down CDC engine");
             StreamException ex = null;
             try {
-                for (IfmxWatchedTable capturedTable : this.watchedTables) {
+                for (IfmxWatchedTable capturedTable : watchedTables) {
                     unwatchTable(capturedTable);
                 }
                 closeSession();
@@ -309,7 +306,7 @@ public class DbzCDCEngine implements StreamEngine {
             }
             finally {
                 try {
-                    this.connection.close();
+                    connection.close();
                 }
                 catch (SQLException e) {
                     StreamException se = new StreamException("Could not close main connection", e);
@@ -321,7 +318,7 @@ public class DbzCDCEngine implements StreamEngine {
                     }
                 }
                 try {
-                    this.recordBuilder.close();
+                    recordBuilder.close();
                 }
                 catch (SQLException e) {
                     StreamException se = new StreamException("Could not close record builder", e);
@@ -332,7 +329,7 @@ public class DbzCDCEngine implements StreamEngine {
                         ex.addSuppressed(se);
                     }
                 }
-                this.closed = true;
+                closed = true;
             }
             if (ex != null) {
                 throw new DebeziumException("Exception caught when closing CDC engine ", ex);
@@ -349,25 +346,29 @@ public class DbzCDCEngine implements StreamEngine {
      */
     public void abort() {
         LOGGER.warn("Aborting CDC engine: forcing the streaming connection closed to interrupt a stalled read");
-        this.closed = true; // skip the graceful close(); it would issue SQL on a dead connection and hang
+        closed = true; // skip the graceful close(); it would issue SQL on a dead connection and hang
         try {
-            this.connection.abort(Runnable::run);
+            connection.abort(Runnable::run);
         }
         catch (Throwable t) {
             LOGGER.debug("Connection.abort() unsupported or failed; falling back to Connection.close()", t);
             try {
-                this.connection.close();
+                connection.close();
             }
             catch (SQLException e) {
                 LOGGER.debug("Fallback close of streaming connection failed", e);
             }
         }
         try {
-            this.recordBuilder.close();
+            recordBuilder.close();
         }
         catch (Throwable t) {
             LOGGER.debug("Closing record builder during abort failed", t);
         }
+    }
+
+    public List<IfmxWatchedTable> getWatchedTables() {
+        return watchedTables;
     }
 
     static class ByteBufferOutputStream extends OutputStream {
@@ -392,10 +393,6 @@ public class DbzCDCEngine implements StreamEngine {
         public void write(byte @NonNull [] b, int off, int len) {
             buffer.put(b, off, len);
         }
-    }
-
-    public Builder getBuilder() {
-        return builder;
     }
 
     public static class Builder {
@@ -453,15 +450,15 @@ public class DbzCDCEngine implements StreamEngine {
         }
 
         public Builder watchTable(String canonicalTableName, String... columns) {
-            return this.watchTable(IfmxTableDescriptor.parse(canonicalTableName), columns);
+            return watchTable(IfmxTableDescriptor.parse(canonicalTableName), columns);
         }
 
         public Builder watchTable(IfmxTableDescriptor desc, String... columns) {
-            return this.watchTable((new IfmxWatchedTable(desc)).columns(columns));
+            return watchTable((new IfmxWatchedTable(desc)).columns(columns));
         }
 
         public Builder watchTable(IfmxWatchedTable table) {
-            this.watchedTables.add(table);
+            watchedTables.add(table);
             return this;
         }
 
@@ -470,7 +467,7 @@ public class DbzCDCEngine implements StreamEngine {
         }
 
         public Builder stopLoggingOnClose(boolean stopOnClose) {
-            this.stopLoggingOnClose = stopOnClose;
+            stopLoggingOnClose = stopOnClose;
             return this;
         }
 
