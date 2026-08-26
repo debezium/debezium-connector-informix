@@ -162,8 +162,8 @@ public class TestHelper {
     }
 
     public static void forceLoggingOff(String... tableNames) {
-        for (String tableName : tableNames) {
-            try (JdbcConnection connection = testConnection()) {
+        try (JdbcConnection connection = testConnection()) {
+            for (String tableName : tableNames) {
                 LOGGER.debug("Setting full row logging on [{}] to 'false'", tableName);
                 connection.prepareQuery("execute function syscdcv1:informix.cdc_set_fullrowlogging(?,?)", ps -> {
                     ps.setString(1, "testdb:informix.%s".formatted(tableName));
@@ -171,13 +171,13 @@ public class TestHelper {
                 }, rs -> {
                     int resultCode = rs.next() ? rs.getInt(1) : -1;
                     if (resultCode != 0) {
-                        LOGGER.warn("Unable to set full row logging on [{}] to 'false', result code: {}", tableName, resultCode);
+                        LOGGER.debug("Unable to set full row logging on [{}] to 'false', result code: {}", tableName, resultCode);
                     }
                 });
             }
-            catch (SQLException e) {
-                throw new DebeziumException("Unable to set full row logging on [%s] to 'false', ".formatted(tableName), e);
-            }
+        }
+        catch (SQLException e) {
+            throw new DebeziumException("Unable to set full row logging to 'false' ", e);
         }
     }
 }

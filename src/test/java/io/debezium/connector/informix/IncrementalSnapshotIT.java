@@ -52,7 +52,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Infor
          */
         stopConnector(TestHelper.getLoggingCleanupCallback("a", "b", "c", "debezium_signal"));
         waitForConnectorShutdown(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-        cleanupTestFwkState();
+
         if (connection != null) {
             connection.rollback();
             TestHelper.dropTables("a", "b", "c", "debezium_signal");

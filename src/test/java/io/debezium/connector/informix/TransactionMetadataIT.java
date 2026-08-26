@@ -58,7 +58,7 @@ public class TransactionMetadataIT extends AbstractAsyncEngineConnectorTest {
          */
         stopConnector(TestHelper.getLoggingCleanupCallback("tablea", "tableb"));
         waitForConnectorShutdown(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-        cleanupTestFwkState();
+
         if (connection != null) {
             connection.rollback();
             TestHelper.dropTables("tablea", "tableb");

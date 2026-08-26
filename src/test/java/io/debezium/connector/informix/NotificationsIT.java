@@ -36,7 +36,7 @@ public class NotificationsIT extends AbstractNotificationsIT<InformixConnector> 
          */
         stopConnector(TestHelper.getLoggingCleanupCallback("tablea"));
         waitForConnectorShutdown(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-        cleanupTestFwkState();
+
         if (connection != null) {
             connection.rollback();
             TestHelper.dropTable("tablea");

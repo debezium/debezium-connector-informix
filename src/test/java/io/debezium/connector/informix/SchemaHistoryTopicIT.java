@@ -55,7 +55,7 @@ public class SchemaHistoryTopicIT extends AbstractAsyncEngineConnectorTest {
          */
         stopConnector(TestHelper.getLoggingCleanupCallback("tablea", "tableb", "tablec"));
         waitForConnectorShutdown(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-        cleanupTestFwkState();
+
         if (connection != null) {
             connection.rollback();
             TestHelper.dropTables("tablea", "tableb", "tablec");
