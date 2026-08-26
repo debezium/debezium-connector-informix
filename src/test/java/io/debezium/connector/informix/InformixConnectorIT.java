@@ -99,7 +99,7 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
          */
         stopConnector(TestHelper.getLoggingCleanupCallback(ALL_TABLES));
         waitForConnectorShutdown(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-        cleanupTestFwkState();
+
         if (connection != null) {
             connection.rollback();
             TestHelper.dropTables(ALL_TABLES);

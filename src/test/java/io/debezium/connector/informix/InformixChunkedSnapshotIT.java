@@ -9,6 +9,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.AfterEach;
@@ -38,7 +39,6 @@ public class InformixChunkedSnapshotIT extends AbstractChunkedSnapshotTest<Infor
     @BeforeEach
     public void beforeEach() throws Exception {
         connection = TestHelper.testConnection();
-        TestHelper.forceLoggingOff(getAllTableNamesAsArray());
         TestHelper.dropTables(getAllTableNamesAsArray());
         Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
         super.beforeEach();
@@ -47,9 +47,8 @@ public class InformixChunkedSnapshotIT extends AbstractChunkedSnapshotTest<Infor
     @AfterEach
     public void afterEach() throws Exception {
         super.afterEach();
-        stopConnector(TestHelper.getLoggingCleanupCallback(getAllTableNamesAsArray()));
+        stopConnector(b -> TestHelper.forceLoggingOff(getAllTableNamesAsArray()));
         waitForConnectorShutdown(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-        cleanupTestFwkState();
 
         if (connection != null) {
             connection.rollback();
@@ -76,6 +75,7 @@ public class InformixChunkedSnapshotIT extends AbstractChunkedSnapshotTest<Infor
                 .with(InformixConnectorConfig.SNAPSHOT_LOCKING_MODE, SnapshotLockingMode.SHARE)
                 .with(InformixConnectorConfig.SNAPSHOT_LOCK_TIMEOUT_MS, 30_000L)
                 .with(InformixConnectorConfig.CDC_BUFFERSIZE, 0x10_0000)
+                .with(InformixConnectorConfig.CDC_TIMEOUT, 1)
                 .with(InformixConnectorConfig.CDC_MAX_RECORDS, 256);
     }
 
@@ -87,7 +87,7 @@ public class InformixChunkedSnapshotIT extends AbstractChunkedSnapshotTest<Infor
     @Override
     protected void waitForStreamingRunning() throws InterruptedException {
         waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-        waitForAvailableRecords();
+        waitForAvailableRecords(waitTimeForRecords(), TimeUnit.MINUTES);
     }
 
     @Override

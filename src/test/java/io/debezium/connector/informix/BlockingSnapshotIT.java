@@ -47,7 +47,7 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest<InformixCon
          */
         stopConnector(TestHelper.getLoggingCleanupCallback("a", "b", "debezium_signal"));
         waitForConnectorShutdown(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-        cleanupTestFwkState();
+
         if (connection != null) {
             connection.rollback();
             TestHelper.dropTables("a", "b", "debezium_signal");

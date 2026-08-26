@@ -56,7 +56,6 @@ public class InformixReselectColumnsProcessorIT extends AbstractReselectProcesso
     public void afterEach() throws Exception {
         stopConnector(TestHelper.getLoggingCleanupCallback("dbz4321", "dbz4321_byte", "dbz4321_text"));
         waitForConnectorShutdown(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-        cleanupTestFwkState();
         dropTable();
     }
 

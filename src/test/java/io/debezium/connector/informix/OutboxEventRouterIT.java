@@ -51,7 +51,7 @@ public class OutboxEventRouterIT extends AbstractEventRouterTest<InformixConnect
     public void afterEach() throws Exception {
         stopConnector(TestHelper.getLoggingCleanupCallback(tableName()));
         waitForConnectorShutdown(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-        cleanupTestFwkState();
+
         if (connection != null) {
             connection.rollback();
             TestHelper.dropTable(tableName());

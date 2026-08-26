@@ -48,7 +48,7 @@ public class ConcurrentTransactionChangeLsnIT extends AbstractAsyncEngineConnect
          */
         stopConnector(TestHelper.getLoggingCleanupCallback("concurrent_lsn"));
         waitForConnectorShutdown(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-        cleanupTestFwkState();
+
         if (connection != null) {
             connection.rollback()
                     .execute("DROP TABLE concurrent_lsn")
