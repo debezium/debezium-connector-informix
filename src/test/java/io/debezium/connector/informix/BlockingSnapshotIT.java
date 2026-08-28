@@ -156,4 +156,11 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest<InformixCon
     @Override
     public void readsSchemaOnlyForSignaledTables() {
     }
+
+    @Test
+    @Disabled("Informix builds its column filter directly from RelationalDatabaseConnectorConfig.getColumnFilter(), shadowing "
+            + "the one RelationalDatabaseSchema.overrideColumnFilter() computes for dbz#2280; hence this test is not applicable.")
+    @Override
+    public void blockingSnapshotShouldRunWhenColumnIncludeListExcludesSignalTable() throws Exception {
+    }
 }
