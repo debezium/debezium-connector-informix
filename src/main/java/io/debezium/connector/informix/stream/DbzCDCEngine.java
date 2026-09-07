@@ -297,7 +297,12 @@ public class DbzCDCEngine implements StreamEngine {
             StreamException ex = null;
             try {
                 for (IfmxWatchedTable capturedTable : watchedTables) {
-                    unwatchTable(capturedTable);
+                    try {
+                        unwatchTable(capturedTable);
+                    }
+                    catch (StreamException se) {
+                        LOGGER.warn("Failed to unwatch table [{}]", capturedTable.getDesciptorString());
+                    }
                 }
                 closeSession();
             }
