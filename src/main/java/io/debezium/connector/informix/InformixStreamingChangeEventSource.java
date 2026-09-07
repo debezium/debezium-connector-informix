@@ -147,6 +147,8 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
                     return;
                 }
 
+                dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
+
                 switch (streamRecord.getType()) {
                     case TRANSACTION_GROUP -> {
                         DbzStreamTransactionRecord transactionRecord = (DbzStreamTransactionRecord) streamRecord;
