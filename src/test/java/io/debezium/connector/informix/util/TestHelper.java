@@ -61,6 +61,11 @@ public class TestHelper {
 
     public static final String IFX_LOCK_MODE_WAIT = "IFX_LOCK_MODE_WAIT";
 
+    // Lower-cased fragment of the Informix error raised when dropping a table still registered for CDC.
+    private static final String DEFINED_FOR_REPLICATION_MESSAGE = "defined for replication";
+    private static final long DROP_RETRY_TIMEOUT_MS = 30_000;
+    private static final long DROP_RETRY_INTERVAL_MS = 500;
+
     public static JdbcConfiguration.Builder adminJdbcConfig() {
         return JdbcConfiguration.copy(Configuration.fromSystemProperties(ConfigurationNames.DATABASE_CONFIG_PREFIX))
                 .withDefault(JdbcConfiguration.DATABASE, TEST_DATABASE)
@@ -130,8 +135,44 @@ public class TestHelper {
 
     public static void dropTables(InformixConnection connection, String... tables) throws SQLException {
         for (String table : tables) {
-            dropTable(connection, table);
+            dropTableReleasingReplication(connection, table);
         }
+    }
+
+    /**
+     * Drops a table, first releasing any registration for replication as such tables cannot be dropped.
+     */
+    private static void dropTableReleasingReplication(InformixConnection connection, String table) throws SQLException {
+        final long deadline = System.currentTimeMillis() + DROP_RETRY_TIMEOUT_MS;
+        while (true) {
+            forceLoggingOff(table);
+            try {
+                dropTable(connection, table);
+                return;
+            }
+            catch (SQLException e) {
+                if (!isDefinedForReplication(e) || System.currentTimeMillis() >= deadline) {
+                    throw e;
+                }
+                LOGGER.warn("Table [{}] is still defined for replication; retrying drop in {} ms", table, DROP_RETRY_INTERVAL_MS);
+                try {
+                    Thread.sleep(DROP_RETRY_INTERVAL_MS);
+                }
+                catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw e;
+                }
+            }
+        }
+    }
+
+    private static boolean isDefinedForReplication(SQLException e) {
+        for (Throwable t = e; t != null; t = t.getCause()) {
+            if (t.getMessage() != null && t.getMessage().toLowerCase().contains(DEFINED_FOR_REPLICATION_MESSAGE)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
