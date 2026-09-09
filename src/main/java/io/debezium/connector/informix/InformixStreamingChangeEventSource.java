@@ -147,8 +147,6 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
                     return;
                 }
 
-                dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
-
                 switch (streamRecord.getType()) {
                     case TRANSACTION_GROUP -> {
                         DbzStreamTransactionRecord transactionRecord = (DbzStreamTransactionRecord) streamRecord;
@@ -179,6 +177,8 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
                     case ERROR -> LOGGER.error(RECEIVED_GENERIC_RECORD, streamRecord, 0);
                     default -> LOGGER.warn(RECEIVED_UNKNOWN_RECORD_TYPE, streamRecord, 0);
                 }
+
+                dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
             });
 
             /*
