@@ -169,6 +169,8 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
                     case ERROR -> LOGGER.error(RECEIVED_GENERIC_RECORD, streamRecord, 0);
                     default -> LOGGER.warn(RECEIVED_UNKNOWN_RECORD_TYPE, streamRecord, 0);
                 }
+
+                dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
             });
 
             /*
