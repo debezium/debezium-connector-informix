@@ -815,7 +815,7 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
 
             // Wait for snapshot to be completed
             waitForSnapshotToBeCompleted(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-            consumeRecordsByTopic(1);
+            assertRestartRecord(consumeRecordsByTopic(1), 1, true);
 
             stopConnector();
             assertConnectorNotRunning();
@@ -839,18 +839,19 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
         // Wait for snapshot to be completed or a first streaming message delivered
         if (restartJustAfterSnapshot) {
             waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
-            waitForAvailableRecords();
+            assertThat(waitForAvailableRecords()).as("Streaming record for tablea id=-1 after restart is available").isTrue();
         }
         else {
             waitForSnapshotToBeCompleted(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
         }
-        consumeRecordsByTopic(1);
+        assertRestartRecord(consumeRecordsByTopic(1), restartJustAfterSnapshot ? -1 : 1, !restartJustAfterSnapshot);
 
         if (afterStreaming) {
             waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
             connection.execute("INSERT INTO tablea VALUES(-2, '-a')");
             waitForAvailableRecords(waitTimeForRecords(), TimeUnit.SECONDS);
             final SourceRecords records = consumeRecordsByTopic(1);
+            assertRestartRecord(records, -2, false);
             final List<SchemaAndValueField> expectedRow = List.of(
                     new SchemaAndValueField("id", Schema.INT32_SCHEMA, -2),
                     new SchemaAndValueField("cola", Schema.OPTIONAL_STRING_SCHEMA, "-a"));
@@ -869,6 +870,8 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
 
         List<SourceRecord> records = consumeRecordsByTopic(RECORDS_PER_TABLE).allRecordsInOrder();
 
+        waitForConnectorShutdown(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
+        waitForEngineShutdown();
         assertThat(records).hasSize(RECORDS_PER_TABLE);
         SourceRecord lastRecordForOffset = records.get(RECORDS_PER_TABLE - 1);
         Struct value = (Struct) lastRecordForOffset.value();
@@ -877,9 +880,8 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
                 new SchemaAndValueField("colb", Schema.OPTIONAL_STRING_SCHEMA, "b"));
         assertRecord((Struct) value.get(FieldName.AFTER), expectedLastRow);
 
-        waitForConnectorShutdown(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
         assertConnectorNotRunning();
-        cleanupTestFwkState();
+        stopConnector();
 
         start(InformixConnector.class, config);
         assertConnectorIsRunning();
@@ -950,6 +952,20 @@ public class InformixConnectorIT extends AbstractAsyncEngineConnectorTest {
         }
 
         assertNoRecordsToConsume();
+    }
+
+    static void assertRestartRecord(SourceRecords records, int expectedId, boolean snapshot) {
+        final List<SourceRecord> received = records.allRecordsInOrder();
+        assertThat(received).as("Initial record for tablea id=%s before testing transaction restart", expectedId).hasSize(1);
+        final SourceRecord record = received.get(0);
+        assertThat(record.topic()).isEqualTo("testdb.informix.tablea");
+        if (snapshot) {
+            VerifyRecord.isValidRead(record, "id", expectedId);
+        }
+        else {
+            VerifyRecord.isValidInsert(record, "id", expectedId);
+        }
+        assertThat(((Struct) record.value()).getStruct(FieldName.AFTER).getInt32("id")).isEqualTo(expectedId);
     }
 
     @Test
