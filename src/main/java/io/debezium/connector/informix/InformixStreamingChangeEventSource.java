@@ -10,9 +10,12 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
@@ -44,6 +47,7 @@ import io.debezium.pipeline.monitor.OffsetActivityMonitorService;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.relational.Column;
 import io.debezium.relational.TableId;
+import io.debezium.relational.Tables;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.util.Clock;
 
@@ -107,13 +111,25 @@ public class InformixStreamingChangeEventSource implements StreamingChangeEventS
         // Need to refresh schema before CDCEngine is started, to capture columns added in off-line schema evolution
         schema.tableIds().stream().map(TableId::schema).distinct().forEach(schemaName -> {
             try {
+                // readSchema() only sees one owner, so run it on a copy to avoid dropping the tables of other owners
+                Tables ownerTables = schema.tables().subset(tableId -> Objects.equals(schemaName, tableId.schema()));
+                Set<TableId> tableIdsBefore = new HashSet<>(ownerTables.tableIds());
+
                 metadataConnection.readSchema(
-                        schema.tables(),
+                        ownerTables,
                         null,
                         schemaName,
                         schema.getTableFilter(),
                         null,
                         true);
+
+                tableIdsBefore.stream()
+                        .filter(tableId -> ownerTables.forTable(tableId) == null)
+                        .forEach(schema.tables()::removeTable);
+                ownerTables.tableIds().stream()
+                        .map(ownerTables::forTable)
+                        .filter(table -> !table.equals(schema.tables().forTable(table.id())))
+                        .forEach(schema.tables()::overwriteTable);
             }
             catch (SQLException e) {
                 LOGGER.error("Caught SQLException", e);
