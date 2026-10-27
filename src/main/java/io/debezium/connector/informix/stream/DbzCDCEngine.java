@@ -18,8 +18,6 @@ import java.util.List;
 
 import javax.sql.DataSource;
 
-import org.jspecify.annotations.NonNull;
-import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -113,7 +111,7 @@ public class DbzCDCEngine implements StreamEngine {
         bytesPending = byteBuffer.position();
     }
 
-    protected @Nullable StreamRecord buildRecord(ByteBuffer byteBuffer) throws SQLException, StreamException {
+    protected StreamRecord buildRecord(ByteBuffer byteBuffer) throws SQLException, StreamException {
         byteBuffer.mark();
         int headerSize = byteBuffer.getInt();
         int payloadSize = byteBuffer.getInt();
@@ -390,12 +388,12 @@ public class DbzCDCEngine implements StreamEngine {
         }
 
         @Override
-        public void write(byte @NonNull [] b) {
+        public void write(byte[] b) {
             buffer.put(b);
         }
 
         @Override
-        public void write(byte @NonNull [] b, int off, int len) {
+        public void write(byte[] b, int off, int len) {
             buffer.put(b, off, len);
         }
     }
