@@ -173,4 +173,11 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Infor
     @Override
     public void snapshotPreceededBySchemaChange() {
     }
+
+    @Test
+    @Disabled("Informix builds its column filter directly from RelationalDatabaseConnectorConfig.getColumnFilter(), shadowing "
+            + "the one RelationalDatabaseSchema.overrideColumnFilter() computes for dbz#2280; hence this test is not applicable.")
+    @Override
+    public void snapshotShouldRunWhenColumnIncludeListExcludesSignalTable() throws Exception {
+    }
 }
