@@ -33,9 +33,8 @@ public class ConcurrentTransactionChangeLsnIT extends AbstractAsyncEngineConnect
     @BeforeEach
     public void before() throws SQLException {
         connection = TestHelper.testConnection();
-        connection.execute(
-                "DROP TABLE IF EXISTS concurrent_lsn",
-                "CREATE TABLE concurrent_lsn (id int not null, val varchar(30), primary key (id))");
+        TestHelper.dropTables(connection, "concurrent_lsn");
+        connection.execute("CREATE TABLE concurrent_lsn (id int not null, val varchar(30), primary key (id))");
 
         Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
     }
@@ -50,9 +49,9 @@ public class ConcurrentTransactionChangeLsnIT extends AbstractAsyncEngineConnect
         waitForConnectorShutdown(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
 
         if (connection != null) {
-            connection.rollback()
-                    .execute("DROP TABLE concurrent_lsn")
-                    .close();
+            connection.rollback();
+            TestHelper.dropTables(connection, "concurrent_lsn");
+            connection.close();
         }
     }
 
@@ -85,6 +84,7 @@ public class ConcurrentTransactionChangeLsnIT extends AbstractAsyncEngineConnect
         // Wait for streaming to start
         waitForSnapshotToBeCompleted(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
         waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
+        awaitCaptureActive(1);
 
         try (InformixConnection connection1 = TestHelper.newConnection();
                 InformixConnection connection2 = TestHelper.newConnection()) {
@@ -214,6 +214,7 @@ public class ConcurrentTransactionChangeLsnIT extends AbstractAsyncEngineConnect
         // Wait for streaming to start
         waitForSnapshotToBeCompleted(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
         waitForStreamingRunning(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
+        awaitCaptureActive(2);
 
         try (InformixConnection connection1 = TestHelper.newConnection();
                 InformixConnection connection2 = TestHelper.newConnection()) {
@@ -275,8 +276,10 @@ public class ConcurrentTransactionChangeLsnIT extends AbstractAsyncEngineConnect
 
             // Wait for the stop predicate to actually halt the engine before draining whatever it managed to dispatch
             waitForConnectorShutdown(TestHelper.TEST_CONNECTOR, TestHelper.TEST_DATABASE);
+            // Make sure the first CDC session is fully closed before starting a new one on the same table
+            waitForEngineShutdown();
             assertConnectorNotRunning();
-            cleanupTestFwkState();
+            stopConnector();
 
             // Restart from the persisted offset, with no stop predicate this time.
             start(InformixConnector.class, config);
@@ -303,6 +306,22 @@ public class ConcurrentTransactionChangeLsnIT extends AbstractAsyncEngineConnect
         }
 
         assertNoRecordsToConsume();
+    }
+
+    /**
+     * The streaming metrics report the connector as connected before the Informix CDC session has
+     * enabled full row logging, started capture and been activated. Opening concurrent transactions
+     * on the captured table in that window can stall the CDC setup behind their uncommitted rows.
+     * Committing a single marker row and waiting for its change event proves capture is live.
+     */
+    private void awaitCaptureActive(int markerId) throws SQLException, InterruptedException {
+        TestHelper.testConnection().execute("INSERT INTO concurrent_lsn VALUES(%d, 'marker')".formatted(markerId));
+
+        assertThat(waitForAvailableRecords()).as("Marker record was not captured").isTrue();
+
+        final List<SourceRecord> records = consumeRecordsByTopic(1).recordsForTopic("testdb.informix.concurrent_lsn");
+        assertThat(records).hasSize(1);
+        assertThat(((Struct) records.get(0).key()).getInt32("id")).isEqualTo(markerId);
     }
 
     private void assertRecord(Struct record, List<SchemaAndValueField> expected) {

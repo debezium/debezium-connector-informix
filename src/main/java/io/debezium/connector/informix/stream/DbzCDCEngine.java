@@ -242,6 +242,7 @@ public class DbzCDCEngine implements StreamEngine {
             if (resultCode != 0) {
                 throw new StreamException("Unable to activate session: %s".formatted(Messages.getMessage(resultCode)), resultCode);
             }
+            LOGGER.debug("CDC session {} activated at position {}", sessionId, position);
         }
         catch (SQLException e) {
             throw new StreamException("Unable to activate session ", e);
