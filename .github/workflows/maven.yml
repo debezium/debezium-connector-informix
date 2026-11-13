@@ -68,7 +68,6 @@ jobs:
       # Runs each combination concurrently
       matrix:
         profile:
-          - 'informix12'
           - 'informix14'
           - 'informix15'
       fail-fast: false

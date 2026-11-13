@@ -585,23 +585,6 @@
             </properties>
         </profile>
         <profile>
-            <id>informix12</id>
-            <properties>
-                <informix.version>12</informix.version>
-                <informix.image>ibmcom-informix-developer-database</informix.image>
-                <informix.image.tag>12.10.FC12W1DE</informix.image.tag>
-                <informix.run.wait.log>Checkpoint Completed:  duration was \d seconds</informix.run.wait.log>
-                <informix.image.registry>quay.io/debezium</informix.image.registry>
-                <informix.size>custom</informix.size>
-                <informix.init.script.name>informix_init.sh</informix.init.script.name>
-                <informix.sch.init.script.name>sch_init_informix.custom.sql</informix.sch.init.script.name>
-                <informix.pre.init.script.name />
-                <informix.post.init.script.name />
-                <informix.db.date>MDY2.</informix.db.date>
-                <informix.db.century>C</informix.db.century>
-            </properties>
-        </profile>
-        <profile>
             <id>informix14</id>
             <properties>
                 <informix.version>14</informix.version>
