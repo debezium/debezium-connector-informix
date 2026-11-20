@@ -258,14 +258,14 @@ public abstract class AbstractInformixDatatypesTest extends AbstractAsyncEngineC
     private static final List<SchemaAndValueField> EXPECTED_TIME_AS_STRUCTURED = Arrays.asList(
             new SchemaAndValueField("val_date", StructuredDate.builder().optional().build(),
                     StructuredDate.from(StructuredDate.builder().optional().build(), 2024, 3, 27)),
-            new SchemaAndValueField("val_time", StructuredTime.builder().optional().build(),
-                    StructuredTime.from(StructuredTime.builder().optional().build(), LocalTime.of(12, 34, 56, 0), 0)),
-            new SchemaAndValueField("val_datetime", StructuredTimestamp.builder().optional().build(),
-                    StructuredTimestamp.from(StructuredTimestamp.builder().optional().build(), LocalDateTime.of(2024, 3, 27, 12, 34, 56, 0), 0)),
-            new SchemaAndValueField("val_timestamp", StructuredTimestamp.builder().optional().build(),
-                    StructuredTimestamp.from(StructuredTimestamp.builder().optional().build(), LocalDateTime.of(2024, 3, 27, 12, 34, 56, 123_000_000), 3)),
-            new SchemaAndValueField("val_timestamp_us", StructuredTimestamp.builder().optional().build(),
-                    StructuredTimestamp.from(StructuredTimestamp.builder().optional().build(), LocalDateTime.of(2024, 3, 27, 12, 34, 56, 123_450_000), 5)));
+            new SchemaAndValueField("val_time", StructuredTime.builder(0).optional().build(),
+                    StructuredTime.from(StructuredTime.builder(0).optional().build(), LocalTime.of(12, 34, 56, 0), 0)),
+            new SchemaAndValueField("val_datetime", StructuredTimestamp.builder(0).optional().build(),
+                    StructuredTimestamp.from(StructuredTimestamp.builder(0).optional().build(), LocalDateTime.of(2024, 3, 27, 12, 34, 56, 0), 0)),
+            new SchemaAndValueField("val_timestamp", StructuredTimestamp.builder(3).optional().build(),
+                    StructuredTimestamp.from(StructuredTimestamp.builder(3).optional().build(), LocalDateTime.of(2024, 3, 27, 12, 34, 56, 123_000_000), 3)),
+            new SchemaAndValueField("val_timestamp_us", StructuredTimestamp.builder(5).optional().build(),
+                    StructuredTimestamp.from(StructuredTimestamp.builder(5).optional().build(), LocalDateTime.of(2024, 3, 27, 12, 34, 56, 123_450_000), 5)));
 
     private static final String CLOB_TXT = "TestClob123";
     private static final String CLOB_JSON = Files.readResourceAsString("data/test_lob_data.json");
